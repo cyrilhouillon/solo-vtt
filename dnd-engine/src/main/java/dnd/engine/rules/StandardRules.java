@@ -1,7 +1,7 @@
 package dnd.engine.rules;
 
 import dnd.engine.attack.CoreAttackRules;
-import dnd.engine.core.RuleBook;
+import solovtt.engine.RuleBook;
 import dnd.engine.events.GameEvent;
 import dnd.engine.state.GameState;
 

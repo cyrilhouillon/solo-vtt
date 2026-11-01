@@ -1,6 +1,6 @@
 package dnd.engine.attack;
 
-import dnd.engine.core.Pipeline;
+import solovtt.engine.Pipeline;
 import dnd.engine.events.GameEvent;
 import dnd.engine.state.GameState;
 

@@ -1,4 +1,4 @@
-package dnd.engine.core;
+package solovtt.engine;
 
 import java.util.ArrayList;
 import java.util.HashMap;

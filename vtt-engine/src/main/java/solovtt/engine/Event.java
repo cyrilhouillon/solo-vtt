@@ -1,4 +1,4 @@
-package dnd.engine.core;
+package solovtt.engine;
 
 /**
  * Tout ce qui se passe dans une partie, quel que soit le système de jeu.

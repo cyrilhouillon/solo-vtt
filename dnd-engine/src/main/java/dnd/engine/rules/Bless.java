@@ -3,8 +3,8 @@ package dnd.engine.rules;
 import dnd.engine.attack.AttackContext;
 import dnd.engine.attack.AttackPhase;
 import dnd.engine.attack.CoreAttackRules.AttackRule;
-import dnd.engine.core.Decision;
-import dnd.engine.core.Engine;
+import solovtt.engine.Decision;
+import solovtt.engine.Engine;
 import dnd.engine.events.GameEvent;
 import dnd.engine.state.GameState;
 

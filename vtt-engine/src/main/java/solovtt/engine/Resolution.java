@@ -1,4 +1,4 @@
-package dnd.engine.core;
+package solovtt.engine;
 
 /**
  * Quelque chose en cours de résolution sur la pile du moteur (une attaque, un sort…).

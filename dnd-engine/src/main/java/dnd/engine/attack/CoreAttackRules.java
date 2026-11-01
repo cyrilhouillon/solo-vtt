@@ -1,8 +1,8 @@
 package dnd.engine.attack;
 
-import dnd.engine.core.Decision;
-import dnd.engine.core.Engine;
-import dnd.engine.core.Listener;
+import solovtt.engine.Decision;
+import solovtt.engine.Engine;
+import solovtt.engine.Listener;
 import dnd.engine.events.GameEvent;
 import dnd.engine.events.GameEvent.AttackDeclared;
 import dnd.engine.events.GameEvent.AttackResolved;

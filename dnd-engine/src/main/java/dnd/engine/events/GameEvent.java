@@ -1,6 +1,6 @@
 package dnd.engine.events;
 
-import dnd.engine.core.Event;
+import solovtt.engine.Event;
 import dnd.engine.state.DamageType;
 import dnd.engine.state.GameState;
 
