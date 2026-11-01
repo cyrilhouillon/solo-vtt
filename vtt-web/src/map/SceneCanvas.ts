@@ -237,7 +237,8 @@ export class SceneCanvas {
     const x = this.toPixelsX(token.x)
     const y = this.toPixelsY(token.y)
     // En placement, un clic sur un jeton vise la case : il traverse jusqu'au sol.
-    const group = new Konva.Group({ x, y, listening: clickable })
+    // Un jeton en attente du serveur est estompé et ne réagit pas encore.
+    const group = new Konva.Group({ x, y, listening: clickable && !token.pending, opacity: token.pending ? 0.55 : 1 })
     group.add(
       this.tokenShape(token.kind, radius, {
         stroke: isSelected ? this.colors.selected : this.colors.ground,

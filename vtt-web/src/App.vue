@@ -31,6 +31,7 @@ const announcement = ref('')
 type Step = { type: 'place'; tokenId: string } | { type: 'remove'; tokens: TokenView[] }
 /** Étapes depuis l'ouverture de la page, de la plus ancienne à la plus récente. */
 const history: Step[] = []
+let pendingCount = 0
 
 const armedEntry = computed(() => catalog.value.find((e) => e.id === armed.value) ?? null)
 
@@ -104,7 +105,9 @@ async function placeToken(catalogId: string, x: number, y: number): Promise<Toke
 /** Retire les jetons côté serveur puis à l'écran ; rend ceux qui ont été retirés. */
 async function deleteTokens(ids: string[]): Promise<TokenView[]> {
   const removed: TokenView[] = []
-  for (const id of ids) {
+  // Un jeton en attente n'existe pas encore côté serveur : il n'y a rien à retirer.
+  const known = ids.filter((id) => !scene.value?.tokens.find((t) => t.id === id)?.pending)
+  for (const id of known) {
     await api.removeToken(id)
     const tokens = scene.value?.tokens ?? []
     const index = tokens.findIndex((t) => t.id === id)
@@ -129,11 +132,37 @@ function onBackgroundClick(x: number, y: number, free: boolean) {
     error.value = `Case occupée par ${taken.name}. Maj + clic pour poser sans caler sur la case.`
     return
   }
-  const entryId = armed.value
+  const entry = armedEntry.value
+  const tokens = scene.value?.tokens
+  if (!entry || !tokens) return
+  // Le jeton s'affiche tout de suite ; la réponse du serveur le remplace, ou l'efface en cas d'échec.
+  const pending: TokenView = {
+    id: `en-attente-${++pendingCount}`,
+    creatureId: '',
+    catalogId: entry.id,
+    name: entry.name,
+    kind: entry.kind,
+    x,
+    y,
+    pending: true,
+  }
+  tokens.push(pending)
+  const settle = (token?: TokenView) => {
+    const index = tokens.findIndex((t) => t.id === pending.id)
+    if (index < 0) return
+    if (token) tokens.splice(index, 1, token)
+    else tokens.splice(index, 1)
+  }
   attempt(async () => {
-    const token = await placeToken(entryId, x, y)
-    history.push({ type: 'place', tokenId: token.id })
-    tell(`${token.name} posé. Ctrl+Z pour annuler.`)
+    try {
+      const token = await api.placeToken(entry.id, x, y)
+      settle(token)
+      history.push({ type: 'place', tokenId: token.id })
+      tell(`${token.name} posé. Ctrl+Z pour annuler.`)
+    } catch (e) {
+      settle()
+      throw e
+    }
   })
 }
 
@@ -182,6 +211,7 @@ function arm(entryId: string | null) {
 }
 
 function toggleSelection(tokenId: string) {
+  if (scene.value?.tokens.find((t) => t.id === tokenId)?.pending) return
   notice.value = ''
   const current = selected.value
   selected.value = current.includes(tokenId)

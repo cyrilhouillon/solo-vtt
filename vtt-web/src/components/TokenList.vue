@@ -40,14 +40,16 @@ watch(
           class="entry"
           :class="[token.kind.toLowerCase(), { selected: selected.includes(token.id) }]"
           :aria-pressed="selected.includes(token.id)"
+          :disabled="token.pending"
           @click="emit('select', token.id)"
         >
           <span class="swatch" aria-hidden="true" />
           <span class="name">{{ token.name }}</span>
           <span class="sr-only">, {{ KIND_LABELS[token.kind] }}</span>
+          <span v-if="token.pending" class="tag">en cours…</span>
           <span v-if="token.id === shown" class="tag"><span aria-hidden="true">feuille</span><span class="sr-only">, feuille affichée</span></span>
         </button>
-        <button type="button" class="remove" :aria-label="`Retirer ${token.name}`" @click="remove(token.id, index)">
+        <button type="button" class="remove" :disabled="token.pending" :aria-label="`Retirer ${token.name}`" @click="remove(token.id, index)">
           Retirer
         </button>
       </li>

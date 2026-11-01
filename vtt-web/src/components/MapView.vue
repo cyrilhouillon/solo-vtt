@@ -53,10 +53,19 @@ function announce(point: Point) {
   cursorAnnouncement.value = taken ? `${where}, occupée par ${taken.name}` : `${where}, libre`
 }
 
-function onFocus() {
-  if (!props.placing || cursor.value) return
+function startCursor() {
   cursor.value = snapToCell(props.scene, { x: props.scene.width / 2, y: props.scene.height / 2 })
   announce(cursor.value)
+}
+
+/**
+ * Le curseur de case n'apparaît qu'au focus clavier. Au clic, la carte prend aussi le focus :
+ * la redessiner à ce moment détruirait le sol sous la souris entre l'appui et le relâchement,
+ * et Konva perdrait le clic de pose.
+ */
+function onFocus(e: FocusEvent) {
+  if (!props.placing || cursor.value) return
+  if ((e.target as HTMLElement).matches(':focus-visible')) startCursor()
 }
 
 const STEPS: Record<string, [number, number]> = {
@@ -67,8 +76,16 @@ const STEPS: Record<string, [number, number]> = {
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (!props.placing || !cursor.value) return
+  if (!props.placing) return
   const step = STEPS[e.key]
+  if (!cursor.value) {
+    // Focus pris à la souris : la première flèche fait apparaître le curseur.
+    if (step) {
+      e.preventDefault()
+      startCursor()
+    }
+    return
+  }
   if (step) {
     e.preventDefault()
     const cell = CELL[props.scene.unit]

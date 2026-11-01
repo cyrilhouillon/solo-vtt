@@ -18,6 +18,8 @@ export interface TokenView {
   kind: CreatureKind
   x: number
   y: number
+  /** Côté client seulement : affiché dès le clic, en attendant la réponse du serveur. */
+  pending?: boolean
 }
 
 export interface SceneView {
