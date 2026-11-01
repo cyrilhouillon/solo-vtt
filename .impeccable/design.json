@@ -307,7 +307,7 @@
       "map-grid": {
         "role": "neutral",
         "displayName": "Grille",
-        "canonical": "rgba(239, 230, 210, 0.16)",
+        "canonical": "rgba(239, 230, 210, 0.25)",
         "tonalRamp": [
           "oklch(15.0% 0.014 86.6)",
           "oklch(26.4% 0.018 86.6)",
@@ -637,7 +637,7 @@
       "map-grid-light": {
         "role": "neutral",
         "displayName": "Grille (clair)",
-        "canonical": "rgba(34, 52, 30, 0.26)",
+        "canonical": "rgba(34, 52, 30, 0.41)",
         "tonalRamp": [
           "oklch(15.0% 0.022 140.0)",
           "oklch(26.4% 0.029 140.0)",
