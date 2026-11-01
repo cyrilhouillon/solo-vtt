@@ -50,7 +50,8 @@ class SceneApiTest {
 
         given().get("/api/scene").then().statusCode(200)
                 .body("tokens.id", hasItems("gobelin-1", "gobelin-2"))
-                .body("tokens.find { it.id == 'gobelin-2' }.x", equalTo(6.0f));
+                .body("tokens.find { it.id == 'gobelin-2' }.x", equalTo(6.0f))
+                .body("tokens.find { it.id == 'gobelin-2' }.catalogId", equalTo("gobelin"));
     }
 
     @Test

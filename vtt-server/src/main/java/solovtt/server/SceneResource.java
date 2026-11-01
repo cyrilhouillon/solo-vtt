@@ -47,7 +47,7 @@ public class SceneResource {
                 .orElseThrow(() -> new NotFoundException("Créature inconnue au catalogue : " + request.catalogId()));
         var token = session.place(entry, request.x(), request.y());
         var creature = session.creature(token.entityId()).orElseThrow();
-        return new Dtos.TokenDto(token.id(), token.entityId(), creature.name(), entry.kind(),
+        return new Dtos.TokenDto(token.id(), token.entityId(), entry.id(), creature.name(), entry.kind(),
                 token.position().x(), token.position().y());
     }
 

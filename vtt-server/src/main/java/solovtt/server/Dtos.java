@@ -27,14 +27,18 @@ final class Dtos {
 
     record PlaceTokenRequest(String catalogId, double x, double y) {}
 
-    record TokenDto(String id, String creatureId, String name, CatalogEntry.Kind kind, double x, double y) {}
+    /** `catalogId` : l'entrée du catalogue d'où vient la créature, pour la reposer à l'identique. */
+    record TokenDto(String id, String creatureId, String catalogId, String name, CatalogEntry.Kind kind, double x, double y) {}
 
     record SceneDto(double width, double height, DistanceUnit unit, String unitSymbol, List<TokenDto> tokens) {
         static SceneDto of(Scene scene, SceneSession session) {
             var tokens = scene.tokens().stream()
-                    .map(t -> new TokenDto(t.id(), t.entityId(),
-                            session.creature(t.entityId()).map(Creature::name).orElse(t.entityId()),
-                            session.kindOf(t.entityId()), t.position().x(), t.position().y()))
+                    .map(t -> {
+                        var entry = session.entryOf(t.entityId());
+                        return new TokenDto(t.id(), t.entityId(), entry.id(),
+                                session.creature(t.entityId()).map(Creature::name).orElse(t.entityId()),
+                                entry.kind(), t.position().x(), t.position().y());
+                    })
                     .toList();
             return new SceneDto(scene.width(), scene.height(), scene.unit(), scene.unit().symbol(), tokens);
         }

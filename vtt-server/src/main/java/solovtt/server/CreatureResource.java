@@ -20,6 +20,6 @@ public class CreatureResource {
     public Dtos.CreatureSheetDto sheet(@PathParam("id") String id) {
         var creature = session.creature(id).orElseThrow(() -> new NotFoundException("Créature inconnue : " + id));
         var unit = session.scene().orElseThrow().unit();
-        return Dtos.CreatureSheetDto.of(creature, session.kindOf(id), unit);
+        return Dtos.CreatureSheetDto.of(creature, session.entryOf(id).kind(), unit);
     }
 }

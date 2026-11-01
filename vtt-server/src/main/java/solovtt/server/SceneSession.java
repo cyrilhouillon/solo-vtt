@@ -25,14 +25,15 @@ public class SceneSession {
 
     private Scene scene;
     private GameState state;
-    private final Map<String, CatalogEntry.Kind> kinds = new HashMap<>();
+    /** L'entrée du catalogue de chaque créature posée, par id de créature. */
+    private final Map<String, CatalogEntry> entries = new HashMap<>();
     private final Map<String, Integer> instanceCounters = new HashMap<>();
 
     public synchronized Scene create(double width, double height, DistanceUnit unit) {
         Scene created = new Scene(width, height, unit);
         scene = created;
         state = new GameState();
-        kinds.clear();
+        entries.clear();
         instanceCounters.clear();
         return created;
     }
@@ -53,7 +54,7 @@ public class SceneSession {
         scene.place(token);
         instanceCounters.put(entry.id(), n);
         state.add(entry.create(id, n == 1 ? entry.name() : entry.name() + " " + n));
-        kinds.put(id, entry.kind());
+        entries.put(id, entry);
         return token;
     }
 
@@ -62,16 +63,16 @@ public class SceneSession {
         if (scene == null) throw new IllegalStateException("aucune carte");
         Token token = scene.remove(tokenId);
         state.remove(token.entityId());
-        kinds.remove(token.entityId());
+        entries.remove(token.entityId());
     }
 
     public synchronized Optional<Creature> creature(String id) {
-        if (!kinds.containsKey(id)) return Optional.empty();
+        if (!entries.containsKey(id)) return Optional.empty();
         return Optional.of(state.get(id));
     }
 
-    public synchronized CatalogEntry.Kind kindOf(String creatureId) {
-        return kinds.get(creatureId);
+    public synchronized CatalogEntry entryOf(String creatureId) {
+        return entries.get(creatureId);
     }
 
     public static Optional<CatalogEntry> catalogEntry(String id) {
