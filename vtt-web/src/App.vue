@@ -1,19 +1,30 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api, ApiError } from './api'
 import CatalogPanel from './components/CatalogPanel.vue'
 import CreatureSheet from './components/CreatureSheet.vue'
 import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
-import { formatLength, type CatalogEntry, type CreatureSheet as Sheet, type Distance, type DistanceUnit, type SceneView } from './types'
+import { formatLength, type CatalogEntry, type CreatureSheet as Sheet, type DistanceUnit, type SceneView } from './types'
 
 const catalog = ref<CatalogEntry[]>([])
 const scene = ref<SceneView | null>(null)
 const armed = ref<string | null>(null)
 const selected = ref<string[]>([])
-const distance = ref<Distance | null>(null)
 const sheet = ref<Sheet | null>(null)
 const error = ref<string | null>(null)
+
+/**
+ * Mesure d'affichage, calculée sur les positions déjà connues : euclidienne de centre à centre,
+ * dans l'unité de la carte. Une règle qui dépend d'une distance (portée, déplacement) la fait
+ * calculer par le serveur, jamais par ce résultat.
+ */
+const measure = computed(() => {
+  if (!scene.value || selected.value.length !== 2) return null
+  const [a, b] = selected.value.map((id) => scene.value!.tokens.find((t) => t.id === id))
+  if (!a || !b) return null
+  return { from: a.name, to: b.name, value: Math.hypot(b.x - a.x, b.y - a.y) }
+})
 
 async function attempt(action: () => Promise<void>) {
   error.value = null
@@ -39,7 +50,6 @@ function createScene(width: number, height: number, unit: DistanceUnit) {
   attempt(async () => {
     scene.value = await api.createScene(width, height, unit)
     selected.value = []
-    distance.value = null
     sheet.value = null
   })
 }
@@ -47,7 +57,6 @@ function createScene(width: number, height: number, unit: DistanceUnit) {
 function onBackgroundClick(x: number, y: number) {
   if (!armed.value) {
     selected.value = []
-    distance.value = null
     return
   }
   const entryId = armed.value
@@ -63,15 +72,9 @@ function onTokenClick(tokenId: string) {
     ? current.filter((id) => id !== tokenId)
     : [...current, tokenId].slice(-2)
   attempt(async () => {
-    const [from, to] = selected.value
-    distance.value = from && to ? await api.distance(from, to) : null
     const last = selected.value.at(-1)
     sheet.value = last ? await api.sheet(last) : null
   })
-}
-
-function tokenName(id: string): string {
-  return scene.value?.tokens.find((t) => t.id === id)?.name ?? id
 }
 
 function onKey(e: KeyboardEvent) {
@@ -104,9 +107,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           />
         </div>
         <p class="status" aria-live="polite">
-          <template v-if="distance && selected.length === 2">
-            Distance {{ tokenName(selected[0]!) }} – {{ tokenName(selected[1]!) }} :
-            <strong>{{ formatLength(distance.value, distance.unitSymbol) }}</strong>
+          <template v-if="measure">
+            Distance {{ measure.from }} – {{ measure.to }} :
+            <strong>{{ formatLength(measure.value, scene.unitSymbol) }}</strong>
           </template>
           <template v-else>
             Carte de {{ formatLength(scene.width, scene.unitSymbol) }} × {{ formatLength(scene.height, scene.unitSymbol) }}.

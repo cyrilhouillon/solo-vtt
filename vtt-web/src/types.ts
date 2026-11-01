@@ -26,12 +26,6 @@ export interface SceneView {
   tokens: TokenView[]
 }
 
-export interface Distance {
-  value: number
-  unit: DistanceUnit
-  unitSymbol: string
-}
-
 export interface CreatureSheet {
   id: string
   name: string

@@ -40,8 +40,6 @@ final class Dtos {
         }
     }
 
-    record DistanceDto(double value, DistanceUnit unit, String unitSymbol) {}
-
     record Measure(double value, String unitSymbol) {}
 
     record WeaponDto(String name, int attackBonus, String damage, String damageType) {}

@@ -54,17 +54,6 @@ class SceneApiTest {
     }
 
     @Test
-    void laDistanceEstDonneeDansLUniteDeLaCarte() {
-        poser("guerriere", 0, 0);
-        poser("loup", 3, 4);
-
-        given().queryParam("from", "guerriere-1").queryParam("to", "loup-1")
-                .get("/api/scene/distance").then().statusCode(200)
-                .body("value", equalTo(5.0f))
-                .body("unitSymbol", equalTo("m"));
-    }
-
-    @Test
     void laFeuilleDecritLaCreature() {
         poser("squelette", 1, 1);
 
@@ -98,9 +87,7 @@ class SceneApiTest {
     @Test
     void lesIdsInconnusRendent404() {
         poser("dragon", 1, 1).statusCode(404).body("message", containsString("dragon"));
-        given().get("/api/creatures/fantome-1").then().statusCode(404).body("message", containsString("fantome-1"));
-        given().queryParam("from", "a").queryParam("to", "b").get("/api/scene/distance").then().statusCode(404);
-    }
+        given().get("/api/creatures/fantome-1").then().statusCode(404).body("message", containsString("fantome-1"));    }
 
     @Test
     void recreerUneCarteVideLaScene() {

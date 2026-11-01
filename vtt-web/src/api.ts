@@ -1,4 +1,4 @@
-import type { CatalogEntry, CreatureSheet, Distance, DistanceUnit, SceneView, TokenView } from './types'
+import type { CatalogEntry, CreatureSheet, DistanceUnit, SceneView, TokenView } from './types'
 
 /** Erreur rendue par le serveur, avec son message lisible. */
 export class ApiError extends Error {
@@ -42,9 +42,6 @@ export const api = {
 
   placeToken: (catalogId: string, x: number, y: number) =>
     request<TokenView>('/api/scene/tokens', { method: 'POST', body: JSON.stringify({ catalogId, x, y }) }),
-
-  distance: (from: string, to: string) =>
-    request<Distance>(`/api/scene/distance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
 
   sheet: (creatureId: string) => request<CreatureSheet>(`/api/creatures/${encodeURIComponent(creatureId)}`),
 }

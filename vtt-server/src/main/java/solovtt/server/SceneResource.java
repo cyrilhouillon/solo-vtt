@@ -5,7 +5,6 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import solovtt.scene.Scene;
@@ -48,16 +47,6 @@ public class SceneResource {
         var creature = session.creature(token.entityId()).orElseThrow();
         return new Dtos.TokenDto(token.id(), token.entityId(), creature.name(), entry.kind(),
                 token.position().x(), token.position().y());
-    }
-
-    @GET
-    @Path("/distance")
-    public Dtos.DistanceDto distance(@QueryParam("from") String from, @QueryParam("to") String to) {
-        Scene scene = requireScene();
-        for (String id : new String[]{from, to}) {
-            if (id == null || !scene.contains(id)) throw new NotFoundException("Jeton inconnu : " + id);
-        }
-        return new Dtos.DistanceDto(scene.distance(from, to), scene.unit(), scene.unit().symbol());
     }
 
     private Scene requireScene() {

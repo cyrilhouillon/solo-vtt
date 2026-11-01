@@ -37,7 +37,7 @@ flowchart TD
   - `rules/` : les règles optionnelles et `StandardRules`, qui assemble le `RuleBook`.
   - `catalog/` : `SrdCatalog`, les créatures prêtes à l'emploi du SRD 5.2.1.
   - `demo/` : démonstration console.
-- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `scene/distance`, `creatures/{id}`).
+- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `creatures/{id}`).
 - `vtt-web/` : client Vue 3 + TypeScript. `src/api.ts` appelle le serveur, `src/map/SceneCanvas.ts` dessine la carte avec Konva, `src/components/` porte les panneaux.
 
 ## Points d'entrée
