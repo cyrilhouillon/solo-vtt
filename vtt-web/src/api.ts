@@ -1,4 +1,4 @@
-import type { AttackResult, CatalogEntry, CreatureSheet, DistanceUnit, JournalEntry, SceneView, TokenView } from './types'
+import type { AttackResult, CatalogEntry, CreatureSheet, Decision, DistanceUnit, JournalEntry, SceneView, TokenView } from './types'
 
 /** Erreur rendue par le serveur, avec son message lisible. */
 export class ApiError extends Error {
@@ -53,4 +53,10 @@ export const api = {
     request<AttackResult>('/api/attacks', { method: 'POST', body: JSON.stringify({ attackerId, attackId, targetId }) }),
 
   journal: () => request<JournalEntry[]>('/api/journal'),
+
+  /** La décision en attente, ou `null` (204). */
+  pendingDecision: async () => (await request<Decision | undefined>('/api/decisions/pending')) ?? null,
+
+  answer: (decisionId: string, option: string) =>
+    request<AttackResult>(`/api/decisions/${encodeURIComponent(decisionId)}`, { method: 'POST', body: JSON.stringify({ option }) }),
 }

@@ -4,6 +4,7 @@ import { api, ApiError } from './api'
 import AppIcon from './components/AppIcon.vue'
 import CatalogPanel from './components/CatalogPanel.vue'
 import CreatureSheet from './components/CreatureSheet.vue'
+import DecisionDialog from './components/DecisionDialog.vue'
 import DiceTray, { type TrayResult } from './components/DiceTray.vue'
 import JournalPanel from './components/JournalPanel.vue'
 import MapView from './components/MapView.vue'
@@ -16,8 +17,10 @@ import { initialTheme, saveTheme, type Theme } from './theme'
 import {
   formatLength,
   type Attack,
+  type AttackResult,
   type CatalogEntry,
   type CreatureSheet as Sheet,
+  type Decision,
   type DistanceUnit,
   type JournalEntry,
   type SceneView,
@@ -40,6 +43,10 @@ const targetSheet = ref<Sheet | null>(null)
 /** Ce que la piste à dés montre : la dernière attaque résolue. */
 const lastResult = ref<TrayResult | null>(null)
 const theme = ref<Theme>(initialTheme())
+/** La question du moteur qui suspend l'action en cours ; tant qu'elle attend, aucune autre action. */
+const decision = ref<Decision | null>(null)
+/** La réponse est envoyée et pas encore revenue : un second clic ne doit pas en envoyer une autre. */
+const answering = ref(false)
 
 function toggleTheme() {
   theme.value = theme.value === 'dark' ? 'light' : 'dark'
@@ -172,16 +179,19 @@ async function resync(): Promise<string> {
     clearSelection()
     targetSheet.value = null
     lastResult.value = null
+    decision.value = null
     drawer.value = 'map'
     return "Le serveur n'a plus de carte (redémarrage ?). En créer une nouvelle."
   }
   targeting.value = null
   journal.value = await api.journal()
+  decision.value = await api.pendingDecision()
   lastResult.value = trayFromJournal()
   const ids = new Set(fresh.tokens.map((t) => t.id))
   selected.value = selected.value.filter((id) => ids.has(id))
   if (sheet.value && !ids.has(sheet.value.id)) sheet.value = null
   if (targetSheet.value && !ids.has(targetSheet.value.id)) targetSheet.value = null
+  if (decision.value) return "Une décision attend une réponse : y répondre avant toute autre action."
   return "La carte a été modifiée hors de cet onglet ; elle vient d'être rechargée. Refaire l'action si besoin."
 }
 
@@ -207,6 +217,7 @@ onMounted(() =>
     catalog.value = await api.catalog()
     scene.value = await loadScene()
     journal.value = await api.journal()
+    decision.value = await api.pendingDecision()
     lastResult.value = trayFromJournal()
     openDefaultDrawer()
   }),
@@ -220,6 +231,7 @@ function createScene(width: number, height: number, unit: DistanceUnit) {
     targeting.value = null
     journal.value = []
     lastResult.value = null
+    decision.value = null
     targetSheet.value = null
     clearSelection()
     history.length = 0
@@ -393,20 +405,44 @@ function attackTarget(targetId: string) {
   attacking = true
   void attempt(async () => {
     const result = await api.attack(t.attackerId, t.attack.id, targetId)
-    journal.value.push(...result.entries)
     endTargeting()
-    tell(result.entries.at(-1)?.text ?? 'Attaque résolue.')
-    const target = scene.value?.tokens.find((token) => token.id === result.targetId)
-    if (target) target.hitPoints = result.targetHitPoints
-    lastResult.value = {
-      ...trayFrom(result.entries),
-      target: { name: target?.name ?? result.targetId, hitPoints: result.targetHitPoints, maxHitPoints: result.targetMaxHitPoints },
-    }
-    const shown = sheet.value?.id
-    if (shown === t.attackerId || shown === targetId) showSheet(shown)
-    targetSheet.value = await api.sheet(result.targetId)
+    await settleAction(result)
   }).finally(() => {
     attacking = false
+  })
+}
+
+/**
+ * Ce que l'attaque, ou sa reprise après une décision, a produit : une nouvelle décision ouvre le dialogue ;
+ * sinon l'action est finie (journal, PV du jeton, piste à dés, feuilles).
+ */
+async function settleAction(result: AttackResult) {
+  journal.value.push(...result.entries)
+  decision.value = result.decision
+  if (result.decision) return
+  const last = result.entries.at(-1)
+  const actionEntries = last ? journal.value.filter((e) => e.action === last.action) : result.entries
+  tell(last?.text ?? 'Attaque résolue.')
+  const target = scene.value?.tokens.find((token) => token.id === result.targetId)
+  if (target) target.hitPoints = result.targetHitPoints
+  lastResult.value = {
+    ...trayFrom(actionEntries),
+    target: { name: target?.name ?? result.targetId, hitPoints: result.targetHitPoints, maxHitPoints: result.targetMaxHitPoints },
+  }
+  // Une réaction peut changer la feuille de la cible comme de l'attaquant (emplacement, CA).
+  if (sheet.value) showSheet(sheet.value.id)
+  targetSheet.value = await api.sheet(result.targetId)
+}
+
+/** Le joueur répond à la décision ; l'action suspendue reprend côté serveur. */
+function answerDecision(option: string) {
+  const pending = decision.value
+  if (!pending || answering.value) return
+  answering.value = true
+  void attempt(async () => {
+    await settleAction(await api.answer(pending.id, option))
+  }).finally(() => {
+    answering.value = false
   })
 }
 
@@ -483,6 +519,8 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 function onKey(e: KeyboardEvent) {
+  // Le dialogue modal rend la page inerte, pas l'écouteur de window : rien ne passe tant qu'il attend.
+  if (decision.value) return
   if (e.key === 'Escape') {
     // Un pas à la fois : d'abord le ciblage ou le placement, puis la sélection.
     if (targeting.value) endTargeting()
@@ -616,6 +654,8 @@ onBeforeUnmount(() => {
       <p v-else class="empty">Aucune carte. La créer depuis « Nouvelle carte », dans le rail à gauche.</p>
       <p class="sr-only" aria-live="polite">{{ announcement }}</p>
     </main>
+
+    <DecisionDialog :decision="decision" :answering="answering" @answer="answerDecision" />
 
     <aside class="side" :class="{ folded: sideFolded }" aria-label="Créatures">
       <div class="tabs" role="tablist" aria-label="Panneau">
