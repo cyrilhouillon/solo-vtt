@@ -14,6 +14,11 @@ public final class GameState {
         return this;
     }
 
+    public GameState remove(String id) {
+        if (creatures.remove(id) == null) throw new IllegalArgumentException("Créature inconnue : " + id);
+        return this;
+    }
+
     public Creature get(String id) {
         Creature c = creatures.get(id);
         if (c == null) throw new IllegalArgumentException("Créature inconnue : " + id);

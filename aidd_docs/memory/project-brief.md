@@ -3,7 +3,7 @@
 ## Ce que c'est
 
 - `solo-vtt` : un Virtual TableTop web modulaire, conçu spécialement pour le jeu de rôle en solo.
-- Aujourd'hui, le dépôt contient `vtt-engine`, le moteur de règles générique, et `dnd-engine`, un squelette de règles D&D 2024 qui s'appuie dessus. Les deux serviront de librairies à l'application.
+- Aujourd'hui, le dépôt contient `vtt-engine` (moteur de règles et scène génériques), `dnd-engine` (squelette de règles D&D 2024 qui s'appuie dessus), `vtt-server` (serveur Quarkus qui les expose) et `vtt-web` (client Vue).
 
 ## Pourquoi il existe
 
@@ -25,6 +25,8 @@ Le code, les commentaires et les messages sont en français ; les identifiants s
 | Réaction | Capacité déclenchée pendant l'action d'un autre (Bouclier), via une décision |
 | Événement | `GameEvent` : seul moyen de modifier l'état ; le journal est rejouable |
 | CA | Classe d'armure |
+| Scène | Une carte (dimensions, unité) et les jetons posés dessus ; générique, sans règle |
+| Jeton | Pion d'une scène, qui référence une entité du système par son id |
 | Avantage / désavantage | Lancer 2d20 et garder le meilleur / le pire ; les deux s'annulent |
 
 ## Fonctionnalités clés
@@ -33,3 +35,4 @@ Le code, les commentaires et les messages sont en français ; les identifiants s
 - Conditions, Bénédiction, réaction Bouclier, style de combat Duel.
 - Moteur suspendable sur décision, pile de résolutions, journal d'événements rejouable.
 - Démo console (`dnd.engine.demo.Main`), avec un mode interactif.
+- Préparation de scène dans le navigateur : carte vide en mètres ou en pieds, créatures du catalogue SRD posées au clic, distance entre deux créatures, feuille de chaque créature.

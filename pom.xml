@@ -13,6 +13,7 @@
     <modules>
         <module>vtt-engine</module>
         <module>dnd-engine</module>
+        <module>vtt-server</module>
     </modules>
 
     <properties>
@@ -26,6 +27,11 @@
             <dependency>
                 <groupId>solovtt</groupId>
                 <artifactId>vtt-engine</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dnd</groupId>
+                <artifactId>dnd-engine</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
