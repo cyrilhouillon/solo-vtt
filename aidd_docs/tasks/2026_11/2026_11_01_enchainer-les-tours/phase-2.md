@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Règles D&D : initiative, groupes, tours, arrivées et départs

@@ -1,10 +1,14 @@
 package dnd.engine.events;
 
 import solovtt.engine.Event;
+import dnd.engine.state.Combat;
 import dnd.engine.state.DamageType;
 import dnd.engine.state.GameState;
+import dnd.engine.state.InitiativeGroup;
+import solovtt.engine.TurnOrder;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Tout ce qui se passe dans la partie. Les événements qui changent l'état surchargent
@@ -24,6 +28,14 @@ public sealed interface GameEvent extends Event<GameState> {
 
     private static String name(GameState s, String id) {
         return s.get(id).name();
+    }
+
+    private static String names(GameState s, List<String> ids) {
+        return ids.stream().map(id -> name(s, id)).collect(Collectors.joining(", "));
+    }
+
+    private static Combat combat(GameState s) {
+        return s.combat().orElseThrow(() -> new IllegalStateException("Aucun combat en cours"));
     }
 
     private static int sum(List<Integer> values) {
@@ -115,6 +127,118 @@ public sealed interface GameEvent extends Event<GameState> {
         public String describe(GameState s) {
             var t = s.get(targetId);
             return "%s subit %d dégâts %s (PV %d/%d)".formatted(t.name(), amount, type.label(), t.hitPoints(), t.maxHitPoints());
+        }
+    }
+
+    // --- Combat ------------------------------------------------------------------
+
+    record CombatStarted() implements GameEvent {
+        public String describe(GameState s) {
+            return "Le combat commence";
+        }
+    }
+
+    record InitiativeRolled(String creatureId, int roll, int bonus) implements GameEvent {
+        public String describe(GameState s) {
+            return "Initiative de %s : d20 %d %s %d = %d".formatted(
+                    name(s, creatureId), roll, bonus < 0 ? "-" : "+", Math.abs(bonus), roll + bonus);
+        }
+    }
+
+    /** Fixe l'ordre de jeu : le combat commence dans l'état. */
+    record InitiativeOrderSet(List<InitiativeGroup> groups) implements GameEvent {
+        public InitiativeOrderSet {
+            groups = List.copyOf(groups);
+        }
+
+        public void apply(GameState s) {
+            s.startCombat(groups);
+        }
+
+        public String describe(GameState s) {
+            return "Ordre de jeu : " + groups.stream()
+                    .map(g -> "%s (%d)".formatted(String.join(" et ", g.members().stream().map(id -> name(s, id)).toList()), g.initiative()))
+                    .collect(Collectors.joining(", "));
+        }
+    }
+
+    record RoundStarted(int round) implements GameEvent {
+        public void apply(GameState s) {
+            combat(s).startRound(round);
+        }
+
+        public String describe(GameState s) {
+            return "Round " + round;
+        }
+    }
+
+    /** Plusieurs créatures peuvent jouer : le joueur choisit laquelle. */
+    record TurnOffered(int round, List<String> candidates) implements GameEvent {
+        public TurnOffered {
+            candidates = List.copyOf(candidates);
+        }
+
+        public void apply(GameState s) {
+            combat(s).offer(TurnOrder.offer(round, candidates));
+        }
+
+        public String describe(GameState s) {
+            return "À jouer, au choix : " + names(s, candidates);
+        }
+    }
+
+    record TurnStarted(String creatureId) implements GameEvent {
+        public void apply(GameState s) {
+            combat(s).startTurn(creatureId);
+        }
+
+        public String describe(GameState s) {
+            return "Tour de " + name(s, creatureId);
+        }
+    }
+
+    record TurnEnded(String creatureId) implements GameEvent {
+        public void apply(GameState s) {
+            combat(s).endTurn();
+        }
+
+        public String describe(GameState s) {
+            return "Fin du tour de " + name(s, creatureId);
+        }
+    }
+
+    record ReactionRegained(String creatureId) implements GameEvent {
+        public void apply(GameState s) {
+            s.get(creatureId).regainReaction();
+        }
+
+        public String describe(GameState s) {
+            return name(s, creatureId) + " récupère sa réaction";
+        }
+    }
+
+    /** Une créature arrive en plein combat ; {@code playedThisRound} si son rang est déjà passé dans ce round. */
+    record JoinedCombat(String creatureId, int initiative, int modifier, boolean playedThisRound) implements GameEvent {
+        public void apply(GameState s) {
+            combat(s).join(creatureId, initiative, modifier, playedThisRound);
+        }
+
+        public String describe(GameState s) {
+            return "%s entre dans le combat (initiative %d%s)".formatted(
+                    name(s, creatureId), initiative, playedThisRound ? ", jouera au round suivant" : "");
+        }
+    }
+
+    /** Une créature quitte le combat ; s'il ne reste personne, le combat s'arrête. */
+    record LeftCombat(String creatureId) implements GameEvent {
+        public void apply(GameState s) {
+            Combat c = combat(s);
+            c.leave(creatureId);
+            if (c.isEmpty()) s.endCombat();
+        }
+
+        public String describe(GameState s) {
+            return name(s, creatureId) + " quitte le combat";
         }
     }
 }

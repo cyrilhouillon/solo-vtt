@@ -14,8 +14,8 @@ public final class AttackAction {
 
     /**
      * Une attaque choisie parmi celles de l'attaquant, contre une cible à {@code distance},
-     * exprimée dans {@code unit}. Ce que les règles interdisent (soi-même, hors d'allonge, au-delà
-     * de la portée longue) est refusé ici, avant toute émission : rien ne s'est passé dans la partie.
+     * exprimée dans {@code unit}. Ce que les règles interdisent (hors de son tour en combat, soi-même, hors d'allonge,
+     * au-delà de la portée longue) est refusé ici, avant toute émission : rien ne s'est passé dans la partie.
      *
      * @throws IllegalArgumentException avec la raison du refus, les longueurs données dans {@code unit}
      */
@@ -23,6 +23,11 @@ public final class AttackAction {
             String attackerId, String attackId, String targetId, double distance, DistanceUnit unit, GameState state) {
         Creature attacker = state.get(attackerId);
         state.get(targetId);
+        state.combat().ifPresent(combat -> {
+            if (!combat.activeId().filter(attackerId::equals).isPresent()) {
+                throw new IllegalArgumentException("Ce n'est pas le tour de " + attacker.name());
+            }
+        });
         if (attackerId.equals(targetId)) {
             throw new IllegalArgumentException("Une créature ne peut pas s'attaquer elle-même");
         }
