@@ -3,15 +3,19 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, ApiError } from './api'
 import CatalogPanel from './components/CatalogPanel.vue'
 import CreatureSheet from './components/CreatureSheet.vue'
+import JournalPanel from './components/JournalPanel.vue'
 import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
 import TokenList from './components/TokenList.vue'
 import { CELL, occupant } from './map/grid'
+import type { Targeting } from './map/SceneCanvas'
 import {
   formatLength,
+  type Attack,
   type CatalogEntry,
   type CreatureSheet as Sheet,
   type DistanceUnit,
+  type JournalEntry,
   type SceneView,
   type TokenView,
 } from './types'
@@ -22,6 +26,25 @@ const armed = ref<string | null>(null)
 const selected = ref<string[]>([])
 const sheet = ref<Sheet | null>(null)
 const error = ref<string | null>(null)
+const journal = ref<JournalEntry[]>([])
+/** L'attaque dont on choisit la cible, ou `null` hors ciblage. Exclusif du placement. */
+const targeting = ref<{ attackerId: string; attackerName: string; attack: Attack } | null>(null)
+
+/** Cercles d'allonge ou de portée autour de l'attaquant ; indicatifs, le serveur tranche. */
+const targetingView = computed<Targeting | null>(() => {
+  const t = targeting.value
+  if (!t) return null
+  const { reach, range } = t.attack
+  const circles = reach
+    ? [{ radius: reach.value, dashed: false }]
+    : range
+      ? [
+          { radius: range.normal, dashed: false },
+          { radius: range.longRange, dashed: true },
+        ]
+      : []
+  return { attackerId: t.attackerId, circles }
+})
 /** Résultat de la dernière action, affiché dans la barre d'état et lu par les lecteurs d'écran. */
 const notice = ref('')
 /** Ce que lit le lecteur d'écran : la dernière action, ou la distance mesurée. */
@@ -88,6 +111,8 @@ async function resync(): Promise<string> {
     clearSelection()
     return "Le serveur n'a plus de carte : en créer une nouvelle."
   }
+  targeting.value = null
+  journal.value = await api.journal()
   const ids = new Set(fresh.tokens.map((t) => t.id))
   selected.value = selected.value.filter((id) => ids.has(id))
   if (sheet.value && !ids.has(sheet.value.id)) sheet.value = null
@@ -115,6 +140,7 @@ onMounted(() =>
   attempt(async () => {
     catalog.value = await api.catalog()
     scene.value = await loadScene()
+    journal.value = await api.journal()
   }),
 )
 
@@ -123,6 +149,8 @@ function createScene(width: number, height: number, unit: DistanceUnit) {
     const created = await api.createScene(width, height, unit)
     scene.value = created
     armed.value = null
+    targeting.value = null
+    journal.value = []
     clearSelection()
     history.length = 0
     tell(`Nouvelle carte de ${formatLength(created.width, created.unitSymbol)} sur ${formatLength(created.height, created.unitSymbol)}.`)
@@ -147,6 +175,7 @@ async function deleteTokens(ids: string[]): Promise<TokenView[]> {
     if (index >= 0) removed.push(tokens.splice(index, 1)[0])
   }
   selected.value = selected.value.filter((id) => !ids.includes(id))
+  if (targeting.value && ids.includes(targeting.value.attackerId)) targeting.value = null
   if (sheet.value && ids.includes(sheet.value.id)) showSheet(selected.value.at(-1) ?? null)
   return removed
 }
@@ -156,6 +185,8 @@ function names(tokens: TokenView[]): string {
 }
 
 function onBackgroundClick(x: number, y: number, free: boolean) {
+  // En ciblage, un clic à côté ne vise rien et garde la feuille de l'attaquant.
+  if (targeting.value) return
   if (!armed.value) {
     clearSelection()
     return
@@ -240,7 +271,41 @@ function undo() {
 // Un nouveau contexte (créature à poser, sélection) rend le message précédent caduc.
 function arm(entryId: string | null) {
   armed.value = entryId
+  if (entryId) targeting.value = null
   notice.value = ''
+}
+
+/** Une attaque de la feuille affichée : passe la carte en ciblage ; un second clic l'arrête. */
+function startAttack(attack: Attack) {
+  const attacker = sheet.value
+  if (!attacker) return
+  if (targeting.value?.attackerId === attacker.id && targeting.value.attack.id === attack.id) {
+    targeting.value = null
+    return
+  }
+  arm(null)
+  error.value = null
+  targeting.value = { attackerId: attacker.id, attackerName: attacker.name, attack }
+}
+
+/** Un clic sur une créature : la cible en ciblage, la sélection sinon. */
+function onTokenChosen(tokenId: string) {
+  if (targeting.value) attackTarget(tokenId)
+  else toggleSelection(tokenId)
+}
+
+/** Le serveur résout l'attaque ; un refus (portée…) affiche sa raison et laisse le ciblage actif. */
+function attackTarget(targetId: string) {
+  const t = targeting.value
+  if (!t || scene.value?.tokens.find((token) => token.id === targetId)?.pending) return
+  attempt(async () => {
+    const result = await api.attack(t.attackerId, t.attack.id, targetId)
+    journal.value.push(...result.entries)
+    targeting.value = null
+    tell(result.entries.at(-1)?.text ?? 'Attaque résolue.')
+    const shown = sheet.value?.id
+    if (shown === t.attackerId || shown === targetId) showSheet(shown)
+  })
 }
 
 function toggleSelection(tokenId: string) {
@@ -277,8 +342,9 @@ function isTyping(target: EventTarget | null): boolean {
 
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') {
-    // Un pas à la fois : d'abord le placement, puis la sélection.
-    if (armed.value) arm(null)
+    // Un pas à la fois : d'abord le ciblage ou le placement, puis la sélection.
+    if (targeting.value) targeting.value = null
+    else if (armed.value) arm(null)
     else clearSelection()
     notice.value = ''
     error.value = null
@@ -307,6 +373,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
     <aside class="panel catalog-panel">
       <CatalogPanel :entries="catalog" :armed="armed" :disabled="!scene" @arm="arm" />
+      <JournalPanel v-if="scene" class="journal-panel" :entries="journal" />
     </aside>
 
     <main class="map-area">
@@ -320,13 +387,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             :scene="scene"
             :selected="selected"
             :placing="armedEntry?.kind ?? null"
+            :targeting="targetingView"
             @background-click="onBackgroundClick"
-            @token-click="toggleSelection"
+            @token-click="onTokenChosen"
           />
         </div>
         <p class="status">
           <strong v-if="notice" class="notice">{{ notice }}</strong>
-          <template v-if="armedEntry">
+          <template v-if="targeting">
+            Ciblage : <strong>{{ targeting.attack.label }}</strong> de {{ targeting.attackerName }}. Cliquer sur la
+            cible, ou la choisir dans « Sur la carte » ; Échap pour annuler.
+          </template>
+          <template v-else-if="armedEntry">
             Placement : <strong>{{ armedEntry.name }}</strong>. Cliquer sur une case, ou Tab jusqu'à la carte puis
             flèches et Entrée ; Maj + clic pour poser librement, Échap pour arrêter.
           </template>
@@ -351,10 +423,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :tokens="scene.tokens"
         :selected="selected"
         :shown="sheet?.id ?? null"
-        @select="toggleSelection"
+        :aiming="targeting !== null"
+        @select="onTokenChosen"
         @remove="removeTokens([$event])"
       />
-      <CreatureSheet :sheet="sheet" />
+      <CreatureSheet
+        :sheet="sheet"
+        :aiming="targeting && targeting.attackerId === sheet?.id ? targeting.attack.id : null"
+        @attack="startAttack"
+      />
     </aside>
   </div>
 </template>
@@ -397,7 +474,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   display: flex;
   flex-direction: column;
 }
-.catalog-panel > * {
+.catalog-panel {
+  gap: 1.5rem;
+}
+/* Le journal prend la hauteur restante et défile seul. */
+.journal-panel {
   flex: 1;
 }
 .sheet-panel {

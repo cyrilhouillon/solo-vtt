@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: client — attaque depuis la feuille, ciblage, journal

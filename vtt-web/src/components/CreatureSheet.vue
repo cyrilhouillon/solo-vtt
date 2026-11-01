@@ -1,7 +1,21 @@
 <script setup lang="ts">
-import { formatLength, KIND_LABELS, type CreatureSheet } from '../types'
+import { formatLength, KIND_LABELS, type Attack, type CreatureSheet } from '../types'
 
-defineProps<{ sheet: CreatureSheet | null }>()
+/** `aiming` : l'id de l'attaque de cette feuille en cours de ciblage, ou `null`. */
+defineProps<{ sheet: CreatureSheet | null; aiming: string | null }>()
+const emit = defineEmits<{ attack: [attack: Attack] }>()
+
+const numberFormat = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 })
+
+/** Allonge ou portée, dans l'unité de la carte. */
+function distance(attack: Attack): string {
+  if (attack.reach) return `allonge ${formatLength(attack.reach.value, attack.reach.unitSymbol)}`
+  if (attack.range) {
+    const { normal, longRange, unitSymbol } = attack.range
+    return `portée ${numberFormat.format(normal)}/${formatLength(longRange, unitSymbol)}`
+  }
+  return ''
+}
 
 function signed(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`
@@ -29,11 +43,25 @@ function signed(value: number): string {
           <dd>{{ formatLength(sheet.speed.value, sheet.speed.unitSymbol) }}</dd>
         </div>
       </dl>
-      <h3>Attaque</h3>
-      <p v-if="sheet.weapon">
-        <strong>{{ sheet.weapon.name }}</strong> : {{ signed(sheet.weapon.attackBonus) }} au toucher,
-        {{ sheet.weapon.damage }} dégâts {{ sheet.weapon.damageType }}
-      </p>
+      <h3>Attaques</h3>
+      <ul v-if="sheet.attacks.length" class="attacks">
+        <li v-for="attack in sheet.attacks" :key="attack.id">
+          <p>
+            <strong>{{ attack.label }}</strong> : {{ signed(attack.attackBonus) }} au toucher,
+            {{ attack.damage }} dégâts {{ attack.damageType }}
+            <span class="muted">· {{ distance(attack) }}</span>
+          </p>
+          <button
+            type="button"
+            :class="{ aiming: aiming === attack.id }"
+            :aria-pressed="aiming === attack.id"
+            :aria-label="`Attaquer avec ${attack.label}`"
+            @click="emit('attack', attack)"
+          >
+            Attaquer
+          </button>
+        </li>
+      </ul>
       <p v-else class="muted">Aucune</p>
       <template v-if="sheet.resistances.length">
         <h3>Résistances</h3>
@@ -79,6 +107,27 @@ p {
 .muted {
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+.attacks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.attacks li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.attacks button {
+  flex: none;
+}
+.attacks button.aiming {
+  border-color: var(--map-measure);
+  color: var(--map-measure);
 }
 .stats {
   display: grid;

@@ -3,7 +3,8 @@ import { nextTick, ref, watch } from 'vue'
 import { KIND_LABELS, type TokenView } from '../types'
 
 /** Les créatures posées : double accessible de la carte, et seul moyen de les retirer au clavier. */
-const props = defineProps<{ tokens: TokenView[]; selected: string[]; shown: string | null }>()
+/** `aiming` : un ciblage est en cours ; choisir une ligne vise la créature. */
+const props = defineProps<{ tokens: TokenView[]; selected: string[]; shown: string | null; aiming: boolean }>()
 const emit = defineEmits<{ select: [tokenId: string]; remove: [tokenId: string] }>()
 
 const title = ref<HTMLHeadingElement | null>(null)
@@ -31,6 +32,7 @@ watch(
 <template>
   <section class="tokens" aria-labelledby="tokens-title">
     <h2 id="tokens-title" ref="title" tabindex="-1">Sur la carte</h2>
+    <p v-if="aiming && tokens.length" class="muted">Ciblage : choisir la cible ci-dessous ou sur la carte.</p>
     <p v-if="!tokens.length" class="muted">Aucune créature posée.</p>
     <ul v-else>
       <li v-for="(token, index) in tokens" :key="token.id">

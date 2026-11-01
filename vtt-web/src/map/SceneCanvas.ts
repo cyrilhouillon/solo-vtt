@@ -16,6 +16,18 @@ export interface SceneCanvasState {
   placing: CreatureKind | null
   /** Case visée au clavier pendant le placement, ou `null`. */
   cursor: Point | null
+  /** Ciblage en cours, ou `null`. */
+  targeting: Targeting | null
+}
+
+/**
+ * Ciblage d'une attaque : cercles centrés sur l'attaquant, dans l'unité de la carte.
+ * Ils sont indicatifs ; c'est le serveur qui accepte ou refuse la cible.
+ */
+export interface Targeting {
+  attackerId: string
+  /** Allonge, ou portée normale puis longue (`dashed`). */
+  circles: { radius: number; dashed: boolean }[]
 }
 
 const MARGIN = 16
@@ -116,6 +128,7 @@ export class SceneCanvas {
     }
 
     this.drawGround(scene)
+    if (this.state.targeting) this.drawTargeting(scene, this.state.targeting)
     const measure = this.measureLabel(scene, selected)
     // Les noms passent au-dessus de tous les jetons ; ceux des jetons sélectionnés en dernier.
     const names = new Konva.Group({ listening: false })
@@ -166,6 +179,35 @@ export class SceneCanvas {
       lines.add(this.gridLine([this.toPixelsX(0), py, this.toPixelsX(scene.width), py]))
     }
     this.layer.add(lines)
+  }
+
+  private drawTargeting(scene: SceneView, targeting: Targeting): void {
+    const attacker = scene.tokens.find((t) => t.id === targeting.attackerId)
+    if (!attacker) return
+    // Une portée plus grande que la carte ne déborde pas sur les marges.
+    const clipped = new Konva.Group({
+      listening: false,
+      clip: {
+        x: this.toPixelsX(0),
+        y: this.toPixelsY(0),
+        width: scene.width * this.pixelsPerUnit,
+        height: scene.height * this.pixelsPerUnit,
+      },
+    })
+    this.layer.add(clipped)
+    for (const circle of targeting.circles) {
+      clipped.add(
+        new Konva.Circle({
+          x: this.toPixelsX(attacker.x),
+          y: this.toPixelsY(attacker.y),
+          radius: circle.radius * this.pixelsPerUnit,
+          stroke: this.colors.measure,
+          strokeWidth: 2,
+          dash: circle.dashed ? [8, 6] : undefined,
+          listening: false,
+        }),
+      )
+    }
   }
 
   private gridLine(points: number[]): Konva.Line {
