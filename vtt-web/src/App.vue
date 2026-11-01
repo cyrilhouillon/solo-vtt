@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, ApiError } from './api'
 import CatalogPanel from './components/CatalogPanel.vue'
 import CreatureSheet from './components/CreatureSheet.vue'
@@ -7,7 +7,14 @@ import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
 import TokenList from './components/TokenList.vue'
 import { CELL, occupant } from './map/grid'
-import { formatLength, type CatalogEntry, type CreatureSheet as Sheet, type DistanceUnit, type SceneView } from './types'
+import {
+  formatLength,
+  type CatalogEntry,
+  type CreatureSheet as Sheet,
+  type DistanceUnit,
+  type SceneView,
+  type TokenView,
+} from './types'
 
 const catalog = ref<CatalogEntry[]>([])
 const scene = ref<SceneView | null>(null)
@@ -15,10 +22,15 @@ const armed = ref<string | null>(null)
 const selected = ref<string[]>([])
 const sheet = ref<Sheet | null>(null)
 const error = ref<string | null>(null)
-/** Dernière action, lue par les lecteurs d'écran. */
+/** Résultat de la dernière action, affiché dans la barre d'état et lu par les lecteurs d'écran. */
+const notice = ref('')
+/** Ce que lit le lecteur d'écran : la dernière action, ou la distance mesurée. */
 const announcement = ref('')
-/** Jetons posés depuis l'ouverture, du plus ancien au plus récent : Ctrl+Z retire le dernier. */
-const placed: string[] = []
+
+/** Une étape annulable par Ctrl+Z : une pose, ou un retrait (de quoi reposer les créatures). */
+type Step = { type: 'place'; tokenId: string } | { type: 'remove'; tokens: TokenView[] }
+/** Étapes depuis l'ouverture de la page, de la plus ancienne à la plus récente. */
+const history: Step[] = []
 
 const armedEntry = computed(() => catalog.value.find((e) => e.id === armed.value) ?? null)
 
@@ -36,6 +48,21 @@ const measure = computed(() => {
 })
 
 const cellFormat = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 })
+
+function cellsLabel(cells: number): string {
+  return `${cellFormat.format(cells)} ${cells < 2 ? 'case' : 'cases'}`
+}
+
+watch(measure, (m) => {
+  if (m && scene.value) {
+    announcement.value = `Distance ${m.from} – ${m.to} : ${formatLength(m.value, scene.value.unitSymbol)}, ${cellsLabel(m.cells)}.`
+  }
+})
+
+function tell(message: string) {
+  notice.value = message
+  announcement.value = message
+}
 
 async function attempt(action: () => Promise<void>) {
   error.value = null
@@ -63,9 +90,33 @@ function createScene(width: number, height: number, unit: DistanceUnit) {
     scene.value = created
     armed.value = null
     clearSelection()
-    placed.length = 0
-    announcement.value = `Nouvelle carte de ${formatLength(created.width, created.unitSymbol)} sur ${formatLength(created.height, created.unitSymbol)}.`
+    history.length = 0
+    tell(`Nouvelle carte de ${formatLength(created.width, created.unitSymbol)} sur ${formatLength(created.height, created.unitSymbol)}.`)
   })
+}
+
+async function placeToken(catalogId: string, x: number, y: number): Promise<TokenView> {
+  const token = await api.placeToken(catalogId, x, y)
+  scene.value?.tokens.push(token)
+  return token
+}
+
+/** Retire les jetons côté serveur puis à l'écran ; rend ceux qui ont été retirés. */
+async function deleteTokens(ids: string[]): Promise<TokenView[]> {
+  const removed: TokenView[] = []
+  for (const id of ids) {
+    await api.removeToken(id)
+    const tokens = scene.value?.tokens ?? []
+    const index = tokens.findIndex((t) => t.id === id)
+    if (index >= 0) removed.push(tokens.splice(index, 1)[0])
+  }
+  selected.value = selected.value.filter((id) => !ids.includes(id))
+  if (sheet.value && ids.includes(sheet.value.id)) showSheet(selected.value.at(-1) ?? null)
+  return removed
+}
+
+function names(tokens: TokenView[]): string {
+  return tokens.map((t) => t.name).join(' et ')
 }
 
 function onBackgroundClick(x: number, y: number, free: boolean) {
@@ -80,14 +131,58 @@ function onBackgroundClick(x: number, y: number, free: boolean) {
   }
   const entryId = armed.value
   attempt(async () => {
-    const token = await api.placeToken(entryId, x, y)
-    scene.value?.tokens.push(token)
-    placed.push(token.id)
-    announcement.value = `${token.name} posé.`
+    const token = await placeToken(entryId, x, y)
+    history.push({ type: 'place', tokenId: token.id })
+    tell(`${token.name} posé. Ctrl+Z pour annuler.`)
   })
 }
 
+function removeTokens(ids: string[]) {
+  if (!ids.length) return
+  const targets = [...ids]
+  attempt(async () => {
+    const removed = await deleteTokens(targets)
+    if (!removed.length) return
+    history.push({ type: 'remove', tokens: removed })
+    tell(`${names(removed)} ${removed.length > 1 ? 'retirés' : 'retiré'}. Ctrl+Z pour annuler.`)
+  })
+}
+
+/**
+ * Annule la dernière pose ou le dernier retrait. Une créature reposée est recréée depuis
+ * le catalogue, à la même position : le serveur lui donne un nouvel id, que les étapes
+ * plus anciennes suivent.
+ */
+function undo() {
+  const step = history.pop()
+  if (!step) {
+    tell('Rien à annuler.')
+    return
+  }
+  attempt(async () => {
+    if (step.type === 'place') {
+      const removed = await deleteTokens([step.tokenId])
+      tell(removed.length ? `Pose de ${names(removed)} annulée.` : 'Rien à annuler.')
+      return
+    }
+    const restored: TokenView[] = []
+    for (const old of step.tokens) {
+      const token = await placeToken(old.catalogId, old.x, old.y)
+      restored.push(token)
+      for (const s of history) if (s.type === 'place' && s.tokenId === old.id) s.tokenId = token.id
+    }
+    tell(`${names(restored)} ${restored.length > 1 ? 'reposés' : 'reposé'}.`)
+  })
+}
+
+// Un nouveau contexte (créature à poser, sélection) rend le message précédent caduc.
+function arm(entryId: string | null) {
+  armed.value = entryId
+  notice.value = ''
+}
+
 function toggleSelection(tokenId: string) {
+  notice.value = ''
   const current = selected.value
   selected.value = current.includes(tokenId)
     ? current.filter((id) => id !== tokenId)
@@ -100,34 +195,14 @@ function clearSelection() {
   sheet.value = null
 }
 
+/** Seule la réponse à la dernière demande s'affiche : des sélections rapides ne se doublent pas. */
+let sheetRequest = 0
 function showSheet(tokenId: string | null) {
+  const request = ++sheetRequest
   attempt(async () => {
-    sheet.value = tokenId ? await api.sheet(tokenId) : null
+    const loaded = tokenId ? await api.sheet(tokenId) : null
+    if (request === sheetRequest) sheet.value = loaded
   })
-}
-
-function removeTokens(ids: string[]) {
-  if (!ids.length) return
-  const targets = [...ids]
-  attempt(async () => {
-    const names: string[] = []
-    for (const id of targets) {
-      await api.removeToken(id)
-      const tokens = scene.value?.tokens ?? []
-      const index = tokens.findIndex((t) => t.id === id)
-      if (index >= 0) names.push(tokens.splice(index, 1)[0].name)
-      const p = placed.indexOf(id)
-      if (p >= 0) placed.splice(p, 1)
-    }
-    selected.value = selected.value.filter((id) => !targets.includes(id))
-    if (sheet.value && targets.includes(sheet.value.id)) showSheet(selected.value.at(-1) ?? null)
-    announcement.value = `${names.join(' et ')} ${names.length > 1 ? 'retirés' : 'retiré'}.`
-  })
-}
-
-function undoLastPlacement() {
-  const last = placed.at(-1)
-  if (last) removeTokens([last])
 }
 
 function isTyping(target: EventTarget | null): boolean {
@@ -140,8 +215,9 @@ function isTyping(target: EventTarget | null): boolean {
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     // Un pas à la fois : d'abord le placement, puis la sélection.
-    if (armed.value) armed.value = null
+    if (armed.value) arm(null)
     else clearSelection()
+    notice.value = ''
     error.value = null
     return
   }
@@ -151,7 +227,7 @@ function onKey(e: KeyboardEvent) {
     removeTokens(selected.value)
   } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault()
-    undoLastPlacement()
+    undo()
   }
 }
 
@@ -162,11 +238,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 <template>
   <div class="layout">
     <header class="bar">
+      <h1 class="app-name">Solo VTT</h1>
       <NewMapForm :token-count="scene ? scene.tokens.length : null" @create="createScene" />
     </header>
 
     <aside class="panel catalog-panel">
-      <CatalogPanel :entries="catalog" :armed="armed" :disabled="!scene" @arm="armed = $event" />
+      <CatalogPanel :entries="catalog" :armed="armed" :disabled="!scene" @arm="arm" />
     </aside>
 
     <main class="map-area">
@@ -185,16 +262,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           />
         </div>
         <p class="status">
+          <strong v-if="notice" class="notice">{{ notice }}</strong>
           <template v-if="armedEntry">
-            Placement : <strong>{{ armedEntry.name }}</strong>. Cliquer sur une case ; Maj + clic pour poser
-            librement, Ctrl+Z pour annuler, Échap pour arrêter.
+            Placement : <strong>{{ armedEntry.name }}</strong>. Cliquer sur une case, ou Tab jusqu'à la carte puis
+            flèches et Entrée ; Maj + clic pour poser librement, Échap pour arrêter.
           </template>
           <template v-else-if="measure">
             Distance {{ measure.from }} – {{ measure.to }} :
-            <strong>{{ formatLength(measure.value, scene.unitSymbol) }}</strong>
-            ({{ cellFormat.format(measure.cells) }} {{ measure.cells < 2 ? 'case' : 'cases' }})
+            <strong>{{ formatLength(measure.value, scene.unitSymbol) }}</strong> ({{ cellsLabel(measure.cells) }})
           </template>
-          <template v-else>
+          <template v-else-if="!notice">
             Carte de {{ formatLength(scene.width, scene.unitSymbol) }} ×
             {{ formatLength(scene.height, scene.unitSymbol) }}. Sélectionner deux créatures pour mesurer leur
             distance.
@@ -234,11 +311,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+.app-name {
+  margin: 0 1rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .panel {
   padding: 1rem;
@@ -282,6 +365,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .status strong {
   color: var(--text);
+}
+.notice {
+  margin-right: 0.75rem;
 }
 .empty {
   margin: auto;

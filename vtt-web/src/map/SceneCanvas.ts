@@ -14,6 +14,8 @@ export interface SceneCanvasState {
   selected: string[]
   /** Le type de la créature en cours de placement, ou `null` hors placement. */
   placing: CreatureKind | null
+  /** Case visée au clavier pendant le placement, ou `null`. */
+  cursor: Point | null
 }
 
 const MARGIN = 16
@@ -34,6 +36,11 @@ export class SceneCanvas {
   private state: SceneCanvasState | null = null
   private pixelsPerUnit = 1
   private origin = { x: MARGIN, y: MARGIN }
+  private pointerInside = false
+  /** Maj change l'aperçu sans attendre que la souris bouge. */
+  private readonly onShift = (e: KeyboardEvent) => {
+    if (e.key === 'Shift' && this.pointerInside) this.drawPointerPreview(e.type === 'keydown')
+  }
 
   constructor(container: HTMLDivElement, events: SceneCanvasEvents) {
     this.events = events
@@ -52,8 +59,16 @@ export class SceneCanvas {
       measure: token('--map-measure'),
       danger: token('--danger'),
     }
-    this.stage.on('mousemove', (e) => this.drawPreview(e.evt.shiftKey))
-    this.stage.on('mouseleave', () => this.clearPreview())
+    this.stage.on('mousemove', (e) => {
+      this.pointerInside = true
+      this.drawPointerPreview(e.evt.shiftKey)
+    })
+    this.stage.on('mouseleave', () => {
+      this.pointerInside = false
+      this.clearPreview()
+    })
+    window.addEventListener('keydown', this.onShift)
+    window.addEventListener('keyup', this.onShift)
   }
 
   resize(width: number, height: number): void {
@@ -67,6 +82,8 @@ export class SceneCanvas {
   }
 
   destroy(): void {
+    window.removeEventListener('keydown', this.onShift)
+    window.removeEventListener('keyup', this.onShift)
     this.stage.destroy()
   }
 
@@ -100,9 +117,14 @@ export class SceneCanvas {
 
     this.drawGround(scene)
     const measure = this.measureLabel(scene, selected)
-    for (const token of scene.tokens) this.drawToken(scene, token, selected.includes(token.id), placing === null)
+    // Les noms passent au-dessus de tous les jetons ; ceux des jetons sélectionnés en dernier.
+    const names = new Konva.Group({ listening: false })
+    const ordered = [...scene.tokens].sort((a, b) => Number(selected.includes(a.id)) - Number(selected.includes(b.id)))
+    for (const token of ordered) this.drawToken(scene, token, selected.includes(token.id), placing === null, names)
+    this.layer.add(names)
     if (measure) this.layer.add(measure)
     this.layer.draw()
+    if (this.state.cursor) this.drawPreview(this.state.cursor, false, true)
   }
 
   /** Position visée par le pointeur, calée sur la case sauf si `free`, ou `null` hors de la carte. */
@@ -177,6 +199,18 @@ export class SceneCanvas {
       }),
     )
     label.offset({ x: label.width() / 2, y: label.height() / 2 })
+    // Entre deux jetons proches, l'étiquette les masquerait : on l'écarte de la ligne, vers le haut.
+    const dx = points[2] - points[0]
+    const dy = points[3] - points[1]
+    const length = Math.hypot(dx, dy)
+    const radius = this.tokenRadius(scene)
+    if (length > 0 && length < label.width() + 2 * radius + 8) {
+      let nx = -dy / length
+      let ny = dx / length
+      if (ny > 0) [nx, ny] = [-nx, -ny]
+      const shift = radius + label.height() / 2 + 6
+      label.move({ x: nx * shift, y: ny * shift })
+    }
     return label
   }
 
@@ -192,59 +226,102 @@ export class SceneCanvas {
     return new Konva.Rect({ width: side, height: side, offsetX: side / 2, offsetY: side / 2, cornerRadius: side * 0.2, fill, ...style })
   }
 
-  private drawToken(scene: SceneView, token: TokenView, isSelected: boolean, clickable: boolean): void {
+  private drawToken(
+    scene: SceneView,
+    token: TokenView,
+    isSelected: boolean,
+    clickable: boolean,
+    names: Konva.Group,
+  ): void {
     const radius = this.tokenRadius(scene)
+    const x = this.toPixelsX(token.x)
+    const y = this.toPixelsY(token.y)
     // En placement, un clic sur un jeton vise la case : il traverse jusqu'au sol.
-    const group = new Konva.Group({ x: this.toPixelsX(token.x), y: this.toPixelsY(token.y), listening: clickable })
+    const group = new Konva.Group({ x, y, listening: clickable })
     group.add(
       this.tokenShape(token.kind, radius, {
         stroke: isSelected ? this.colors.selected : this.colors.ground,
         strokeWidth: isSelected ? 3 : 1.5,
       }),
     )
-    const label = new Konva.Label({ y: radius + 3, listening: false })
-    label.add(new Konva.Tag({ fill: this.colors.ground, opacity: 0.85, cornerRadius: 3 }))
-    label.add(
-      new Konva.Text({
-        text: token.name,
-        fontSize: Math.round(Math.min(16, Math.max(13, radius * 0.8))),
-        fontFamily: 'system-ui, sans-serif',
-        fill: this.colors.label,
-        padding: 2,
-      }),
-    )
-    label.offsetX(label.width() / 2)
-    group.add(label)
+    // Nom tronqué à la largeur d'une case pour ne pas déborder sur les voisins ; complet si sélectionné ou survolé.
+    const short = this.nameLabel(token.name, radius, Math.max(40, CELL[scene.unit] * this.pixelsPerUnit - 8))
+    const full = this.nameLabel(token.name, radius, null)
+    short.visible(!isSelected)
+    full.visible(isSelected)
+    for (const label of [short, full]) label.move({ x, y })
+    names.add(short, full)
     group.on('click tap', (e) => {
       e.cancelBubble = true
       this.events.onTokenClick(token.id)
     })
-    group.on('mouseenter', () => (this.stage.container().style.cursor = 'pointer'))
-    group.on('mouseleave', () => (this.stage.container().style.cursor = ''))
+    group.on('mouseenter', () => {
+      this.stage.container().style.cursor = 'pointer'
+      short.visible(false)
+      full.visible(true)
+      full.moveToTop()
+    })
+    group.on('mouseleave', () => {
+      this.stage.container().style.cursor = ''
+      short.visible(!isSelected)
+      full.visible(isSelected)
+    })
     this.layer.add(group)
   }
 
-  /** Fantôme de la créature à poser ; contour rouge si la case est déjà prise. */
-  private drawPreview(free: boolean): void {
+  /** Étiquette sous le jeton ; `maxWidth` tronque le nom avec des points de suspension. */
+  private nameLabel(name: string, radius: number, maxWidth: number | null): Konva.Label {
+    const text = new Konva.Text({
+      text: name,
+      fontSize: Math.round(Math.min(16, Math.max(13, radius * 0.8))),
+      fontFamily: 'system-ui, sans-serif',
+      fill: this.colors.label,
+      padding: 2,
+      wrap: 'none',
+    })
+    if (maxWidth !== null && text.width() > maxWidth) text.setAttrs({ width: maxWidth, ellipsis: true })
+    const label = new Konva.Label({ y: radius + 3, listening: false })
+    label.add(new Konva.Tag({ fill: this.colors.ground, opacity: 0.85, cornerRadius: 3 }), text)
+    label.offsetX(label.width() / 2)
+    return label
+  }
+
+  private drawPointerPreview(free: boolean): void {
+    if (!this.state?.placing) return this.clearPreview()
+    const target = this.pointerTarget(this.state.scene, free)
+    if (!target) return this.clearPreview()
+    this.drawPreview(target, free, false)
+  }
+
+  /**
+   * Fantôme de la créature à poser. Sur une case prise, un anneau rouge plein, plus large
+   * que le jeton, et un curseur d'interdiction. `framed` encadre la case visée au clavier.
+   */
+  private drawPreview(target: Point, free: boolean, framed: boolean): void {
     this.clearPreview()
     if (!this.state?.placing) return
     const { scene, placing } = this.state
-    const target = this.pointerTarget(scene, free)
-    if (!target) return
+    const radius = this.tokenRadius(scene)
+    const x = this.toPixelsX(target.x)
+    const y = this.toPixelsY(target.y)
     const taken = !free && occupant(scene, target) !== undefined
-    const ghost = this.tokenShape(placing, this.tokenRadius(scene), {
-      x: this.toPixelsX(target.x),
-      y: this.toPixelsY(target.y),
-      opacity: taken ? 0.25 : 0.5,
-      stroke: taken ? this.colors.danger : this.colors.selected,
-      strokeWidth: 2,
-      dash: taken ? [4, 3] : undefined,
-    })
-    this.preview.add(ghost)
+    if (framed) {
+      const side = CELL[scene.unit] * this.pixelsPerUnit
+      this.preview.add(
+        new Konva.Rect({ x: x - side / 2, y: y - side / 2, width: side, height: side, stroke: this.colors.selected, strokeWidth: 2 }),
+      )
+    }
+    if (taken) {
+      this.preview.add(new Konva.Circle({ x, y, radius: radius * 1.3, stroke: this.colors.danger, strokeWidth: 3 }))
+    } else {
+      this.preview.add(this.tokenShape(placing, radius, { x, y, opacity: 0.5, stroke: this.colors.selected, strokeWidth: 2 }))
+    }
+    if (!framed) this.stage.container().style.cursor = taken ? 'not-allowed' : ''
     this.preview.batchDraw()
   }
 
   private clearPreview(): void {
+    if (this.state?.placing) this.stage.container().style.cursor = ''
     this.preview.destroyChildren()
     this.preview.batchDraw()
   }

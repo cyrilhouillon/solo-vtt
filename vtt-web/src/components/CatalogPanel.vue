@@ -53,8 +53,11 @@ function toggle(id: string) {
   flex-direction: column;
   gap: 0.75rem;
 }
+/* Titre de panneau : nettement au-dessus du texte courant (15px). */
 h2 {
-  font-size: 1rem;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 h3 {

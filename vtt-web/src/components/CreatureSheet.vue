@@ -61,7 +61,9 @@ header {
   gap: 0.5rem;
 }
 h2 {
-  font-size: 1.1rem;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 h3 {

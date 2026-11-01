@@ -12,6 +12,8 @@ export interface CatalogEntry {
 export interface TokenView {
   id: string
   creatureId: string
+  /** Entrée du catalogue d'origine : de quoi reposer la créature après un retrait. */
+  catalogId: string
   name: string
   kind: CreatureKind
   x: number

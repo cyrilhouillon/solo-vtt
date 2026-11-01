@@ -12,6 +12,8 @@ const height = ref(20)
 const unit = ref<DistanceUnit>('METRE')
 const open = ref(false)
 const firstField = ref<HTMLInputElement | null>(null)
+const openButton = ref<HTMLButtonElement | null>(null)
+const form = ref<HTMLFormElement | null>(null)
 
 /** Dernières dimensions saisies, et leur unité : la référence des conversions. */
 let typed = { unit: unit.value, width: width.value, height: height.value }
@@ -36,15 +38,35 @@ async function show() {
   firstField.value?.focus()
 }
 
+/** Referme le formulaire et rend le focus au bouton qui l'ouvre. */
+async function close() {
+  open.value = false
+  await nextTick()
+  openButton.value?.focus()
+}
+
 function submit() {
   emit('create', width.value, height.value, unit.value)
-  open.value = false
+  close()
+}
+
+/**
+ * Remplacer une carte peuplée demande un clic explicite : ce bouton n'est pas de type submit,
+ * donc Entrée dans un champ ne déclenche rien.
+ */
+function replace() {
+  if (form.value?.reportValidity()) submit()
+}
+
+function describeLoss(count: number): string {
+  if (count === 0) return ''
+  return count === 1 ? ' et sa créature' : ` et ses ${count} créatures`
 }
 </script>
 
 <template>
-  <button v-if="tokenCount !== null && !open" type="button" @click="show">Nouvelle carte…</button>
-  <form v-else class="new-map" @submit.prevent="submit" @keydown.esc.stop="open = false">
+  <button v-if="tokenCount !== null && !open" ref="openButton" type="button" @click="show">Nouvelle carte…</button>
+  <form v-else ref="form" class="new-map" @submit.prevent="submit" @keydown.esc.stop="close">
     <span class="title">Nouvelle carte</span>
     <label>
       Largeur
@@ -56,17 +78,14 @@ function submit() {
     </label>
     <fieldset class="unit">
       <legend class="sr-only">Unité</legend>
-      <label><input v-model="unit" type="radio" value="METRE" /> mètres</label>
-      <label><input v-model="unit" type="radio" value="FOOT" /> pieds</label>
+      <label><input v-model="unit" type="radio" value="METRE" /> mètres (m)</label>
+      <label><input v-model="unit" type="radio" value="FOOT" /> pieds (ft)</label>
     </fieldset>
     <template v-if="tokenCount !== null">
-      <p class="warning" role="note">
-        Remplace la carte actuelle{{
-          tokenCount > 0 ? ` et ses ${tokenCount} ${tokenCount > 1 ? 'créatures' : 'créature'}` : ''
-        }}.
-      </p>
-      <button type="submit" class="danger">Remplacer la carte</button>
-      <button type="button" @click="open = false">Annuler</button>
+      <p class="warning" role="note">Remplace la carte actuelle{{ describeLoss(tokenCount) }}.</p>
+      <button v-if="tokenCount > 0" type="button" class="danger" @click="replace">Remplacer la carte</button>
+      <button v-else type="submit" class="danger">Remplacer la carte</button>
+      <button type="button" @click="close">Annuler</button>
     </template>
     <button v-else type="submit">Créer la carte</button>
   </form>
