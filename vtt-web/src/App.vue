@@ -481,6 +481,27 @@ function combatAction(send: () => Promise<ActionResult>) {
   })
 }
 
+/** Lancer le combat met fin à la pose en cours. */
+function startCombat() {
+  arm(null)
+  combatAction(api.startCombat)
+}
+
+/**
+ * À chaque changement de tour, la sélection et la feuille passent à la créature qui joue ;
+ * pendant « Qui joue ? », au premier candidat.
+ */
+watch(
+  () => (combat.value ? (combat.value.activeId ?? combat.value.candidates[0] ?? null) : null),
+  (creatureId) => {
+    const token = creatureId ? scene.value?.tokens.find((t) => t.creatureId === creatureId) : undefined
+    if (!token || token.pending) return
+    selected.value = [token.id]
+    tab.value = 'sheet'
+    showSheet(token.id)
+  },
+)
+
 /** Le joueur répond à la décision ; l'action suspendue reprend côté serveur. */
 function answerDecision(option: string) {
   const pending = decision.value
@@ -611,7 +632,7 @@ onBeforeUnmount(() => {
         :combat="combat"
         :creature-count="scene.tokens.filter((t) => !t.pending).length"
         :blocked="combatBusy"
-        @start="combatAction(api.startCombat)"
+        @start="startCombat"
         @end-turn="combatAction(api.endTurn)"
       />
       <strong v-if="mode" class="mode">{{ mode }}</strong>
