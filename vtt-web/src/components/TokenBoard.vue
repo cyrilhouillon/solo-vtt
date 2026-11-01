@@ -350,14 +350,14 @@ tr.down .name {
   width: 1%;
   text-align: right;
 }
-/* La créature qui joue : un état vivant, repère et étiquette en laiton. */
+/* La créature qui joue : un état vivant, repère et contour d'étiquette en laiton (seul le mode est une puce pleine). */
 tbody tr.active td:first-child {
   box-shadow: inset 4px 0 0 var(--brass);
 }
 .tag.turn-tag {
-  color: var(--on-brass);
-  background: var(--brass);
+  color: var(--ink);
   border-color: var(--brass);
+  font-weight: 700;
 }
 .init-col {
   width: 1%;
