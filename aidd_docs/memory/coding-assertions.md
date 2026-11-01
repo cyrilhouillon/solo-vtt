@@ -1,13 +1,13 @@
 # Vérifications de code
 
-À lancer depuis `dnd-engine/`.
+À lancer depuis la racine du dépôt.
 
 ## Avant commit
 
 | Ordre | Commande | Vérifie |
 | ----- | -------- | ------- |
 | 1 | `mvn -q compile` | compilation |
-| 2 | `mvn -q test` | tests de règles |
+| 2 | `mvn -q test` | tests du moteur et des règles |
 
 ## Avant push
 

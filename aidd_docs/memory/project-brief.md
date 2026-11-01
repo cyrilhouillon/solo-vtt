@@ -3,7 +3,7 @@
 ## Ce que c'est
 
 - `solo-vtt` : un Virtual TableTop web modulaire, conçu spécialement pour le jeu de rôle en solo.
-- Aujourd'hui, le dépôt ne contient que `dnd-engine`, un squelette de moteur de règles D&D 2024 qui sera refactoré puis utilisé comme librairie par l'application.
+- Aujourd'hui, le dépôt contient `vtt-engine`, le moteur de règles générique, et `dnd-engine`, un squelette de règles D&D 2024 qui s'appuie dessus. Les deux serviront de librairies à l'application.
 
 ## Pourquoi il existe
 
