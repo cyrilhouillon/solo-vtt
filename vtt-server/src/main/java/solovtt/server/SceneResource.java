@@ -46,7 +46,7 @@ public class SceneResource {
     @POST
     @Path("/tokens")
     @ResponseStatus(201)
-    @APIResponse(responseCode = "201", description = "Le jeton posé",
+    @APIResponse(responseCode = "201", description = "Le jeton posé ; en combat, la créature tire son initiative et entre dans l'ordre",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.TokenDto.class)))
     @APIResponse(responseCode = "400", description = "Créature du catalogue absente de la requête")
     @APIResponse(responseCode = "404", description = "Entrée de catalogue inconnue")
@@ -66,7 +66,7 @@ public class SceneResource {
     @DELETE
     @Path("/tokens/{id}")
     @ResponseStatus(204)
-    @APIResponse(responseCode = "204", description = "Jeton et créature retirés")
+    @APIResponse(responseCode = "204", description = "Jeton et créature retirés ; en combat, la créature quitte l'ordre, et si elle jouait, le tour suivant s'ouvre")
     @APIResponse(responseCode = "404", description = "Jeton inconnu")
     @APIResponse(responseCode = "409", description = "Aucune carte, ou une décision attend une réponse")
     public void remove(@PathParam("id") String id) {

@@ -22,10 +22,10 @@ public class AttackResource {
      */
     @POST
     @APIResponse(responseCode = "200", description = "Les entrées ajoutées au journal, les PV de la cible, et la décision qui suspend l'attaque s'il y en a une")
-    @APIResponse(responseCode = "400", description = "Requête incomplète, attaque inconnue, ou cible refusée par les règles (allonge, portée)")
+    @APIResponse(responseCode = "400", description = "Requête incomplète, attaque inconnue, ou cible refusée par les règles (allonge, portée), ou attaquant dont ce n'est pas le tour en combat")
     @APIResponse(responseCode = "404", description = "Attaquant ou cible inconnus")
     @APIResponse(responseCode = "409", description = "Aucune carte, ou une décision attend une réponse")
-    public Dtos.AttackResultDto attack(Dtos.AttackRequest request) {
+    public Dtos.ActionResultDto attack(Dtos.AttackRequest request) {
         if (session.scene().isEmpty()) {
             throw new ClientErrorException("Aucune carte : créer d'abord une carte", Response.Status.CONFLICT);
         }
@@ -35,6 +35,6 @@ public class AttackResource {
         for (String id : new String[] {request.attackerId(), request.targetId()}) {
             if (session.creature(id).isEmpty()) throw new NotFoundException("Créature inconnue : " + id);
         }
-        return Dtos.AttackResultDto.of(session.attack(request.attackerId(), request.attackId(), request.targetId()), session);
+        return Dtos.ActionResultDto.of(session.attack(request.attackerId(), request.attackId(), request.targetId()), session);
     }
 }
