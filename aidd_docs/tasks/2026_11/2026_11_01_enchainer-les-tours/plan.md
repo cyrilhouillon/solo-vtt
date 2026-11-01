@@ -1,6 +1,6 @@
 ---
 objective: "Le joueur lance le combat : chaque créature tire son initiative, l'ordre obtenu s'affiche, la créature active est mise en évidence sur la carte et dans l'ordre de jeu, le joueur termine le tour quand il veut (nouveau round après la dernière créature), et le journal indique le début de chaque tour et de chaque round."
-status: pending
+status: implemented
 ---
 
 # Plan: enchaîner les tours selon l'initiative
