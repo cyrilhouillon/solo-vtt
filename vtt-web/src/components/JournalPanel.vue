@@ -4,7 +4,10 @@ import type { JournalEntry } from '../types'
 
 const props = defineProps<{ entries: JournalEntry[] }>()
 
-/** Une action par groupe : sa première ligne (l'annonce) en titre, le détail dessous. */
+/**
+ * Une action par groupe : l'annonce en titre, l'issue (dernière ligne) juste dessous,
+ * et le détail des règles replié entre les deux.
+ */
 const actions = computed(() => {
   const groups: { action: number; title: string; lines: string[] }[] = []
   for (const entry of props.entries) {
@@ -12,7 +15,7 @@ const actions = computed(() => {
     if (last && last.action === entry.action) last.lines.push(entry.text)
     else groups.push({ action: entry.action, title: entry.text, lines: [] })
   }
-  return groups
+  return groups.map((g) => ({ ...g, outcome: g.lines.at(-1) ?? null, detail: g.lines.slice(0, -1) }))
 })
 
 const list = ref<HTMLElement | null>(null)
@@ -22,65 +25,71 @@ watch(
   () => props.entries.length,
   async () => {
     await nextTick()
-    list.value?.scrollTo({ top: list.value.scrollHeight })
+    list.value?.lastElementChild?.scrollIntoView({ block: 'end' })
   },
 )
 </script>
 
 <template>
-  <section class="journal" aria-labelledby="journal-title">
-    <h2 id="journal-title">Journal</h2>
-    <p v-if="!actions.length" class="muted">Aucune action. Lancer une attaque depuis la feuille d'une créature.</p>
-    <ol v-else ref="list" role="log">
-      <li v-for="group in actions" :key="group.action">
-        <p class="title">{{ group.title }}</p>
+  <p v-if="!actions.length" class="muted">Aucune action. Lancer une attaque depuis l'onglet Feuille.</p>
+  <ol v-else ref="list" class="journal" role="log" aria-label="Journal">
+    <li v-for="group in actions" :key="group.action">
+      <p class="title">{{ group.title }}</p>
+      <p v-if="group.outcome" class="outcome">{{ group.outcome }}</p>
+      <details v-if="group.detail.length">
+        <summary>Détail des règles</summary>
         <ul>
-          <li v-for="(line, index) in group.lines" :key="index">{{ line }}</li>
+          <li v-for="(line, index) in group.detail" :key="index">{{ line }}</li>
         </ul>
-      </li>
-    </ol>
-  </section>
+      </details>
+      <hr class="tapered" />
+    </li>
+  </ol>
 </template>
 
 <style scoped>
 .journal {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-height: 0;
-}
-h2 {
-  font-size: 1.15rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
-ol {
   list-style: none;
   margin: 0;
   padding: 0;
-  overflow-y: auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-}
-ul {
-  list-style: none;
-  margin: 0.15rem 0 0;
-  padding: 0 0 0 0.6rem;
-  border-left: 2px solid var(--border);
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
+  gap: 0.25rem;
+  text-wrap: pretty;
 }
 .title {
   margin: 0;
-  font-weight: 600;
+  font-weight: 700;
+}
+.outcome {
+  margin: 0.1rem 0 0;
+  color: var(--rubric);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+details {
+  margin-top: 0.2rem;
+  color: var(--ink-muted);
+}
+summary {
+  cursor: pointer;
+  font-family: var(--font-title);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  width: fit-content;
+}
+summary:hover {
+  color: var(--ink);
+}
+ul {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
 }
 .muted {
   margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  color: var(--ink-muted);
 }
 </style>

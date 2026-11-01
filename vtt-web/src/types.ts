@@ -18,6 +18,10 @@ export interface TokenView {
   kind: CreatureKind
   x: number
   y: number
+  /** CA et PV de la créature ; absents tant qu'un jeton attend la réponse du serveur. */
+  armorClass?: number
+  hitPoints?: number
+  maxHitPoints?: number
   /** Côté client seulement : affiché dès le clic, en attendant la réponse du serveur. */
   pending?: boolean
 }

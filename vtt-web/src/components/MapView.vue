@@ -9,6 +9,8 @@ const props = defineProps<{
   selected: string[]
   placing: CreatureKind | null
   targeting: Targeting | null
+  /** Thème courant : la carte relit ses couleurs quand il change. */
+  theme: string
 }>()
 const emit = defineEmits<{ backgroundClick: [x: number, y: number, free: boolean]; tokenClick: [tokenId: string] }>()
 
@@ -17,7 +19,7 @@ const label = computed(() => {
   const { width, height, unitSymbol, tokens } = props.scene
   const n = tokens.length
   const summary = `Carte de ${formatLength(width, unitSymbol)} sur ${formatLength(height, unitSymbol)}, ${n} ${n > 1 ? 'créatures' : 'créature'}`
-  if (props.targeting) return `${summary}. Ciblage : choisir la cible dans la liste « Sur la carte ».`
+  if (props.targeting) return `${summary}. Ciblage : choisir la cible dans le tableau « Sur la carte ».`
   return props.placing ? `${summary}. Flèches pour choisir une case, Entrée pour poser.` : summary
 })
 
@@ -46,11 +48,13 @@ onMounted(() => {
     onTokenClick: (id) => emit('tokenClick', id),
   })
   render()
+  // Le canvas ne redessine pas seul quand les polices finissent de charger.
+  void document.fonts.ready.then(render)
   observer = new ResizeObserver(() => canvas?.resize(el.clientWidth, el.clientHeight))
   observer.observe(el)
 })
 
-watch(() => [props.scene, props.selected, props.placing, props.targeting, cursor.value], render, { deep: true })
+watch(() => [props.scene, props.selected, props.placing, props.targeting, props.theme, cursor.value], render, { deep: true })
 watch(
   () => props.placing,
   (placing) => {
@@ -147,5 +151,9 @@ onBeforeUnmount(() => {
 }
 .map:focus-visible {
   outline-offset: -2px;
+}
+/* Le focus pris à la souris (clic sur la carte) ne laisse pas de contour. */
+.map:focus:not(:focus-visible) {
+  outline: none;
 }
 </style>

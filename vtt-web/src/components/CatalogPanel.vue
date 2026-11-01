@@ -21,7 +21,8 @@ function toggle(id: string) {
 
 <template>
   <section class="catalog" aria-labelledby="catalog-title">
-    <h2 id="catalog-title">Catalogue SRD</h2>
+    <h2 id="catalog-title" class="panel-title">Catalogue SRD</h2>
+    <hr class="tapered" />
     <p class="hint">
       {{ disabled ? 'Créer une carte pour poser des créatures.' : 'Choisir une créature, puis cliquer sur une case de la carte.' }}
     </p>
@@ -52,19 +53,18 @@ function toggle(id: string) {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-height: 100%;
 }
-/* Titre de panneau : nettement au-dessus du texte courant (15px). */
-h2 {
-  font-size: 1.15rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  margin: 0;
+.catalog .tapered {
+  margin: -0.5rem 0 0;
 }
 h3 {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin: 0 0 0.35rem;
+  font-family: var(--font-title);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  margin: 0 0 0.3rem;
 }
 ul {
   list-style: none;
@@ -72,13 +72,14 @@ ul {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
 }
 .hint,
 .attribution {
   margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+  text-wrap: pretty;
 }
 .attribution {
   margin-top: auto;
@@ -90,22 +91,27 @@ ul {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   text-align: left;
   background: transparent;
   border-color: transparent;
 }
 .entry:hover:not(:disabled) {
-  background: var(--surface-hover);
+  background: var(--wood-raised);
+  border-color: transparent;
 }
-.entry.armed {
-  background: var(--surface-active);
-  border-color: var(--accent);
+/* Créature armée : l'état vivant, en laiton. */
+.entry.armed,
+.entry.armed:hover:not(:disabled) {
+  background: var(--wood-raised);
+  border-color: var(--brass);
+  font-weight: 700;
 }
 .swatch {
-  width: 0.7rem;
-  height: 0.7rem;
+  width: 0.8rem;
+  height: 0.8rem;
   flex: none;
+  border: 1.5px solid var(--token-rim);
 }
 /* Même forme que sur la carte : disque pour un personnage, carré pour un monstre. */
 .character .swatch {

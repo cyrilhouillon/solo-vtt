@@ -31,6 +31,17 @@ export interface Targeting {
 }
 
 const MARGIN = 16
+const FONT = "'Alegreya Sans', system-ui, sans-serif"
+
+/** Initiales d'un nom, numéro compris : « Gobelin guerrier 2 » donne « GG2 ». */
+function initialsOf(name: string): string {
+  const words = name.split(/\s+/).filter(Boolean)
+  const number = /^\d+$/.test(words.at(-1) ?? '') ? words.pop() : ''
+  return words
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') + number
+}
 
 const numberFormat = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 })
 
@@ -44,7 +55,9 @@ export class SceneCanvas {
   /** Aperçu du placement sous le curseur, redessiné sans toucher au reste. */
   private readonly preview = new Konva.Layer({ listening: false })
   private readonly events: SceneCanvasEvents
-  private readonly colors: Record<string, string>
+  private readonly container: HTMLDivElement
+  /** Couleurs du thème, relues à chaque dessin : le joueur peut changer de thème en cours de partie. */
+  private colors: Record<string, string> = {}
   private state: SceneCanvasState | null = null
   private pixelsPerUnit = 1
   private origin = { x: MARGIN, y: MARGIN }
@@ -56,21 +69,9 @@ export class SceneCanvas {
 
   constructor(container: HTMLDivElement, events: SceneCanvasEvents) {
     this.events = events
+    this.container = container
     this.stage = new Konva.Stage({ container, width: container.clientWidth, height: container.clientHeight })
     this.stage.add(this.layer, this.preview)
-    const style = getComputedStyle(container)
-    const token = (name: string) => style.getPropertyValue(name).trim()
-    this.colors = {
-      ground: token('--map-ground'),
-      grid: token('--map-grid'),
-      border: token('--map-border'),
-      character: token('--token-character'),
-      monster: token('--token-monster'),
-      selected: token('--token-selected'),
-      label: token('--map-label'),
-      measure: token('--map-measure'),
-      danger: token('--danger'),
-    }
     this.stage.on('mousemove', (e) => {
       this.pointerInside = true
       this.drawPointerPreview(e.evt.shiftKey)
@@ -114,7 +115,26 @@ export class SceneCanvas {
     }
   }
 
+  private readColors(): void {
+    const style = getComputedStyle(this.container)
+    const token = (name: string) => style.getPropertyValue(name).trim()
+    this.colors = {
+      ground: token('--map-ground'),
+      grid: token('--map-grid'),
+      border: token('--map-border'),
+      character: token('--token-character'),
+      monster: token('--token-monster'),
+      rim: token('--token-rim'),
+      live: token('--map-live'),
+      down: token('--map-down'),
+      label: token('--map-label'),
+      labelGround: token('--map-label-ground'),
+      danger: token('--danger'),
+    }
+  }
+
   private redraw(): void {
+    this.readColors()
     this.layer.destroyChildren()
     this.clearPreview()
     if (!this.state) return
@@ -133,7 +153,10 @@ export class SceneCanvas {
     // Les noms passent au-dessus de tous les jetons ; ceux des jetons sélectionnés en dernier.
     const names = new Konva.Group({ listening: false })
     const ordered = [...scene.tokens].sort((a, b) => Number(selected.includes(a.id)) - Number(selected.includes(b.id)))
-    for (const token of ordered) this.drawToken(scene, token, selected.includes(token.id), placing === null, names)
+    const reachable = this.reachable(scene, this.state.targeting)
+    for (const token of ordered) {
+      this.drawToken(scene, token, selected.includes(token.id), placing === null, names, reachable(token))
+    }
     this.layer.add(names)
     if (measure) this.layer.add(measure)
     this.layer.draw()
@@ -195,19 +218,63 @@ export class SceneCanvas {
       },
     })
     this.layer.add(clipped)
+    const x = this.toPixelsX(attacker.x)
+    const y = this.toPixelsY(attacker.y)
+    const normal = targeting.circles.find((c) => !c.dashed)
+    const long = targeting.circles.find((c) => c.dashed)
+    // Portée longue (désavantage) : bande hachurée, lisible sans la couleur.
+    if (normal && long) {
+      clipped.add(
+        new Konva.Ring({
+          x,
+          y,
+          innerRadius: normal.radius * this.pixelsPerUnit,
+          outerRadius: long.radius * this.pixelsPerUnit,
+          fillPatternImage: this.hatch() as unknown as HTMLImageElement,
+          fillPatternRepeat: 'repeat',
+          listening: false,
+        }),
+      )
+    }
     for (const circle of targeting.circles) {
       clipped.add(
         new Konva.Circle({
-          x: this.toPixelsX(attacker.x),
-          y: this.toPixelsY(attacker.y),
+          x,
+          y,
           radius: circle.radius * this.pixelsPerUnit,
-          stroke: this.colors.measure,
+          stroke: this.colors.live,
           strokeWidth: 2,
           dash: circle.dashed ? [8, 6] : undefined,
           listening: false,
         }),
       )
     }
+  }
+
+  /** Motif de hachures obliques, dans la couleur de l'état vivant. */
+  private hatch(): HTMLCanvasElement {
+    const tile = document.createElement('canvas')
+    tile.width = tile.height = 10
+    const ctx = tile.getContext('2d')!
+    ctx.strokeStyle = this.colors.live
+    ctx.globalAlpha = 0.45
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(-1, 11)
+    ctx.lineTo(11, -1)
+    ctx.stroke()
+    return tile
+  }
+
+  /**
+   * En ciblage, une créature hors de l'allonge ou de la portée longue est estompée.
+   * Indicatif : la distance qui fait foi est celle du serveur.
+   */
+  private reachable(scene: SceneView, targeting: Targeting | null): (token: TokenView) => boolean {
+    const attacker = targeting && scene.tokens.find((t) => t.id === targeting.attackerId)
+    if (!targeting || !attacker || !targeting.circles.length) return () => true
+    const limit = Math.max(...targeting.circles.map((c) => c.radius))
+    return (token) => token.id === attacker.id || Math.hypot(token.x - attacker.x, token.y - attacker.y) <= limit
   }
 
   private gridLine(points: number[]): Konva.Line {
@@ -224,19 +291,19 @@ export class SceneCanvas {
     if (!a || !b) return null
     const points = [this.toPixelsX(a.x), this.toPixelsY(a.y), this.toPixelsX(b.x), this.toPixelsY(b.y)]
     this.layer.add(
-      new Konva.Line({ points, stroke: this.colors.measure, strokeWidth: 2, dash: [8, 6], listening: false }),
+      new Konva.Line({ points, stroke: this.colors.live, strokeWidth: 2, dash: [8, 6], listening: false }),
     )
     const distance = Math.hypot(b.x - a.x, b.y - a.y)
     const cells = distance / CELL[scene.unit]
     const label = new Konva.Label({ x: (points[0] + points[2]) / 2, y: (points[1] + points[3]) / 2, listening: false })
-    label.add(new Konva.Tag({ fill: this.colors.ground, stroke: this.colors.measure, strokeWidth: 1, cornerRadius: 4 }))
+    label.add(new Konva.Tag({ fill: this.colors.labelGround, stroke: this.colors.live, strokeWidth: 1, cornerRadius: 4 }))
     label.add(
       new Konva.Text({
         text: `${formatLength(distance, scene.unitSymbol)} · ${numberFormat.format(cells)} ${cells < 2 ? 'case' : 'cases'}`,
-        fontSize: 15,
-        fontStyle: '600',
-        fontFamily: 'system-ui, sans-serif',
-        fill: this.colors.measure,
+        fontSize: 16,
+        fontStyle: '700',
+        fontFamily: FONT,
+        fill: this.colors.label,
         padding: 5,
       }),
     )
@@ -274,57 +341,86 @@ export class SceneCanvas {
     isSelected: boolean,
     clickable: boolean,
     names: Konva.Group,
+    reachable: boolean,
   ): void {
     const radius = this.tokenRadius(scene)
     const x = this.toPixelsX(token.x)
     const y = this.toPixelsY(token.y)
+    const down = token.hitPoints === 0
+    const targeting = this.state?.targeting ?? null
     // En placement, un clic sur un jeton vise la case : il traverse jusqu'au sol.
-    // Un jeton en attente du serveur est estompé et ne réagit pas encore.
-    const group = new Konva.Group({ x, y, listening: clickable && !token.pending, opacity: token.pending ? 0.55 : 1 })
+    // Un jeton en attente du serveur est estompé et ne réagit pas encore ; hors de portée aussi, estompé.
+    const opacity = token.pending ? 0.55 : reachable ? 1 : 0.4
+    const group = new Konva.Group({ x, y, listening: clickable && !token.pending, opacity })
     group.add(
       this.tokenShape(token.kind, radius, {
-        stroke: isSelected ? this.colors.selected : this.colors.ground,
-        strokeWidth: isSelected ? 3 : 1.5,
+        stroke: isSelected ? this.colors.live : this.colors.rim,
+        strokeWidth: isSelected ? 3.5 : 2,
+        ...(down ? { fill: this.colors.down } : {}),
       }),
     )
-    // Nom tronqué à la largeur d'une case pour ne pas déborder sur les voisins ; complet si sélectionné ou survolé.
-    const short = this.nameLabel(token.name, radius, Math.max(40, CELL[scene.unit] * this.pixelsPerUnit - 8))
-    const full = this.nameLabel(token.name, radius, null)
-    short.visible(!isSelected)
+    // À terre : imprimé en gris et barré d'une croix.
+    if (down) {
+      const arm = radius * 0.55
+      for (const points of [
+        [-arm, -arm, arm, arm],
+        [arm, -arm, -arm, arm],
+      ]) {
+        group.add(new Konva.Line({ points, stroke: this.colors.rim, strokeWidth: 3, lineCap: 'round', listening: false }))
+      }
+    } else {
+      const initials = new Konva.Text({
+        text: initialsOf(token.name),
+        fontSize: Math.round(Math.max(10, radius * 0.75)),
+        fontStyle: '700',
+        fontFamily: FONT,
+        fill: this.colors.rim,
+        listening: false,
+      })
+      initials.offset({ x: initials.width() / 2, y: initials.height() / 2 })
+      group.add(initials)
+    }
+    // Le nom complet à la demande : sélection ou survol. Les initiales suffisent au repos.
+    const full = this.nameLabel(token.name, radius)
     full.visible(isSelected)
-    for (const label of [short, full]) label.move({ x, y })
-    names.add(short, full)
+    full.move({ x, y })
+    names.add(full)
+    // En ciblage, la cible envisagée est cerclée de laiton.
+    const ring = new Konva.Circle({ radius: radius * 1.35, stroke: this.colors.live, strokeWidth: 3, visible: false, listening: false })
+    group.add(ring)
     group.on('click tap', (e) => {
       e.cancelBubble = true
       this.events.onTokenClick(token.id)
     })
     group.on('mouseenter', () => {
       this.stage.container().style.cursor = 'pointer'
-      short.visible(false)
       full.visible(true)
       full.moveToTop()
+      ring.visible(targeting !== null && token.id !== targeting.attackerId && reachable)
+      this.layer.batchDraw()
     })
     group.on('mouseleave', () => {
       this.stage.container().style.cursor = ''
-      short.visible(!isSelected)
       full.visible(isSelected)
+      ring.visible(false)
+      this.layer.batchDraw()
     })
     this.layer.add(group)
   }
 
-  /** Étiquette sous le jeton ; `maxWidth` tronque le nom avec des points de suspension. */
-  private nameLabel(name: string, radius: number, maxWidth: number | null): Konva.Label {
+  /** Étiquette du nom complet, sous le jeton. */
+  private nameLabel(name: string, radius: number): Konva.Label {
     const text = new Konva.Text({
       text: name,
-      fontSize: Math.round(Math.min(16, Math.max(13, radius * 0.8))),
-      fontFamily: 'system-ui, sans-serif',
+      fontSize: Math.round(Math.min(17, Math.max(14, radius * 0.8))),
+      fontStyle: '700',
+      fontFamily: FONT,
       fill: this.colors.label,
-      padding: 2,
+      padding: 3,
       wrap: 'none',
     })
-    if (maxWidth !== null && text.width() > maxWidth) text.setAttrs({ width: maxWidth, ellipsis: true })
-    const label = new Konva.Label({ y: radius + 3, listening: false })
-    label.add(new Konva.Tag({ fill: this.colors.ground, opacity: 0.85, cornerRadius: 3 }), text)
+    const label = new Konva.Label({ y: radius + 4, listening: false })
+    label.add(new Konva.Tag({ fill: this.colors.labelGround, cornerRadius: 3 }), text)
     label.offsetX(label.width() / 2)
     return label
   }
@@ -351,13 +447,13 @@ export class SceneCanvas {
     if (framed) {
       const side = CELL[scene.unit] * this.pixelsPerUnit
       this.preview.add(
-        new Konva.Rect({ x: x - side / 2, y: y - side / 2, width: side, height: side, stroke: this.colors.selected, strokeWidth: 2 }),
+        new Konva.Rect({ x: x - side / 2, y: y - side / 2, width: side, height: side, stroke: this.colors.live, strokeWidth: 2 }),
       )
     }
     if (taken) {
       this.preview.add(new Konva.Circle({ x, y, radius: radius * 1.3, stroke: this.colors.danger, strokeWidth: 3 }))
     } else {
-      this.preview.add(this.tokenShape(placing, radius, { x, y, opacity: 0.5, stroke: this.colors.selected, strokeWidth: 2 }))
+      this.preview.add(this.tokenShape(placing, radius, { x, y, opacity: 0.5, stroke: this.colors.live, strokeWidth: 2 }))
     }
     if (!framed) this.stage.container().style.cursor = taken ? 'not-allowed' : ''
     this.preview.batchDraw()
