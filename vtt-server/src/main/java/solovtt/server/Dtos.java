@@ -4,6 +4,7 @@ import dnd.engine.catalog.CatalogEntry;
 import dnd.engine.state.Attack;
 import dnd.engine.state.Creature;
 import dnd.engine.state.DamageType;
+import solovtt.engine.Decision;
 import solovtt.scene.DistanceUnit;
 import solovtt.scene.Scene;
 import solovtt.scene.Token;
@@ -65,8 +66,29 @@ final class Dtos {
         }
     }
 
-    /** Les entrées ajoutées au journal par l'attaque, et les PV de la cible après coup. */
-    record AttackResultDto(List<JournalEntryDto> entries, String targetId, int targetHitPoints, int targetMaxHitPoints) {}
+    /** Une question du moteur ; le joueur y répond pour toute créature (jeu solo). */
+    record DecisionDto(String id, String chooserId, String chooserName, String prompt, List<String> options) {
+        static DecisionDto of(Decision d, SceneSession session) {
+            String name = session.creature(d.chooserId()).map(Creature::name).orElse(d.chooserId());
+            return new DecisionDto(d.id(), d.chooserId(), name, d.prompt(), d.options());
+        }
+    }
+
+    record AnswerRequest(String option) {}
+
+    /**
+     * Les entrées ajoutées au journal par l'attaque (ou sa reprise), les PV de la cible après coup,
+     * et la décision qui suspend l'attaque ({@code null} si elle est finie).
+     */
+    record AttackResultDto(List<JournalEntryDto> entries, String targetId, int targetHitPoints, int targetMaxHitPoints,
+                           DecisionDto decision) {
+        static AttackResultDto of(SceneSession.ActionOutcome outcome, SceneSession session) {
+            var target = session.creature(outcome.targetId()).orElseThrow();
+            return new AttackResultDto(outcome.entries().stream().map(JournalEntryDto::of).toList(),
+                    target.id(), target.hitPoints(), target.maxHitPoints(),
+                    outcome.decision().map(d -> DecisionDto.of(d, session)).orElse(null));
+        }
+    }
 
     record RangeDto(double normal, double longRange, String unitSymbol) {}
 

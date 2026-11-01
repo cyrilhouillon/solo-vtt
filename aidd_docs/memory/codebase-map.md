@@ -34,14 +34,15 @@ flowchart TD
   - `state/` : l'état du jeu (`GameState`, `Creature`, `Weapon`, `Attack` avec allonge et portée, conditions, types de dégâts).
   - `events/` : `GameEvent` (sealed, `extends Event<GameState>`), tout ce qui arrive et comment ça modifie l'état.
   - `attack/` : l'action « attaque », c'est-à-dire ses phases, son contexte, `AttackRule` et les règles de base 2024.
-  - `rules/` : les règles optionnelles (`RangeRules` pour la portée longue…) et `StandardRules`, qui assemble le `RuleBook`.
+  - `rules/` : les règles optionnelles (`RangeRules` pour la portée longue…), les réactions (`Reaction`, `ReactionWindow`, `AttackHitReactions`, `ShieldReaction`) et `StandardRules`, qui assemble le `RuleBook`.
   - `catalog/` : `SrdCatalog`, les créatures prêtes à l'emploi du SRD 5.2.1.
   - `demo/` : démonstration console.
-- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `creatures/{id}`, `attacks`, `journal`).
-- `vtt-web/` : client Vue 3 + TypeScript. `src/api.ts` appelle le serveur, `src/map/SceneCanvas.ts` dessine la carte avec Konva, `src/components/` porte les panneaux (rail et tiroirs catalogue / nouvelle carte, tableau « Sur la carte », piste à dés, onglets Feuille / Cible / Journal). L'univers visuel et ses jetons (thèmes sombre et clair, `src/style.css`) sont décrits dans `DESIGN.md`.
+- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `creatures/{id}`, `attacks`, `journal`, `decisions`).
+- `vtt-web/` : client Vue 3 + TypeScript. `src/api.ts` appelle le serveur, `src/map/SceneCanvas.ts` dessine la carte avec Konva, `src/components/` porte les panneaux (rail et tiroirs catalogue / nouvelle carte, tableau « Sur la carte », piste à dés, onglets Feuille / Cible / Journal, dialogue de décision `DecisionDialog`). L'univers visuel et ses jetons (thèmes sombre et clair, `src/style.css`) sont décrits dans `DESIGN.md`.
 
 ## Points d'entrée
 
 - `dnd.engine.demo.Main` : la démo console (`--interactif`, `--seed=N`). Après un `mvn compile` à la racine, elle se lance depuis `dnd-engine/` avec `java -cp "target/classes;../vtt-engine/target/classes" dnd.engine.demo.Main` (le séparateur est `:` hors Windows).
 - Pour un appelant : `new Engine<>(state, StandardRules.create(), dice)`, puis `submit` et `answer`.
 - L'application : `mvn install -DskipTests` à la racine, puis `mvn quarkus:dev -pl vtt-server` (port 8080) et, dans `vtt-web/`, `npm install` puis `npm run dev` (port 5173, proxy `/api` vers 8080).
+- L'API : en mode dev, Swagger UI sur `/q/swagger-ui` et la spécification sur `/q/openapi` (`quarkus-smallrye-openapi`). Codes d'erreur décrits par `@APIResponse` sur chaque ressource. Une requête lancée depuis Swagger modifie la session du serveur visé.

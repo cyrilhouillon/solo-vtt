@@ -57,11 +57,22 @@ export interface JournalEntry {
   text: string
 }
 
+/** Une question du moteur au milieu d'une action ; le joueur y répond pour toute créature. */
+export interface Decision {
+  id: string
+  chooserId: string
+  chooserName: string
+  prompt: string
+  options: string[]
+}
+
 export interface AttackResult {
   entries: JournalEntry[]
   targetId: string
   targetHitPoints: number
   targetMaxHitPoints: number
+  /** La décision qui suspend l'attaque ; `null` quand elle est finie. */
+  decision: Decision | null
 }
 
 export interface CreatureSheet {

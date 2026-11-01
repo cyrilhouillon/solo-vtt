@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 parent: aidd_docs/backlog/epics/jouer-un-combat-dnd-2024-en-local.md
 depends_on:
   - aidd_docs/backlog/stories/attaquer-depuis-la-feuille-en-ciblant-sur-la-carte.md

@@ -14,6 +14,12 @@ public class ErrorMapper {
         return RestResponse.status(Response.Status.BAD_REQUEST, new Dtos.ErrorDto(e.getMessage()));
     }
 
+    /** Une action tentée pendant qu'une décision attend sa réponse. */
+    @ServerExceptionMapper
+    public RestResponse<Dtos.ErrorDto> decisionPending(DecisionPendingException e) {
+        return RestResponse.status(Response.Status.CONFLICT, new Dtos.ErrorDto(e.getMessage()));
+    }
+
     @ServerExceptionMapper
     public RestResponse<Dtos.ErrorDto> http(WebApplicationException e) {
         return RestResponse.status(Response.Status.fromStatusCode(e.getResponse().getStatus()), new Dtos.ErrorDto(e.getMessage()));
