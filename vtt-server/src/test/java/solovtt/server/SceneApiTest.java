@@ -55,6 +55,16 @@ class SceneApiTest {
     }
 
     @Test
+    void chaqueJetonDonneLaCaEtLesPvDeSaCreature() {
+        poser("squelette", 1, 1).statusCode(201)
+                .body("armorClass", equalTo(14)).body("hitPoints", equalTo(13)).body("maxHitPoints", equalTo(13));
+
+        given().get("/api/scene").then().statusCode(200)
+                .body("tokens.find { it.id == 'squelette-1' }.armorClass", equalTo(14))
+                .body("tokens.find { it.id == 'squelette-1' }.hitPoints", equalTo(13));
+    }
+
+    @Test
     void laFeuilleDecritLaCreature() {
         poser("squelette", 1, 1);
 

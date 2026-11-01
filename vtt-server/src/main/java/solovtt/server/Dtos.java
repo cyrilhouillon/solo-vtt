@@ -6,6 +6,7 @@ import dnd.engine.state.Creature;
 import dnd.engine.state.DamageType;
 import solovtt.scene.DistanceUnit;
 import solovtt.scene.Scene;
+import solovtt.scene.Token;
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,18 +29,23 @@ final class Dtos {
 
     record PlaceTokenRequest(String catalogId, double x, double y) {}
 
-    /** `catalogId` : l'entrée du catalogue d'où vient la créature, pour la reposer à l'identique. */
-    record TokenDto(String id, String creatureId, String catalogId, String name, CatalogEntry.Kind kind, double x, double y) {}
+    /**
+     * `catalogId` : l'entrée du catalogue d'où vient la créature, pour la reposer à l'identique.
+     * CA et PV permettent de lire l'état de chaque créature sans ouvrir sa feuille.
+     */
+    record TokenDto(String id, String creatureId, String catalogId, String name, CatalogEntry.Kind kind, double x, double y,
+                    int armorClass, int hitPoints, int maxHitPoints) {
+        static TokenDto of(Token token, CatalogEntry entry, Creature creature) {
+            return new TokenDto(token.id(), token.entityId(), entry.id(), creature.name(), entry.kind(),
+                    token.position().x(), token.position().y(),
+                    creature.armorClass(), creature.hitPoints(), creature.maxHitPoints());
+        }
+    }
 
     record SceneDto(double width, double height, DistanceUnit unit, String unitSymbol, List<TokenDto> tokens) {
         static SceneDto of(Scene scene, SceneSession session) {
             var tokens = scene.tokens().stream()
-                    .map(t -> {
-                        var entry = session.entryOf(t.entityId());
-                        return new TokenDto(t.id(), t.entityId(), entry.id(),
-                                session.creature(t.entityId()).map(Creature::name).orElse(t.entityId()),
-                                entry.kind(), t.position().x(), t.position().y());
-                    })
+                    .map(t -> TokenDto.of(t, session.entryOf(t.entityId()), session.creature(t.entityId()).orElseThrow()))
                     .toList();
             return new SceneDto(scene.width(), scene.height(), scene.unit(), scene.unit().symbol(), tokens);
         }
