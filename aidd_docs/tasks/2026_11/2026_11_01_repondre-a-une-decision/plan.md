@@ -1,6 +1,6 @@
 ---
 objective: "Quand une règle demande un choix (réaction Bouclier de la Magicienne), la partie s'arrête : la question et ses options s'affichent dans un dialogue modal, aucune autre action n'est possible tant que le joueur n'a pas répondu, puis l'action reprend et son résultat tient compte du choix."
-status: pending
+status: implemented
 ---
 
 # Plan: répondre à une décision du moteur
