@@ -37,3 +37,4 @@ Le code, les commentaires et les messages sont en français ; les identifiants s
 - Démo console (`dnd.engine.demo.Main`), avec un mode interactif.
 - Préparation de scène dans le navigateur : carte vide en mètres ou en pieds, créatures du catalogue SRD posées au clic, distance entre deux créatures, feuille de chaque créature.
 - Attaque depuis la feuille : ciblage sur la carte, allonge, portée normale et longue, lancer ; résultat dans le journal et PV mis à jour.
+- Décision du moteur dans le navigateur : la réaction Bouclier arrête l'attaque, le joueur choisit dans un dialogue, puis l'attaque reprend.

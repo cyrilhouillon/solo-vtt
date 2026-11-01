@@ -37,8 +37,8 @@ flowchart TD
   - `rules/` : les règles optionnelles (`RangeRules` pour la portée longue…) et `StandardRules`, qui assemble le `RuleBook`.
   - `catalog/` : `SrdCatalog`, les créatures prêtes à l'emploi du SRD 5.2.1.
   - `demo/` : démonstration console.
-- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `creatures/{id}`, `attacks`, `journal`).
-- `vtt-web/` : client Vue 3 + TypeScript. `src/api.ts` appelle le serveur, `src/map/SceneCanvas.ts` dessine la carte avec Konva, `src/components/` porte les panneaux (rail et tiroirs catalogue / nouvelle carte, tableau « Sur la carte », piste à dés, onglets Feuille / Cible / Journal). L'univers visuel et ses jetons (thèmes sombre et clair, `src/style.css`) sont décrits dans `DESIGN.md`.
+- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `creatures/{id}`, `attacks`, `journal`, `decisions`).
+- `vtt-web/` : client Vue 3 + TypeScript. `src/api.ts` appelle le serveur, `src/map/SceneCanvas.ts` dessine la carte avec Konva, `src/components/` porte les panneaux (rail et tiroirs catalogue / nouvelle carte, tableau « Sur la carte », piste à dés, onglets Feuille / Cible / Journal, dialogue de décision `DecisionDialog`). L'univers visuel et ses jetons (thèmes sombre et clair, `src/style.css`) sont décrits dans `DESIGN.md`.
 
 ## Points d'entrée
 
