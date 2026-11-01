@@ -98,6 +98,19 @@ class SceneApiTest {
     }
 
     @Test
+    void retirerUnJetonRetireAussiSaCreature() {
+        poser("loup", 1, 1).statusCode(201);
+        poser("loup", 4, 4).statusCode(201);
+
+        given().delete("/api/scene/tokens/loup-1").then().statusCode(204);
+
+        given().get("/api/scene").then().body("tokens.id", equalTo(java.util.List.of("loup-2")));
+        given().get("/api/creatures/loup-1").then().statusCode(404);
+        given().delete("/api/scene/tokens/loup-1").then().statusCode(404).body("message", containsString("loup-1"));
+        poser("loup", 2, 2).body("id", equalTo("loup-3"));
+    }
+
+    @Test
     void uneCarteDeDimensionInvalideEstRefusee() {
         nouvelleCarte(0, 10, "METRE").statusCode(400).body("message", containsString("positives"));
     }

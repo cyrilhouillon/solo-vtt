@@ -1,10 +1,12 @@
 package solovtt.server;
 
 import jakarta.ws.rs.ClientErrorException;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import solovtt.scene.Scene;
@@ -47,6 +49,15 @@ public class SceneResource {
         var creature = session.creature(token.entityId()).orElseThrow();
         return new Dtos.TokenDto(token.id(), token.entityId(), creature.name(), entry.kind(),
                 token.position().x(), token.position().y());
+    }
+
+    /** Retire un jeton et sa créature. */
+    @DELETE
+    @Path("/tokens/{id}")
+    @ResponseStatus(204)
+    public void remove(@PathParam("id") String id) {
+        if (!requireScene().contains(id)) throw new NotFoundException("Jeton inconnu : " + id);
+        session.remove(id);
     }
 
     private Scene requireScene() {

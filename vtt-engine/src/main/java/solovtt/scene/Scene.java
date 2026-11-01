@@ -56,6 +56,13 @@ public final class Scene {
         tokens.put(token.id(), token);
     }
 
+    /** Retire un jeton ; un id inconnu est refusé. */
+    public Token remove(String tokenId) {
+        Token removed = tokens.remove(tokenId);
+        if (removed == null) throw new IllegalArgumentException("Jeton inconnu : " + tokenId);
+        return removed;
+    }
+
     /** Distance euclidienne de centre à centre, dans l'unité de la carte. */
     public double distance(String tokenIdA, String tokenIdB) {
         return token(tokenIdA).position().distanceTo(token(tokenIdB).position());

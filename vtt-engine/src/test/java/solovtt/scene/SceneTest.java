@@ -53,6 +53,15 @@ class SceneTest {
     }
 
     @Test
+    void retirerUnJetonLeSortDeLaCarte() {
+        var scene = carte();
+        scene.place(new Token("a", "x", new Position(1, 1)));
+        scene.remove("a");
+        assertTrue(scene.tokens().isEmpty());
+        assertThrows(IllegalArgumentException.class, () -> scene.remove("a"));
+    }
+
+    @Test
     void uneCarteDeDimensionNulleEstRefusee() {
         assertThrows(IllegalArgumentException.class, () -> new Scene(0, 10, DistanceUnit.METRE));
     }

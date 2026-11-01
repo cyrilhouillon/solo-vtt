@@ -57,6 +57,14 @@ public class SceneSession {
         return token;
     }
 
+    /** Retire le jeton et la créature qu'il porte ; la numérotation des suivantes ne recule pas. */
+    public synchronized void remove(String tokenId) {
+        if (scene == null) throw new IllegalStateException("aucune carte");
+        Token token = scene.remove(tokenId);
+        state.remove(token.entityId());
+        kinds.remove(token.entityId());
+    }
+
     public synchronized Optional<Creature> creature(String id) {
         if (!kinds.containsKey(id)) return Optional.empty();
         return Optional.of(state.get(id));
