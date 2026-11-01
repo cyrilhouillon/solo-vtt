@@ -112,9 +112,7 @@ p {
 }
 .idle {
   grid-column: 1 / -1;
-  font-family: var(--font-title);
-  font-size: 1.05rem;
-  letter-spacing: 0.04em;
+  font-style: italic;
   opacity: 0.75;
 }
 </style>

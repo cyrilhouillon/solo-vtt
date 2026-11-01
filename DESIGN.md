@@ -224,7 +224,7 @@ Grille d'application pleine hauteur : barre en haut, puis rail d'icônes (3.5rem
 - Sous 1280px : tiroir et panneau latéral ne partagent plus l'écran. Le tiroir ouvert replie le latéral en une bande de 3rem d'onglets verticaux (l'actif souligné d'un trait d'encre côté table) ; choisir un onglet ferme le tiroir et rouvre le panneau.
 - Sous 1100px : latéral à 20rem.
 - Sous 900px : une colonne ; la page défile, le cadre de la carte prend la forme de la carte (14rem minimum, 70svh maximum), le panneau latéral passe dessous (24rem minimum), le rail se couche à l'horizontale quand le tiroir est fermé.
-- Sous 600px : le tableau masque le camp en toutes lettres, l'état et la jauge ; la forme de la pastille dit déjà le camp.
+- Le tableau tient sans défilement horizontal : sous 1280px, il masque le camp en toutes lettres (la forme de la pastille le dit déjà) ; entre 901 et 1100px et sous 700px, la jauge (le chiffre reste) ; sous 600px, l'état.
 
 Le rythme est en rem : 0.25 entre les entrées d'une liste, 0.4 à 0.6 à l'intérieur d'une ligne, 0.75 à 1 entre blocs, 1 à 1.1 en marge de panneau. Les erreurs se posent par-dessus la carte sans la redimensionner.
 
@@ -260,7 +260,7 @@ Du bois en creux, francs et discrets.
 
 ### Chips
 - **Mode en cours:** pilule laiton pleine, texte `on-brass` en 700, dans la barre. C'est la seule puce pleine du système.
-- **Étiquettes d'état:** petites capitales 0.85rem, contour 1px `rule`, 3px ; « À terre » passe en rubrique (texte et contour).
+- **Étiquettes d'état:** petites capitales 0.85rem, première lettre capitale, contour 1px `rule`, 3px ; « À terre » passe en rubrique (texte et contour) ; une portée qui permet l'attaque se cercle de laiton.
 
 ### Navigation
 - **Rail:** colonne de boutons d'icônes de 2.6rem sur `wood`, icônes SVG dessinées (trait 1.75, grille 24). Le bouton du tiroir ouvert reste en bois : fond `wood-sunken`, contour `rule`, encre. Jamais en laiton.
@@ -271,7 +271,7 @@ Du bois en creux, francs et discrets.
 - **Focus:** le contour laiton commun. Radios et cases suivent `accent-color: brass`.
 
 ### Tableau « Sur la carte »
-Un tableau des départs : en-têtes collants en petites capitales, lattes alternées (`wood-sunken` une ligne sur deux), ligne sélectionnée en `wood-raised` avec le nom en gras et la pastille cerclée de laiton, comme le jeton sur la carte. Chaque ligne porte la pastille de camp, le nom, le camp, la jauge de PV (4.5rem, `hp`, `hp-low` sous le seuil), les chiffres tabulaires et l'état. Une créature à terre : pastille grise, nom barré en `ink-muted`, étiquette « À terre » en rubrique.
+Un tableau des départs : en-têtes collants en petites capitales, lattes alternées (`wood-sunken` une ligne sur deux), ligne sélectionnée en `wood-raised` avec le nom en gras et la pastille cerclée de laiton, comme le jeton sur la carte. Chaque ligne porte la pastille de camp, le nom, le camp, la jauge de PV (4.5rem, `hp`, `hp-low` sous le seuil), les chiffres tabulaires (jauges alignées quel que soit le nombre de PV) et l'état. La colonne État a la largeur de sa plus longue étiquette, pour que les colonnes ne bougent pas : elle dit l'état de jeu de la créature, jamais celui de l'interface (la ligne sélectionnée et la feuille disent déjà quelle créature est ouverte). Hors ciblage : « Pose en cours… », « À terre », « Cible » (visée par la dernière attaque). En ciblage : « Attaquant » et, pour les autres, le verdict de portée. Une créature à terre : pastille grise, nom barré en `ink-muted`, étiquette « À terre » en rubrique.
 
 ### Bloc de statistiques (Feuille, Cible)
 Nom en rubrique (headline), type en italique `ink-muted`, filet effilé, lignes libellé gras puis chiffre en rubrique (1.15rem). Intertitres en petites capitales rubrique soulignés d'un filet rubrique. Une attaque visée : la ligne se cercle de laiton sur `wood-raised`, son bouton passe en laiton plein.

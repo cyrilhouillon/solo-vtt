@@ -10,7 +10,7 @@ import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
 import TokenBoard from './components/TokenBoard.vue'
 import { CELL, occupant } from './map/grid'
-import { rangeVerdict } from './map/range'
+import { rangeVerdict, type RangeVerdict } from './map/range'
 import type { Targeting } from './map/SceneCanvas'
 import { initialTheme, saveTheme, type Theme } from './theme'
 import {
@@ -93,18 +93,18 @@ const targetingView = computed<Targeting | null>(() => {
 })
 
 /** En ciblage, ce que la distance permet pour chaque créature, montré dans le tableau. */
-const rangeLabels = computed<Record<string, string>>(() => {
+const rangeVerdicts = computed<Record<string, RangeVerdict>>(() => {
   const view = targetingView.value
   const tokens = scene.value?.tokens ?? []
   const attacker = view && tokens.find((t) => t.id === view.attackerId)
   if (!view || !attacker) return {}
-  const labels: Record<string, string> = {}
+  const verdicts: Record<string, RangeVerdict> = {}
   for (const token of tokens) {
     if (token.id === attacker.id) continue
     const verdict = rangeVerdict(view, Math.hypot(token.x - attacker.x, token.y - attacker.y))
-    if (verdict) labels[token.id] = verdict.label
+    if (verdict) verdicts[token.id] = verdict
   }
-  return labels
+  return verdicts
 })
 /** Résultat de la dernière action, affiché dans la barre d'état et lu par les lecteurs d'écran. */
 const notice = ref('')
@@ -575,10 +575,9 @@ onBeforeUnmount(() => {
           ref="board"
           :tokens="scene.tokens"
           :selected="selected"
-          :shown="sheet?.id ?? null"
+          :attacker="targeting?.attackerId ?? null"
           :target="targetSheet?.id ?? null"
-          :aiming="targeting !== null"
-          :ranges="rangeLabels"
+          :ranges="rangeVerdicts"
           @select="onTokenChosen"
           @remove="removeTokens([$event])"
         />

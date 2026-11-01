@@ -1,23 +1,24 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import type { RangeVerdict } from '../map/range'
 import { KIND_LABELS, type TokenView } from '../types'
 import AppIcon from './AppIcon.vue'
 
 /**
  * Les créatures posées, en tableau comme un panneau des départs : état lisible d'un coup d'œil.
  * C'est le double accessible de la carte, et le seul moyen de les retirer au clavier.
- * `aiming` : un ciblage est en cours ; choisir une ligne vise la créature.
- * `shown` et `target` : créatures des onglets Feuille et Cible.
+ * `attacker` : l'attaquant d'un ciblage en cours ; choisir une ligne vise alors la créature.
+ * `target` : la créature de l'onglet Cible, visée par la dernière attaque.
  * `ranges` : en ciblage, ce que la distance permet pour chaque créature (indicatif).
  */
 const props = defineProps<{
   tokens: TokenView[]
   selected: string[]
-  shown: string | null
+  attacker: string | null
   target: string | null
-  aiming: boolean
-  ranges: Record<string, string>
+  ranges: Record<string, RangeVerdict>
 }>()
+const aiming = computed(() => props.attacker !== null)
 const emit = defineEmits<{ select: [tokenId: string]; remove: [tokenId: string] }>()
 
 const title = ref<HTMLHeadingElement | null>(null)
@@ -49,9 +50,9 @@ defineExpose({ focusTitle })
 
 /** En ciblage, la ligne vise : son nom dit ce que la distance permet, et elle n'est plus un interrupteur. */
 function entryLabel(token: TokenView): string | undefined {
-  if (!props.aiming) return undefined
+  if (!aiming.value) return undefined
   const range = props.ranges[token.id]
-  return range ? `Viser ${token.name}, ${range}` : `Viser ${token.name}`
+  return range ? `Viser ${token.name}, ${range.label}` : `Viser ${token.name}`
 }
 
 function isDown(token: TokenView): boolean {
@@ -105,7 +106,7 @@ function health(token: TokenView): number {
             <td class="num figure">
               <span v-if="token.hitPoints !== undefined" class="hp">
                 <span class="gauge" aria-hidden="true"><i :style="{ width: `${health(token) * 100}%` }" :class="{ low: health(token) <= 0.5 }" /></span>
-                {{ token.hitPoints }} / {{ token.maxHitPoints }}
+                <span class="hp-value">{{ token.hitPoints }} / {{ token.maxHitPoints }}</span>
               </span>
               <template v-else>…</template>
             </td>
@@ -114,9 +115,9 @@ function health(token: TokenView): number {
               <span class="state">
               <span v-if="token.pending" class="tag">Pose en cours…</span>
               <span v-else-if="isDown(token)" class="tag down-tag">À terre</span>
-              <span v-if="token.id === shown" class="tag">Feuille</span>
-              <span v-if="token.id === target" class="tag">Cible</span>
-              <span v-if="aiming && ranges[token.id]" class="tag">{{ ranges[token.id] }}</span>
+              <span v-if="token.id === attacker" class="tag">Attaquant</span>
+              <span v-else-if="!aiming && token.id === target" class="tag">Cible</span>
+              <span v-if="ranges[token.id]" class="tag" :class="{ allowed: ranges[token.id].allowed }">{{ ranges[token.id].label }}</span>
               </span>
             </td>
             <td class="act">
@@ -266,6 +267,15 @@ tr.selected .ribbon {
 .gauge i.low {
   background: var(--hp-low);
 }
+/* Largeur de « 99 / 99 » : les jauges s'alignent quels que soient les PV. */
+.hp-value {
+  min-width: 5ch;
+  text-align: right;
+}
+/* Largeur de la plus longue étiquette : les colonnes ne bougent pas quand l'état change. */
+.state-col {
+  width: 15rem;
+}
 .state {
   display: inline-flex;
   gap: 0.4rem;
@@ -282,6 +292,15 @@ tr.selected .ribbon {
 .down-tag {
   color: var(--rubric);
   border-color: var(--rubric);
+}
+/* Les verdicts de portée sont écrits pour une phrase ; en étiquette, ils prennent la capitale. */
+.tag::first-letter {
+  text-transform: uppercase;
+}
+/* Cible permise : cerclée de laiton, comme la bulle sur la carte. */
+.tag.allowed {
+  color: var(--ink);
+  border-color: var(--brass);
 }
 /* À terre : imprimée en gris, ruban retiré, nom barré. */
 tr.down .ribbon {
@@ -309,12 +328,27 @@ tr.down .name {
 h2:focus {
   outline: none;
 }
-/* Sur un écran étroit, la forme du ruban dit déjà le camp. */
-@media (max-width: 600px) {
+/*
+ * Quand la table se serre entre les panneaux, la forme du ruban dit déjà le camp et le chiffre dit
+ * déjà les PV : la colonne État garde la place de son étiquette la plus longue.
+ */
+@media (max-width: 1280px) {
   th:nth-child(2),
-  td:nth-child(2),
-  .state-col,
+  td:nth-child(2) {
+    display: none;
+  }
+}
+@media (min-width: 901px) and (max-width: 1100px), (max-width: 700px) {
   .gauge {
+    display: none;
+  }
+  td,
+  th {
+    padding-inline: 0.5rem;
+  }
+}
+@media (max-width: 600px) {
+  .state-col {
     display: none;
   }
   td,
