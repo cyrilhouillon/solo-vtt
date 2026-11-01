@@ -65,11 +65,48 @@ function tell(message: string) {
   announcement.value = message
 }
 
+/** La scène du serveur, ou null s'il n'a pas encore de carte (409). */
+async function loadScene(): Promise<SceneView | null> {
+  try {
+    return await api.scene()
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 409) return null
+    throw e
+  }
+}
+
+/**
+ * Un 404 ou un 409 signifie que la carte affichée n'est plus celle du serveur (autre onglet,
+ * redémarrage) : on recharge la sienne et on oublie ce qui visait l'ancienne.
+ */
+async function resync(): Promise<string> {
+  const fresh = await loadScene()
+  scene.value = fresh
+  history.length = 0
+  if (!fresh) {
+    arm(null)
+    clearSelection()
+    return "Le serveur n'a plus de carte : en créer une nouvelle."
+  }
+  const ids = new Set(fresh.tokens.map((t) => t.id))
+  selected.value = selected.value.filter((id) => ids.has(id))
+  if (sheet.value && !ids.has(sheet.value.id)) sheet.value = null
+  return "La carte a changé ailleurs (autre onglet ?) : elle vient d'être rechargée. Refaire l'action si besoin."
+}
+
 async function attempt(action: () => Promise<void>) {
   error.value = null
   try {
     await action()
   } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 409)) {
+      try {
+        error.value = await resync()
+      } catch (reload) {
+        error.value = reload instanceof Error ? reload.message : String(reload)
+      }
+      return
+    }
     error.value = e instanceof Error ? e.message : String(e)
   }
 }
@@ -77,11 +114,7 @@ async function attempt(action: () => Promise<void>) {
 onMounted(() =>
   attempt(async () => {
     catalog.value = await api.catalog()
-    try {
-      scene.value = await api.scene()
-    } catch (e) {
-      if (!(e instanceof ApiError && e.status === 409)) throw e
-    }
+    scene.value = await loadScene()
   }),
 )
 
