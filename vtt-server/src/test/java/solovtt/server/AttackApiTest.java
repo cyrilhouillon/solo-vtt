@@ -87,7 +87,7 @@ class AttackApiTest {
     @Test
     void uneCibleHorsDAllongeEstRefuseeAvecLaRaison() {
         attaquer("guerriere-1", "melee:Épée longue", "gobelin-1").statusCode(400)
-                .body("message", equalTo("Épée longue : cible hors d'allonge, 10,5 m pour une allonge de 1,5 m"));
+                .body("message", equalTo("Épée longue : cible à 10,5 m, hors d'allonge (1,5 m)"));
 
         assertEquals(List.of(), journal());
     }

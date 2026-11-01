@@ -65,8 +65,7 @@ function signed(value: number): string {
           v-if="actions"
           type="button"
           :class="{ aiming: aiming === attack.id }"
-          :aria-pressed="aiming === attack.id"
-          :aria-label="`Attaquer avec ${attack.label}`"
+          :aria-label="aiming === attack.id ? `Annuler l'attaque ${attack.label}` : `Attaquer avec ${attack.label}`"
           @click="emit('attack', attack)"
         >
           {{ aiming === attack.id ? 'Annuler' : 'Attaquer' }}

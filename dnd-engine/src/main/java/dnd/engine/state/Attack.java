@@ -51,8 +51,7 @@ public record Attack(Weapon weapon, Mode mode) {
         double limit = mode == Mode.MELEE ? weapon.reach() : weapon.range().longRange();
         if (distanceMetres <= limit + EPSILON) return Optional.empty();
         String what = mode == Mode.MELEE ? "hors d'allonge" : "au-delà de la portée longue";
-        return Optional.of("%s : cible %s, %s %s".formatted(label(), what, length(distanceMetres, unit),
-                mode == Mode.MELEE ? "pour une allonge de " + length(limit, unit) : "pour " + length(limit, unit)));
+        return Optional.of("%s : cible à %s, %s (%s)".formatted(label(), length(distanceMetres, unit), what, length(limit, unit)));
     }
 
     private static String length(double metres, DistanceUnit unit) {

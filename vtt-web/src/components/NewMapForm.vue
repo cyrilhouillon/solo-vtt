@@ -48,8 +48,8 @@ function replace() {
 }
 
 function describeLoss(count: number): string {
-  if (count === 0) return ''
-  return count === 1 ? ' et sa créature' : ` et ses ${count} créatures`
+  if (count === 0) return ' et son journal'
+  return count === 1 ? ', sa créature et son journal' : `, ses ${count} créatures et son journal`
 }
 
 const unitSymbol = (u: DistanceUnit) => (u === 'METRE' ? 'm' : 'ft')

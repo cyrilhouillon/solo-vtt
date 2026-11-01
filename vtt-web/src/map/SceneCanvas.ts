@@ -1,6 +1,7 @@
 import Konva from 'konva'
 import { formatLength, type CreatureKind, type SceneView, type TokenView } from '../types'
 import { CELL, occupant, round, snapToCell, type Point } from './grid'
+import { rangeVerdict, type RangeVerdict } from './range'
 
 /** Ce que la carte signale ; les coordonnées sont dans l'unité de la carte. */
 export interface SceneCanvasEvents {
@@ -26,9 +27,14 @@ export interface SceneCanvasState {
  */
 export interface Targeting {
   attackerId: string
+  /** Allonge au corps à corps, ou portée à distance (lancer compris). */
+  measuredBy: 'reach' | 'range'
   /** Allonge, ou portée normale puis longue (`dashed`). */
   circles: { radius: number; dashed: boolean }[]
 }
+
+/** Ce que la distance à l'attaquant permet, pour une créature survolée en ciblage. */
+type TargetHint = RangeVerdict & { distance: number }
 
 const MARGIN = 16
 const FONT = "'Alegreya Sans', system-ui, sans-serif"
@@ -153,9 +159,9 @@ export class SceneCanvas {
     // Les noms passent au-dessus de tous les jetons ; ceux des jetons sélectionnés en dernier.
     const names = new Konva.Group({ listening: false })
     const ordered = [...scene.tokens].sort((a, b) => Number(selected.includes(a.id)) - Number(selected.includes(b.id)))
-    const reachable = this.reachable(scene, this.state.targeting)
+    const verdictOf = this.verdicts(scene, this.state.targeting)
     for (const token of ordered) {
-      this.drawToken(scene, token, selected.includes(token.id), placing === null, names, reachable(token))
+      this.drawToken(scene, token, selected.includes(token.id), placing === null, names, verdictOf(token))
     }
     this.layer.add(names)
     if (measure) this.layer.add(measure)
@@ -267,14 +273,18 @@ export class SceneCanvas {
   }
 
   /**
-   * En ciblage, une créature hors de l'allonge ou de la portée longue est estompée.
-   * Indicatif : la distance qui fait foi est celle du serveur.
+   * En ciblage, la distance de chaque créature à l'attaquant et ce qu'elle permet ; `null` pour
+   * l'attaquant et hors ciblage. Indicatif : la distance qui fait foi est celle du serveur.
    */
-  private reachable(scene: SceneView, targeting: Targeting | null): (token: TokenView) => boolean {
+  private verdicts(scene: SceneView, targeting: Targeting | null): (token: TokenView) => TargetHint | null {
     const attacker = targeting && scene.tokens.find((t) => t.id === targeting.attackerId)
-    if (!targeting || !attacker || !targeting.circles.length) return () => true
-    const limit = Math.max(...targeting.circles.map((c) => c.radius))
-    return (token) => token.id === attacker.id || Math.hypot(token.x - attacker.x, token.y - attacker.y) <= limit
+    if (!targeting || !attacker) return () => null
+    return (token) => {
+      if (token.id === attacker.id) return null
+      const distance = Math.hypot(token.x - attacker.x, token.y - attacker.y)
+      const verdict = rangeVerdict(targeting, distance)
+      return verdict && { ...verdict, distance }
+    }
   }
 
   private gridLine(points: number[]): Konva.Line {
@@ -341,13 +351,13 @@ export class SceneCanvas {
     isSelected: boolean,
     clickable: boolean,
     names: Konva.Group,
-    reachable: boolean,
+    hint: TargetHint | null,
   ): void {
     const radius = this.tokenRadius(scene)
     const x = this.toPixelsX(token.x)
     const y = this.toPixelsY(token.y)
     const down = token.hitPoints === 0
-    const targeting = this.state?.targeting ?? null
+    const reachable = hint?.allowed ?? true
     // En placement, un clic sur un jeton vise la case : il traverse jusqu'au sol.
     // Un jeton en attente du serveur est estompé et ne réagit pas encore ; hors de portée aussi, estompé.
     const opacity = token.pending ? 0.55 : reachable ? 1 : 0.4
@@ -385,9 +395,14 @@ export class SceneCanvas {
     full.visible(isSelected)
     full.move({ x, y })
     names.add(full)
-    // En ciblage, la cible envisagée est cerclée de laiton.
+    // En ciblage, la cible envisagée est cerclée de laiton, et sa distance dit ce qu'elle permet.
     const ring = new Konva.Circle({ radius: radius * 1.35, stroke: this.colors.live, strokeWidth: 3, visible: false, listening: false })
     group.add(ring)
+    const rangeLabel = hint && this.rangeLabel(scene, hint, radius)
+    if (rangeLabel) {
+      rangeLabel.move({ x, y })
+      names.add(rangeLabel)
+    }
     group.on('click tap', (e) => {
       e.cancelBubble = true
       this.events.onTokenClick(token.id)
@@ -396,16 +411,45 @@ export class SceneCanvas {
       this.stage.container().style.cursor = 'pointer'
       full.visible(true)
       full.moveToTop()
-      ring.visible(targeting !== null && token.id !== targeting.attackerId && reachable)
+      ring.visible(hint !== null && reachable)
+      rangeLabel?.visible(true)
+      rangeLabel?.moveToTop()
       this.layer.batchDraw()
     })
     group.on('mouseleave', () => {
       this.stage.container().style.cursor = ''
       full.visible(isSelected)
       ring.visible(false)
+      rangeLabel?.visible(false)
       this.layer.batchDraw()
     })
     this.layer.add(group)
+  }
+
+  /** Distance et verdict de portée, au-dessus du jeton survolé ; cerclé de laiton si la cible est permise. */
+  private rangeLabel(scene: SceneView, hint: TargetHint, radius: number): Konva.Label {
+    const label = new Konva.Label({ y: -radius - 6, listening: false, visible: false })
+    label.add(
+      new Konva.Tag({
+        fill: this.colors.labelGround,
+        stroke: hint.allowed ? this.colors.live : undefined,
+        strokeWidth: 1,
+        cornerRadius: 4,
+        pointerDirection: 'down',
+        pointerWidth: 10,
+        pointerHeight: 5,
+      }),
+      new Konva.Text({
+        text: `${formatLength(hint.distance, scene.unitSymbol)} · ${hint.label}`,
+        fontSize: 15,
+        fontStyle: '700',
+        fontFamily: FONT,
+        fill: this.colors.label,
+        padding: 4,
+        wrap: 'none',
+      }),
+    )
+    return label
   }
 
   /** Étiquette du nom complet, sous le jeton. */

@@ -8,6 +8,7 @@ import AppIcon from './AppIcon.vue'
  * C'est le double accessible de la carte, et le seul moyen de les retirer au clavier.
  * `aiming` : un ciblage est en cours ; choisir une ligne vise la créature.
  * `shown` et `target` : créatures des onglets Feuille et Cible.
+ * `ranges` : en ciblage, ce que la distance permet pour chaque créature (indicatif).
  */
 const props = defineProps<{
   tokens: TokenView[]
@@ -15,6 +16,7 @@ const props = defineProps<{
   shown: string | null
   target: string | null
   aiming: boolean
+  ranges: Record<string, string>
 }>()
 const emit = defineEmits<{ select: [tokenId: string]; remove: [tokenId: string] }>()
 
@@ -96,10 +98,11 @@ function health(token: TokenView): number {
             <td class="num figure">{{ token.armorClass ?? '…' }}</td>
             <td class="state-col">
               <span class="state">
-              <span v-if="token.pending" class="tag">pose en cours…</span>
+              <span v-if="token.pending" class="tag">Pose en cours…</span>
               <span v-else-if="isDown(token)" class="tag down-tag">À terre</span>
               <span v-if="token.id === shown" class="tag">Feuille</span>
               <span v-if="token.id === target" class="tag">Cible</span>
+              <span v-if="aiming && ranges[token.id]" class="tag">{{ ranges[token.id] }}</span>
               </span>
             </td>
             <td class="act">

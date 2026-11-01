@@ -25,7 +25,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     // Sans message, un 502-504 vient du proxy de Vite : vtt-server ne répond pas.
-    const fallback = response.status >= 502 && response.status <= 504 ? UNREACHABLE : `Erreur du serveur (${response.status})`
+    const fallback = response.status >= 502 && response.status <= 504 ? UNREACHABLE : `Le serveur a échoué (erreur ${response.status}). Réessayer ; si l'erreur persiste, voir la console de vtt-server.`
     const message = body?.message ?? fallback
     throw new ApiError(response.status, message)
   }

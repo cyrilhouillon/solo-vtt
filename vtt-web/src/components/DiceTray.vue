@@ -26,7 +26,7 @@ defineProps<{ result: TrayResult | null }>()
           <span class="hp">{{ result.target.hitPoints === 0 ? 'à terre' : `${result.target.hitPoints} / ${result.target.maxHitPoints} PV` }}</span>
         </p>
       </template>
-      <p v-else class="idle">La piste reçoit chaque jet du moteur.</p>
+      <p v-else class="idle">Aucune attaque pour l'instant : le verdict du moteur s'affichera ici.</p>
     </div>
   </div>
 </template>

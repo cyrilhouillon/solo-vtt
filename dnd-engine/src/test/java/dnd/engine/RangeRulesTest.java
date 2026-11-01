@@ -109,7 +109,7 @@ class RangeRulesTest {
 
         var refused = assertThrows(IllegalArgumentException.class, () -> attack(e, MELEE_SWORD, Math.hypot(1.5, 1.5)));
 
-        assertEquals("Épée longue : cible hors d'allonge, 2,1 m pour une allonge de 1,5 m", refused.getMessage());
+        assertEquals("Épée longue : cible à 2,1 m, hors d'allonge (1,5 m)", refused.getMessage());
         assertTrue(e.events().isEmpty());
     }
 
@@ -119,7 +119,7 @@ class RangeRulesTest {
 
         var refused = assertThrows(IllegalArgumentException.class, () -> attack(e, BOW, 97));
 
-        assertEquals("Arc court : cible au-delà de la portée longue, 97 m pour 96 m", refused.getMessage());
+        assertEquals("Arc court : cible à 97 m, au-delà de la portée longue (96 m)", refused.getMessage());
         assertTrue(e.events().isEmpty());
     }
 
@@ -130,7 +130,7 @@ class RangeRulesTest {
         var refused = assertThrows(IllegalArgumentException.class,
                 () -> AttackAction.of("a", THROWN_DAGGER, "c", 65, DistanceUnit.FOOT, state));
 
-        assertEquals("Dague (lancer) : cible au-delà de la portée longue, 65 ft pour 60 ft", refused.getMessage());
+        assertEquals("Dague (lancer) : cible à 65 ft, au-delà de la portée longue (60 ft)", refused.getMessage());
     }
 
     @Test

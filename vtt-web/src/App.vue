@@ -10,6 +10,7 @@ import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
 import TokenBoard from './components/TokenBoard.vue'
 import { CELL, occupant } from './map/grid'
+import { rangeVerdict } from './map/range'
 import type { Targeting } from './map/SceneCanvas'
 import { initialTheme, saveTheme, type Theme } from './theme'
 import {
@@ -81,7 +82,22 @@ const targetingView = computed<Targeting | null>(() => {
           { radius: range.longRange, dashed: true },
         ]
       : []
-  return { attackerId: t.attackerId, circles }
+  return { attackerId: t.attackerId, measuredBy: reach ? 'reach' : 'range', circles }
+})
+
+/** En ciblage, ce que la distance permet pour chaque créature, montré dans le tableau. */
+const rangeLabels = computed<Record<string, string>>(() => {
+  const view = targetingView.value
+  const tokens = scene.value?.tokens ?? []
+  const attacker = view && tokens.find((t) => t.id === view.attackerId)
+  if (!view || !attacker) return {}
+  const labels: Record<string, string> = {}
+  for (const token of tokens) {
+    if (token.id === attacker.id) continue
+    const verdict = rangeVerdict(view, Math.hypot(token.x - attacker.x, token.y - attacker.y))
+    if (verdict) labels[token.id] = verdict.label
+  }
+  return labels
 })
 /** Résultat de la dernière action, affiché dans la barre d'état et lu par les lecteurs d'écran. */
 const notice = ref('')
@@ -150,7 +166,7 @@ async function resync(): Promise<string> {
     targetSheet.value = null
     lastResult.value = null
     drawer.value = 'map'
-    return "Le serveur n'a plus de carte : en créer une nouvelle."
+    return "Le serveur n'a plus de carte (redémarrage ?). En créer une nouvelle."
   }
   targeting.value = null
   journal.value = await api.journal()
@@ -159,7 +175,7 @@ async function resync(): Promise<string> {
   selected.value = selected.value.filter((id) => ids.has(id))
   if (sheet.value && !ids.has(sheet.value.id)) sheet.value = null
   if (targetSheet.value && !ids.has(targetSheet.value.id)) targetSheet.value = null
-  return "La carte a changé ailleurs (autre onglet ?) : elle vient d'être rechargée. Refaire l'action si besoin."
+  return "La carte a été modifiée hors de cet onglet ; elle vient d'être rechargée. Refaire l'action si besoin."
 }
 
 async function attempt(action: () => Promise<void>) {
@@ -242,7 +258,7 @@ function onBackgroundClick(x: number, y: number, free: boolean) {
   }
   const taken = free || !scene.value ? undefined : occupant(scene.value, { x, y })
   if (taken) {
-    error.value = `Case occupée par ${taken.name}. Maj + clic pour poser sans caler sur la case.`
+    error.value = `Case occupée par ${taken.name}. Choisir une autre case, ou Maj + clic pour poser hors grille.`
     return
   }
   const entry = armedEntry.value
@@ -516,6 +532,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           :shown="sheet?.id ?? null"
           :target="targetSheet?.id ?? null"
           :aiming="targeting !== null"
+          :ranges="rangeLabels"
           @select="onTokenChosen"
           @remove="removeTokens([$event])"
         />
@@ -534,10 +551,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <strong v-if="notice" class="notice">{{ notice }}</strong>
           <template v-if="targeting">
             Ciblage : <strong>{{ targeting.attack.label }}</strong> de {{ targeting.attackerName }}. Cliquer sur la
-            cible ou la choisir dans le tableau ; Échap annule.
+            cible ou la choisir dans le tableau ; Échap annule.<template v-if="targetingView?.measuredBy === 'range'">
+              Hachures : portée longue, avec désavantage.</template>
           </template>
           <template v-else-if="armedEntry">
-            Pose : <strong>{{ armedEntry.name }}</strong>. Cliquer sur une case ; Maj + clic pose librement, Échap
+            Pose : <strong>{{ armedEntry.name }}</strong>. Cliquer sur une case ; Maj + clic pose hors grille, Échap
             arrête.
           </template>
           <template v-else-if="measure">
@@ -545,7 +563,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <strong>{{ formatLength(measure.value, scene.unitSymbol) }}</strong> ({{ cellsLabel(measure.cells) }})
           </template>
           <template v-else-if="!notice">
-            Sélectionner deux créatures pour mesurer leur distance ; Suppr retire la sélection.
+            Sélectionner deux créatures pour mesurer leur distance ; Suppr retire de la carte les créatures sélectionnées.
           </template>
         </p>
         <DiceTray :result="lastResult" />
