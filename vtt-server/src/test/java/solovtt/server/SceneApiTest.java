@@ -65,8 +65,11 @@ class SceneApiTest {
                 .body("maxHitPoints", equalTo(13))
                 .body("speed.value", equalTo(9.0f))
                 .body("speed.unitSymbol", equalTo("m"))
-                .body("weapon.name", equalTo("Épée courte"))
-                .body("weapon.damage", equalTo("1d6+3"))
+                .body("attacks.label", equalTo(java.util.List.of("Épée courte", "Arc court")))
+                .body("attacks[0].damage", equalTo("1d6+3"))
+                .body("attacks[0].reach.value", equalTo(1.5f))
+                .body("attacks[1].range.normal", equalTo(24.0f))
+                .body("attacks[1].range.longRange", equalTo(96.0f))
                 .body("vulnerabilities", hasItems("contondants"));
     }
 
