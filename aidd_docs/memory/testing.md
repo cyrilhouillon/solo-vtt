@@ -21,3 +21,4 @@
 ## Lancer
 
 - `mvn test` depuis la racine.
+- Le serveur (8080) et le client (5173) de développement sont lancés par l'utilisateur depuis les lanceurs IntelliJ. Ne jamais les arrêter : valider le parcours dans son Chrome via l'extension Claude in Chrome sur ces ports, ou lancer ses propres serveurs sur d'autres ports (par exemple `-Dquarkus.http.port=8081` et `vite --port 5174`, en redirigeant `/api` vers 8081). Les tests navigateur modifient la session en mémoire du serveur visé.
