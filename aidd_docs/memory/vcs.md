@@ -2,7 +2,7 @@
 
 ## Configuration
 
-- Branche principale : `main` (le dépôt local est encore sur `master`, à renommer).
+- Branche principale : `main`.
 - Plateforme : GitHub, `cyrilhouillon/solo-vtt`.
 - Tickets : aucun outil pour l'instant ; GitHub Issues si le besoin apparaît.
 - Hooks : aucun.
