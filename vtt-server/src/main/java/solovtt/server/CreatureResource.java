@@ -1,5 +1,8 @@
 package solovtt.server;
 
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
@@ -17,6 +20,9 @@ public class CreatureResource {
     /** La feuille d'une créature posée sur la carte. */
     @GET
     @Path("/{id}")
+    @APIResponse(responseCode = "200", description = "La feuille, longueurs dans l'unité de la carte")
+    @APIResponse(responseCode = "404", description = "Créature inconnue",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
     public Dtos.CreatureSheetDto sheet(@PathParam("id") String id) {
         var creature = session.creature(id).orElseThrow(() -> new NotFoundException("Créature inconnue : " + id));
         var unit = session.scene().orElseThrow().unit();

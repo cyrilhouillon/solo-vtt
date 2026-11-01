@@ -1,5 +1,8 @@
 package solovtt.server;
 
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -22,6 +25,10 @@ public class SceneResource {
 
     /** Crée une carte vide ; la précédente et ses créatures disparaissent. */
     @POST
+    @APIResponse(responseCode = "201", description = "La carte créée",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.SceneDto.class)))
+    @APIResponse(responseCode = "400", description = "Dimensions ou unité invalides",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
     @ResponseStatus(201)
     public Dtos.SceneDto create(Dtos.NewSceneRequest request) {
         if (request == null || request.unit() == null) {
@@ -31,6 +38,9 @@ public class SceneResource {
     }
 
     @GET
+    @APIResponse(responseCode = "200", description = "La carte et ses jetons")
+    @APIResponse(responseCode = "409", description = "Aucune carte",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
     public Dtos.SceneDto get() {
         return Dtos.SceneDto.of(requireScene(), session);
     }
@@ -38,6 +48,14 @@ public class SceneResource {
     @POST
     @Path("/tokens")
     @ResponseStatus(201)
+    @APIResponse(responseCode = "201", description = "Le jeton posé",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.TokenDto.class)))
+    @APIResponse(responseCode = "400", description = "Créature du catalogue absente de la requête",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
+    @APIResponse(responseCode = "404", description = "Entrée de catalogue inconnue",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
+    @APIResponse(responseCode = "409", description = "Aucune carte, ou une décision attend une réponse",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
     public Dtos.TokenDto place(Dtos.PlaceTokenRequest request) {
         requireScene();
         if (request == null || request.catalogId() == null) {
@@ -53,6 +71,11 @@ public class SceneResource {
     @DELETE
     @Path("/tokens/{id}")
     @ResponseStatus(204)
+    @APIResponse(responseCode = "204", description = "Jeton et créature retirés")
+    @APIResponse(responseCode = "404", description = "Jeton inconnu",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
+    @APIResponse(responseCode = "409", description = "Aucune carte, ou une décision attend une réponse",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
     public void remove(@PathParam("id") String id) {
         if (!requireScene().contains(id)) throw new NotFoundException("Jeton inconnu : " + id);
         session.remove(id);
