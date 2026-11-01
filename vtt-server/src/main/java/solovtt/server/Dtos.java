@@ -50,9 +50,9 @@ final class Dtos {
                             int hitPoints, int maxHitPoints, Measure speed, WeaponDto weapon,
                             List<String> resistances, List<String> vulnerabilities) {
 
-        /** La vitesse est donnée dans l'unité de la carte, à la conversion D&D de 1,5 m pour 5 ft. */
+        /** La vitesse, en mètres dans le moteur, est donnée dans l'unité de la carte. */
         static CreatureSheetDto of(Creature c, CatalogEntry.Kind kind, DistanceUnit unit) {
-            double speed = unit == DistanceUnit.FOOT ? c.speed() / 1.5 * 5 : c.speed();
+            double speed = DistanceUnit.METRE.convert(c.speed(), unit);
             var w = c.weapon();
             WeaponDto weapon = w == null ? null : new WeaponDto(w.name(), w.attackBonus(),
                     w.diceNotation() + (w.damageBonus() == 0 ? "" : "%+d".formatted(w.damageBonus())),
