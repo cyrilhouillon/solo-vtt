@@ -23,7 +23,7 @@ function toggle(id: string) {
   <section class="catalog" aria-labelledby="catalog-title">
     <h2 id="catalog-title">Catalogue SRD</h2>
     <p class="hint">
-      {{ disabled ? 'Créer une carte pour poser des créatures.' : 'Choisir une créature, puis cliquer sur la carte.' }}
+      {{ disabled ? 'Créer une carte pour poser des créatures.' : 'Choisir une créature, puis cliquer sur une case de la carte.' }}
     </p>
     <div v-for="group in groups" :key="group.kind" class="group">
       <h3>{{ group.title }}</h3>
@@ -43,7 +43,7 @@ function toggle(id: string) {
         </li>
       </ul>
     </div>
-    <p class="attribution">Créatures tirées du SRD 5.2.1 (CC-BY-4.0).</p>
+    <p class="attribution">Créatures tirées du <span class="nowrap">SRD 5.2.1 (CC-BY-4.0)</span>.</p>
   </section>
 </template>
 
@@ -80,6 +80,9 @@ ul {
 .attribution {
   margin-top: auto;
 }
+.nowrap {
+  white-space: nowrap;
+}
 .entry {
   width: 100%;
   display: flex;
@@ -99,13 +102,15 @@ ul {
 .swatch {
   width: 0.7rem;
   height: 0.7rem;
-  border-radius: 50%;
   flex: none;
 }
+/* Même forme que sur la carte : disque pour un personnage, carré pour un monstre. */
 .character .swatch {
+  border-radius: 50%;
   background: var(--token-character);
 }
 .monster .swatch {
+  border-radius: 2px;
   background: var(--token-monster);
 }
 </style>

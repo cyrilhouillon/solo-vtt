@@ -29,6 +29,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const message = body?.message ?? fallback
     throw new ApiError(response.status, message)
   }
+  if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
 }
 
@@ -42,6 +43,9 @@ export const api = {
 
   placeToken: (catalogId: string, x: number, y: number) =>
     request<TokenView>('/api/scene/tokens', { method: 'POST', body: JSON.stringify({ catalogId, x, y }) }),
+
+  removeToken: (tokenId: string) =>
+    request<void>(`/api/scene/tokens/${encodeURIComponent(tokenId)}`, { method: 'DELETE' }),
 
   sheet: (creatureId: string) => request<CreatureSheet>(`/api/creatures/${encodeURIComponent(creatureId)}`),
 }
