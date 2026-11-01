@@ -1,6 +1,6 @@
 ---
 objective: "Depuis le navigateur, le joueur crée une carte vide en mètres ou en pieds, y place des personnages et des monstres du catalogue SRD, lit la distance entre deux créatures et consulte la feuille de chacune."
-status: in-progress
+status: implemented
 ---
 
 # Plan: préparer une scène de combat
