@@ -11,8 +11,8 @@ web
 Vue 3 + TypeScript (Vite) pour le client web.
 
 - Raison : choix de l'utilisateur, qui connaît Vue ; écosystème mature et API stable. TypeScript type les contrats du moteur (`StepResult`, `Decision`, événements).
-- La carte est un module de rendu canvas isolé du framework (bibliothèque type PixiJS ou Konva, non choisie). Le glisser des jetons reste local ; le déplacement n'est soumis au moteur qu'au lâcher. Vue gère les panneaux (feuille, journal, décisions, initiative).
-- Le moteur reste en Java (`vtt-engine`, `dnd-engine`) et tourne hors du navigateur. Le transport client ↔ moteur (HTTP, WebSocket…) n'est pas encore décidé.
+- La carte est un module de rendu canvas Konva, isolé du framework (`vtt-web/src/map/`). Le glisser des jetons reste local ; le déplacement n'est soumis au moteur qu'au lâcher. Vue gère les panneaux (feuille, journal, décisions, initiative).
+- Le moteur reste en Java (`vtt-engine`, `dnd-engine`) et tourne hors du navigateur, dans un serveur Quarkus (`vtt-server`). Le client lui parle en HTTP REST JSON ; WebSocket viendra si le serveur doit pousser.
 
 ## Users
 
@@ -45,7 +45,7 @@ Vue 3 + TypeScript (Vite) pour le client web.
 - La carte ne connaît que des distances réelles ; chaque système décide de leur usage. Les entités d'un autre système s'affichent et se déplacent mais ne sont pas ciblables par les règles du système actif.
 - Vocabulaire : Résolution, Décision, Réaction, Événement, Journal, CA, Avantage/Désavantage (voir `aidd_docs/memory/project-brief.md`).
 - Langue : interface et messages en français.
-- Indécis : transport client ↔ moteur ; confiance et distribution des modules tiers.
+- Indécis : confiance et distribution des modules tiers.
 
 ## Brand Commitments
 
