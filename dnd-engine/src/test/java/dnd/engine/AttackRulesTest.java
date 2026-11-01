@@ -3,13 +3,13 @@ package dnd.engine;
 import dnd.engine.attack.AttackAction;
 import dnd.engine.attack.AttackContext;
 import dnd.engine.attack.AttackPhase;
-import dnd.engine.core.Decision;
-import dnd.engine.core.Dice;
-import dnd.engine.core.Engine;
-import dnd.engine.core.Listener;
-import dnd.engine.core.Resolution;
-import dnd.engine.core.RuleBook;
-import dnd.engine.core.StepResult;
+import dnd.engine.attack.CoreAttackRules.AttackRule;
+import solovtt.engine.Decision;
+import solovtt.engine.Dice;
+import solovtt.engine.Engine;
+import solovtt.engine.Resolution;
+import solovtt.engine.RuleBook;
+import solovtt.engine.StepResult;
 import dnd.engine.events.GameEvent;
 import dnd.engine.rules.Bless;
 import dnd.engine.rules.DuelingStyle;
@@ -45,15 +45,15 @@ class AttackRulesTest {
                 .knows(ShieldReaction.SPELL).spellSlots(1, 2);
     }
 
-    static Engine engine(GameState state, int... dice) {
-        return new Engine(state, StandardRules.create(), Dice.scripted(dice));
+    static Engine<GameState, GameEvent> engine(GameState state, int... dice) {
+        return new Engine<>(state, StandardRules.create(), Dice.scripted(dice));
     }
 
-    static StepResult attack(Engine e, String attacker, String target) {
+    static StepResult attack(Engine<GameState, GameEvent> e, String attacker, String target) {
         return e.submit(AttackAction.of(attacker, target, e.state()));
     }
 
-    static <T extends GameEvent> List<T> eventsOf(Engine e, Class<T> type) {
+    static <T extends GameEvent> List<T> eventsOf(Engine<GameState, GameEvent> e, Class<T> type) {
         return e.events().stream().filter(type::isInstance).map(type::cast).toList();
     }
 
@@ -193,10 +193,10 @@ class AttackRulesTest {
     @Test
     void prioriteDansUnePhase_puisOrdreDEnregistrement() {
         List<String> order = new ArrayList<>();
-        record Probe(String name, int priority, List<String> out) implements Listener<AttackPhase, AttackContext> {
+        record Probe(String name, int priority, List<String> out) implements AttackRule {
             public AttackPhase phase() { return AttackPhase.AFTER; }
             public int priority() { return priority; }
-            public Optional<Decision> handle(AttackContext ctx, Engine e) {
+            public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
                 out.add(name);
                 return Optional.empty();
             }
@@ -208,18 +208,18 @@ class AttackRulesTest {
         var state = new GameState().add(fighter().build())
                 .add(Creature.builder("cible", "Cible").armorClass(30).hitPoints(10).build());
 
-        new Engine(state, rules, Dice.scripted(2)).submit(AttackAction.of("guerriere", "cible", state));
+        new Engine<>(state, rules, Dice.scripted(2)).submit(AttackAction.of("guerriere", "cible", state));
 
         assertEquals(List.of("A", "B", "C"), order);
     }
 
     @Test
     void resolutionEmpilee_seResoutAvantLaSuite() {
-        RuleBook rules = StandardRules.create()
-                .register(new Listener<AttackPhase, AttackContext>() {
+        RuleBook<GameState, GameEvent> rules = StandardRules.create()
+                .register(new AttackRule() {
                     public AttackPhase phase() { return AttackPhase.AFTER; }
                     public int priority() { return 0; }
-                    public Optional<Decision> handle(AttackContext ctx, Engine e) {
+                    public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
                         // ex. un effet déclenché qui a sa propre résolution (et pourrait poser ses propres questions)
                         e.push(engine -> {
                             engine.emit(new GameEvent.RuleApplied("Test", "sous-résolution"));
@@ -228,17 +228,17 @@ class AttackRulesTest {
                         return Optional.empty();
                     }
                 })
-                .register(new Listener<AttackPhase, AttackContext>() {
+                .register(new AttackRule() {
                     public AttackPhase phase() { return AttackPhase.AFTER; }
                     public int priority() { return 1; }
-                    public Optional<Decision> handle(AttackContext ctx, Engine e) {
+                    public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
                         e.emit(new GameEvent.RuleApplied("Test", "suite de l'attaque"));
                         return Optional.empty();
                     }
                 });
         var state = new GameState().add(fighter().build())
                 .add(Creature.builder("cible", "Cible").armorClass(30).hitPoints(10).build());
-        var e = new Engine(state, rules, Dice.scripted(2));
+        var e = new Engine<>(state, rules, Dice.scripted(2));
 
         e.submit(AttackAction.of("guerriere", "cible", state));
 

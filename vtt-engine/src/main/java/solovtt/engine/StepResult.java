@@ -1,4 +1,4 @@
-package dnd.engine.core;
+package solovtt.engine;
 
 /** Ce que l'appelant (UI, IA, réseau) reçoit quand le moteur rend la main. */
 public sealed interface StepResult {

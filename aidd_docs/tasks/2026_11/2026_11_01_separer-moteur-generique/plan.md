@@ -1,6 +1,6 @@
 ---
 objective: "Un module Maven vtt-engine porte le moteur générique sans aucun type D&D, dnd-engine en dépend, et les tests et la démo se comportent comme avant."
-status: pending
+status: implemented
 ---
 
 # Plan: séparer le moteur générique des règles D&D

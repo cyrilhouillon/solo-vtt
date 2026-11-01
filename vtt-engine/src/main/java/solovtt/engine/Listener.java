@@ -1,6 +1,4 @@
-package dnd.engine.core;
-
-import dnd.engine.state.GameState;
+package solovtt.engine;
 
 import java.util.Optional;
 
@@ -11,10 +9,12 @@ import java.util.Optional;
  * des listeners : il n'y a pas de différence de nature entre « la règle » et
  * « l'exception à la règle », ce qui permet d'ajouter n'importe quel effet sans toucher au moteur.</p>
  *
+ * @param <S> le type d'état du système de jeu
+ * @param <E> le type d'événement du système de jeu
  * @param <P> l'enum des phases du pipeline concerné (ex. AttackPhase)
  * @param <C> le contexte mutable partagé par les listeners de ce pipeline
  */
-public interface Listener<P extends Enum<P>, C> {
+public interface Listener<S, E extends Event<S>, P extends Enum<P>, C> {
 
     P phase();
 
@@ -28,7 +28,7 @@ public interface Listener<P extends Enum<P>, C> {
     }
 
     /** Évalué au moment où vient le tour du listener, pas au début du pipeline. */
-    default boolean appliesTo(C ctx, GameState state) {
+    default boolean appliesTo(C ctx, S state) {
         return true;
     }
 
@@ -36,5 +36,5 @@ public interface Listener<P extends Enum<P>, C> {
      * Applique la règle. Retourne une décision pour suspendre le moteur
      * jusqu'à ce que le joueur concerné ait choisi.
      */
-    Optional<Decision> handle(C ctx, Engine engine);
+    Optional<Decision> handle(C ctx, Engine<S, E> engine);
 }

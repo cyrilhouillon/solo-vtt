@@ -1,13 +1,16 @@
-package dnd.engine.core;
+package solovtt.engine;
 
 /**
  * Quelque chose en cours de résolution sur la pile du moteur (une attaque, un sort…).
  * Une résolution avance par étapes et peut s'interrompre pour deux raisons :
  * une décision à prendre, ou une autre résolution empilée par-dessus (ex. Contresort).
+ *
+ * @param <S> le type d'état du système de jeu
+ * @param <E> le type d'événement du système de jeu
  */
-public interface Resolution {
+public interface Resolution<S, E extends Event<S>> {
 
-    Advance advance(Engine engine);
+    Advance advance(Engine<S, E> engine);
 
     sealed interface Advance {
     }

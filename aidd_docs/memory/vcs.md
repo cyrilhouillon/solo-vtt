@@ -16,7 +16,7 @@
 ## Commits
 
 - Convention : Conventional Commits.
-- Format : `type(scope): description`, scope = zone du code (`core`, `attack`, `rules`…).
+- Format : `type(scope): description`, scope = zone du code (`engine`, `attack`, `rules`…).
 - Règles : en français, à l'impératif, en minuscules, sans point final.
 
 ## Stratégie de commit

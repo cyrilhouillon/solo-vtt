@@ -1,4 +1,4 @@
-package dnd.engine.core;
+package solovtt.engine;
 
 import java.util.Comparator;
 import java.util.List;
@@ -11,7 +11,7 @@ import java.util.Optional;
  * le pipeline peut s'arrêter à n'importe quel moment et reprendre plus tard, sans thread
  * bloqué ni callback imbriqué. C'est ce qui rend les réactions (Bouclier, Contresort…) possibles.</p>
  */
-public final class Pipeline<P extends Enum<P>, C> implements Resolution {
+public final class Pipeline<S, E extends Event<S>, P extends Enum<P>, C> implements Resolution<S, E> {
 
     private final String name;
     private final Class<P> phaseType;
@@ -19,7 +19,7 @@ public final class Pipeline<P extends Enum<P>, C> implements Resolution {
     private final C context;
 
     private int phaseIndex = -1;
-    private List<Listener<P, C>> currentPhase = List.of();
+    private List<Listener<S, E, P, C>> currentPhase = List.of();
     private int stepIndex = 0;
 
     public Pipeline(String name, Class<P> phaseType, C context) {
@@ -34,7 +34,7 @@ public final class Pipeline<P extends Enum<P>, C> implements Resolution {
     }
 
     @Override
-    public Advance advance(Engine engine) {
+    public Advance advance(Engine<S, E> engine) {
         while (true) {
             if (stepIndex >= currentPhase.size()) {
                 if (++phaseIndex >= phases.length) {
@@ -44,7 +44,7 @@ public final class Pipeline<P extends Enum<P>, C> implements Resolution {
                 continue;
             }
 
-            Listener<P, C> listener = currentPhase.get(stepIndex++);
+            Listener<S, E, P, C> listener = currentPhase.get(stepIndex++);
             if (!listener.appliesTo(context, engine.state())) {
                 continue;
             }
@@ -65,10 +65,10 @@ public final class Pipeline<P extends Enum<P>, C> implements Resolution {
      * phases précédentes), puis triés par priorité. Le tri de Stream est stable :
      * à priorité égale, l'ordre d'enregistrement est conservé.
      */
-    private void enterPhase(Engine engine, P phase) {
+    private void enterPhase(Engine<S, E> engine, P phase) {
         currentPhase = engine.rules().<P, C>listenersFor(phaseType).stream()
                 .filter(l -> l.phase() == phase)
-                .sorted(Comparator.comparingInt((Listener<P, C> l) -> l.priority()))
+                .sorted(Comparator.comparingInt((Listener<S, E, P, C> l) -> l.priority()))
                 .toList();
         stepIndex = 0;
     }

@@ -1,5 +1,6 @@
 package dnd.engine.events;
 
+import solovtt.engine.Event;
 import dnd.engine.state.DamageType;
 import dnd.engine.state.GameState;
 
@@ -13,7 +14,7 @@ import java.util.List;
  * <p>Les jets de dés sont des événements : pour rejouer une partie, on rejoue le journal,
  * on ne relance pas les dés.</p>
  */
-public sealed interface GameEvent {
+public sealed interface GameEvent extends Event<GameState> {
 
     default void apply(GameState state) {
     }

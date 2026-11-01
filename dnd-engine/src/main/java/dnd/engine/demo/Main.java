@@ -1,11 +1,11 @@
 package dnd.engine.demo;
 
 import dnd.engine.attack.AttackAction;
-import dnd.engine.core.Decision;
-import dnd.engine.core.Dice;
-import dnd.engine.core.Engine;
-import dnd.engine.core.Resolution;
-import dnd.engine.core.StepResult;
+import solovtt.engine.Decision;
+import solovtt.engine.Dice;
+import solovtt.engine.Engine;
+import solovtt.engine.Resolution;
+import solovtt.engine.StepResult;
 import dnd.engine.events.GameEvent;
 import dnd.engine.rules.Bless;
 import dnd.engine.rules.DuelingStyle;
@@ -21,12 +21,13 @@ import java.util.Arrays;
 import java.util.Scanner;
 
 /**
- * Démo en console.
+ * Démo en console, lancée depuis {@code dnd-engine/} après {@code mvn compile} à la racine
+ * (séparateur de classpath {@code ;} sous Windows, {@code :} ailleurs).
  *
  * <pre>
- *   java -cp target/classes dnd.engine.demo.Main                 # scénarios automatiques
- *   java -cp target/classes dnd.engine.demo.Main --interactif    # c'est toi qui décides pour la magicienne
- *   java -cp target/classes dnd.engine.demo.Main --seed=42       # autre tirage pour le scénario 1
+ *   java -cp "target/classes;../vtt-engine/target/classes" dnd.engine.demo.Main                 # scénarios automatiques
+ *   java -cp "target/classes;../vtt-engine/target/classes" dnd.engine.demo.Main --interactif    # c'est toi qui décides pour la magicienne
+ *   java -cp "target/classes;../vtt-engine/target/classes" dnd.engine.demo.Main --seed=42       # autre tirage pour le scénario 1
  * </pre>
  */
 public final class Main {
@@ -83,10 +84,10 @@ public final class Main {
     /** Boucle de pilotage : soumettre, puis répondre aux décisions jusqu'à ce que tout soit résolu. */
     static void play(GameState initial, Dice dice, String attackerId, String targetId, Controller controller) {
         GameState snapshot = initial.copy();
-        Engine engine = new Engine(initial, StandardRules.create(), dice);
+        Engine<GameState, GameEvent> engine = new Engine<>(initial, StandardRules.create(), dice);
         engine.subscribe(event -> print(engine, event));
 
-        Resolution attack = AttackAction.of(attackerId, targetId, engine.state());
+        Resolution<GameState, GameEvent> attack = AttackAction.of(attackerId, targetId, engine.state());
         StepResult result = engine.submit(attack);
 
         while (result instanceof StepResult.AwaitingDecision(Decision decision)) {
@@ -104,7 +105,7 @@ public final class Main {
                 + (identical ? "état identique ✔" : "DIFFÉRENT ✘"));
     }
 
-    static void print(Engine engine, GameEvent event) {
+    static void print(Engine<GameState, GameEvent> engine, GameEvent event) {
         String indent = event instanceof GameEvent.RuleApplied ? "      " : "    ";
         System.out.println(indent + event.describe(engine.state()));
     }
