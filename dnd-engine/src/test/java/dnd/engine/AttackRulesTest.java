@@ -13,6 +13,7 @@ import solovtt.engine.StepResult;
 import dnd.engine.events.GameEvent;
 import dnd.engine.rules.Bless;
 import dnd.engine.rules.DuelingStyle;
+import dnd.engine.rules.ReactionWindow;
 import dnd.engine.rules.ShieldReaction;
 import dnd.engine.rules.StandardRules;
 import dnd.engine.state.Condition;
@@ -123,7 +124,7 @@ class AttackRulesTest {
         var e = engine(state, 9, /* dégâts */ 5);
 
         var pending = ((StepResult.AwaitingDecision) attack(e, "guerriere", "magicienne")).decision();
-        e.answer(pending.id(), ShieldReaction.DECLINE);
+        e.answer(pending.id(), ReactionWindow.DECLINE);
 
         var mage = e.state().get("magicienne");
         assertEquals(14 - (5 + 3), mage.hitPoints());

@@ -1,68 +1,42 @@
 package dnd.engine.rules;
 
 import dnd.engine.attack.AttackContext;
-import dnd.engine.attack.AttackPhase;
-import dnd.engine.attack.CoreAttackRules.AttackRule;
-import solovtt.engine.Decision;
-import solovtt.engine.Engine;
 import dnd.engine.events.GameEvent;
 import dnd.engine.events.GameEvent.ArmorClassBonusApplied;
-import dnd.engine.events.GameEvent.ReactionUsed;
-import dnd.engine.events.GameEvent.RuleApplied;
 import dnd.engine.events.GameEvent.SpellSlotExpended;
 import dnd.engine.state.Creature;
 import dnd.engine.state.GameState;
-
-import java.util.List;
-import java.util.Optional;
+import solovtt.engine.Engine;
 
 /**
- * Bouclier (2024) : réaction déclenchée quand on est touché par un jet d'attaque.
- * +5 à la CA, y compris contre l'attaque déclencheuse, jusqu'au début du prochain tour.
+ * Bouclier (2024) : réaction « when you are hit by an attack roll » (SRD 5.2.1). +5 à la CA,
+ * y compris contre l'attaque déclencheuse, jusqu'au début du prochain tour.
  *
- * <p>C'est l'exemple type de règle qui SUSPEND le moteur : le jet est connu, le moteur
- * s'arrête et demande à la cible si elle veut réagir.</p>
- *
- * <p>Pour ne pas spammer le joueur, on ne propose le sort que s'il change le résultat.
- * Un vrai jeu pourrait laisser le choix au joueur via une option.</p>
+ * <p>Proposé seulement à la cible, et seulement s'il change le résultat. Le cas « ciblé par Projectile
+ * magique » viendra avec les sorts, dans la fenêtre de réaction de ce déclencheur.</p>
  */
-public final class ShieldReaction implements AttackRule {
+public final class ShieldReaction implements Reaction<AttackContext> {
 
     public static final String SPELL = "shield";
     public static final int BONUS = 5;
     public static final String CAST = "Lancer Bouclier";
-    public static final String DECLINE = "Ne rien faire";
 
-    public AttackPhase phase() { return AttackPhase.HIT_REACTIONS; }
+    public String name() { return "Bouclier"; }
 
-    public boolean appliesTo(AttackContext ctx, GameState s) {
-        Creature target = s.get(ctx.targetId());
-        return ctx.hit()
+    public String option() { return CAST; }
+
+    public boolean offeredTo(Creature reactor, AttackContext ctx, GameState s) {
+        return reactor.id().equals(ctx.targetId())
                 && !ctx.critical()                       // un 20 naturel touche quoi qu'il arrive
-                && target.reactionAvailable()
-                && target.knowsSpell(SPELL)
-                && target.lowestAvailableSlot().isPresent()
-                && ctx.total() < target.armorClass() + BONUS;
+                && reactor.knowsSpell(SPELL)
+                && reactor.lowestAvailableSlot().isPresent()
+                && ctx.total() < reactor.armorClass() + BONUS;
     }
 
-    public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
-        Creature target = e.state().get(ctx.targetId());
-        String targetId = target.id();
-        int slot = target.lowestAvailableSlot().getAsInt();
-
-        String prompt = "%s est touchée (%d contre CA %d). Lancer Bouclier (réaction, emplacement de niveau %d) ?"
-                .formatted(target.name(), ctx.total(), target.armorClass(), slot);
-
-        return Optional.of(e.ask(targetId, prompt, List.of(CAST, DECLINE), choice -> {
-            if (CAST.equals(choice)) {
-                e.emit(new ReactionUsed(targetId, "Bouclier"));
-                e.emit(new SpellSlotExpended(targetId, slot));
-                e.emit(new ArmorClassBonusApplied(targetId, "Bouclier", BONUS));
-                // TODO : retirer le bonus au début du prochain tour de la cible.
-                // Il faut pour ça une structure de tour (événement TurnStarted + effets à durée).
-            } else {
-                e.emit(new RuleApplied(e.state().get(targetId).name(), "renonce à Bouclier"));
-            }
-        }));
+    public void apply(Creature reactor, AttackContext ctx, Engine<GameState, GameEvent> e) {
+        e.emit(new SpellSlotExpended(reactor.id(), reactor.lowestAvailableSlot().getAsInt()));
+        e.emit(new ArmorClassBonusApplied(reactor.id(), "Bouclier", BONUS));
+        // TODO : retirer le bonus au début du prochain tour de la cible.
+        // Il faut pour ça une structure de tour (événement TurnStarted + effets à durée).
     }
 }

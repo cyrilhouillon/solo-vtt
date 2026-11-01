@@ -5,6 +5,8 @@ import solovtt.engine.RuleBook;
 import dnd.engine.events.GameEvent;
 import dnd.engine.state.GameState;
 
+import java.util.List;
+
 /** Assemble les règles disponibles. Chaque module (classe, sort, don) ne fait qu'ajouter des listeners. */
 public final class StandardRules {
 
@@ -18,6 +20,6 @@ public final class StandardRules {
                 .registerAll(RangeRules.all())
                 .register(new Bless())
                 .register(new DuelingStyle())
-                .register(new ShieldReaction());
+                .register(new AttackHitReactions(List.of(new ShieldReaction())));
     }
 }

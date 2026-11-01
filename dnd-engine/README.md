@@ -32,7 +32,7 @@ une seule fois pendant `ROLL`. L'ordre des listeners n'a donc aucune importance 
 **4. La priorité ne sert qu'à départager une même phase** (`Listener.priority()`).
 Plus petit = plus tôt ; à égalité, ordre d'enregistrement (tri stable).
 
-**5. Le moteur peut s'arrêter au milieu d'une action** (`Decision`, `Engine.answer`, `ShieldReaction`).
+**5. Le moteur peut s'arrêter au milieu d'une action** (`Decision`, `Engine.answer`, `ReactionWindow`).
 Un listener retourne une `Decision` ; le pipeline garde son curseur (phase + index) et le moteur rend la main
 avec `StepResult.AwaitingDecision`. Pas de thread bloqué : l'UI, une IA ou un client réseau répond quand il veut.
 

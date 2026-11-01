@@ -34,7 +34,7 @@ flowchart TD
   - `state/` : l'état du jeu (`GameState`, `Creature`, `Weapon`, `Attack` avec allonge et portée, conditions, types de dégâts).
   - `events/` : `GameEvent` (sealed, `extends Event<GameState>`), tout ce qui arrive et comment ça modifie l'état.
   - `attack/` : l'action « attaque », c'est-à-dire ses phases, son contexte, `AttackRule` et les règles de base 2024.
-  - `rules/` : les règles optionnelles (`RangeRules` pour la portée longue…) et `StandardRules`, qui assemble le `RuleBook`.
+  - `rules/` : les règles optionnelles (`RangeRules` pour la portée longue…), les réactions (`Reaction`, `ReactionWindow`, `AttackHitReactions`, `ShieldReaction`) et `StandardRules`, qui assemble le `RuleBook`.
   - `catalog/` : `SrdCatalog`, les créatures prêtes à l'emploi du SRD 5.2.1.
   - `demo/` : démonstration console.
 - `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `creatures/{id}`, `attacks`, `journal`, `decisions`).

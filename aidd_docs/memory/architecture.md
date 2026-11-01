@@ -24,6 +24,7 @@ flowchart LR
 ## Décisions clés
 
 - Tout est listener, même les règles de base (`CoreAttackRules`) : ajouter un sort, un don ou une capacité = écrire un listener et l'enregistrer dans `StandardRules`, sans toucher au moteur.
+- Une réaction n'est pas un listener mais une `Reaction<T>`, enregistrée auprès de la fenêtre de son déclencheur (`AttackHitReactions` pour une attaque qui touche). La fenêtre empile une `ReactionWindow` qui pose une seule question par créature, avec toutes ses réactions possibles plus « Ne rien faire » : la cible d'abord, puis les autres créatures. Une nouvelle réaction (Contresort) s'ajoute à la fenêtre de son déclencheur, sans nouvelle question.
 - Un ordre imposé par les règles devient une phase distincte, jamais une priorité. `Listener.priority()` ne départage qu'une même phase (plus petit = plus tôt, puis ordre d'enregistrement).
 - Accumuler puis résoudre : pendant `MODIFY_ROLL`, avantages, désavantages et dés bonus s'empilent dans `AttackContext` ; `ROLL` les résout une seule fois.
 - Le moteur est générique sur l'état `S` et l'événement `E extends Event<S>` (`Engine<S, E>`, `Listener<S, E, P, C>`…) ; il ne connaît aucun type de jeu. Côté D&D, `S = GameState` et `E = GameEvent`, et `AttackRule` évite de répéter les quatre paramètres.
