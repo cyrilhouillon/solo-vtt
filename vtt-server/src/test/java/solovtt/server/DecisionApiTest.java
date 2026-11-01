@@ -80,7 +80,7 @@ class DecisionApiTest {
                 .body("decision.id", notNullValue())
                 .body("decision.chooserId", equalTo("magicienne-1"))
                 .body("decision.chooserName", equalTo("Magicienne"))
-                .body("decision.prompt", equalTo("Magicienne est touchée (14 contre CA 12). Utiliser sa réaction ?"))
+                .body("decision.prompt", equalTo("Coup au but sur Magicienne (14 contre CA 12). Utiliser sa réaction ?"))
                 .body("decision.options", equalTo(List.of("Lancer Bouclier", "Ne rien faire")))
                 .body("entries.text", hasItem("d20 : 10"))
                 .body("entries.text", not(hasItem(containsString("subit"))))

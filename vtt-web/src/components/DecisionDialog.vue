@@ -10,18 +10,22 @@ const props = defineProps<{ decision: Decision | null; answering: boolean }>()
 const emit = defineEmits<{ answer: [option: string] }>()
 
 const dialog = ref<HTMLDialogElement | null>(null)
-const firstOption = ref<HTMLButtonElement[]>([])
-
+/**
+ * Une nouvelle question (une autre créature qui peut réagir) peut suivre la précédente, dialogue ouvert :
+ * il est rouvert pour que les lecteurs d'écran l'annoncent, et le focus revient sur sa première option.
+ */
 async function sync() {
   const el = dialog.value
   if (!el) return
-  if (props.decision && !el.open) {
-    el.showModal()
-    await nextTick()
-    firstOption.value[0]?.focus()
-  } else if (!props.decision && el.open) {
-    el.close()
+  if (!props.decision) {
+    if (el.open) el.close()
+    return
   }
+  if (el.open) el.close()
+  el.showModal()
+  await nextTick()
+  // Pas de tableau de refs : dans un v-for, Vue n'en garantit pas l'ordre.
+  el.querySelector<HTMLButtonElement>('.options button')?.focus()
 }
 
 /**
@@ -29,7 +33,7 @@ async function sync() {
  * ferme au second Échap sans passer par `cancel`. Filet : tant que la décision attend, il se rouvre.
  */
 function onClose() {
-  if (props.decision) void sync()
+  if (props.decision && !dialog.value?.open) void sync()
 }
 
 watch(() => props.decision?.id, sync)
@@ -53,7 +57,6 @@ onMounted(sync)
         <button
           v-for="option in decision.options"
           :key="option"
-          ref="firstOption"
           type="button"
           :disabled="answering"
           @click="emit('answer', option)"

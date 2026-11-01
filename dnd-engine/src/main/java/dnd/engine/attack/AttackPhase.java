@@ -16,7 +16,7 @@ public enum AttackPhase {
     ROLL,
     /** Comparaison avec la CA : touché « provisoire ». */
     DETERMINE_HIT,
-    /** Fenêtre de réaction de la cible quand elle est touchée (Bouclier…). Peut suspendre le moteur. */
+    /** Fenêtre de réaction quand l'attaque touche (Bouclier…). Peut suspendre le moteur. */
     HIT_REACTIONS,
     /** Re-vérification après réactions, puis résultat définitif. */
     CONFIRM_HIT,

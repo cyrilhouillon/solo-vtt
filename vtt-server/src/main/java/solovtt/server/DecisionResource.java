@@ -35,10 +35,8 @@ public class DecisionResource {
     @POST
     @Path("/{id}")
     @APIResponse(responseCode = "200", description = "La suite de l'action, et la décision suivante s'il y en a une")
-    @APIResponse(responseCode = "400", description = "Option absente de la requête ou hors des options proposées",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
-    @APIResponse(responseCode = "404", description = "Aucune décision en attente avec cet id",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ErrorDto.class)))
+    @APIResponse(responseCode = "400", description = "Option absente de la requête ou hors des options proposées")
+    @APIResponse(responseCode = "404", description = "Aucune décision en attente avec cet id")
     public Dtos.AttackResultDto answer(@PathParam("id") String id, Dtos.AnswerRequest request) {
         if (request == null || request.option() == null) throw new IllegalArgumentException("Choisir une option");
         var outcome = session.answer(id, request.option())

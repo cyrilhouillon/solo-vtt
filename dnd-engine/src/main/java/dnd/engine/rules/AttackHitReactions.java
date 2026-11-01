@@ -33,7 +33,7 @@ public final class AttackHitReactions implements AttackRule {
 
     public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
         Creature target = e.state().get(ctx.targetId());
-        String situation = "%s est touchée (%d contre CA %d).".formatted(target.name(), ctx.total(), target.armorClass());
+        String situation = "Coup au but sur %s (%d contre CA %d).".formatted(target.name(), ctx.total(), target.armorClass());
         List<String> reactors = Stream.concat(Stream.of(target.id()),
                 e.state().creatures().stream().map(Creature::id).filter(id -> !id.equals(target.id()))).toList();
         e.push(new ReactionWindow<>(situation, ctx, reactions, reactors));

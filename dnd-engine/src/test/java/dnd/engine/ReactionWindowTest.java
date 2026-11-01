@@ -68,7 +68,7 @@ class ReactionWindowTest {
         var decision = attack(e).decision();
 
         assertEquals("magicienne", decision.chooserId());
-        assertEquals("Magicienne est touchée (14 contre CA 12). Utiliser sa réaction ?", decision.prompt());
+        assertEquals("Coup au but sur Magicienne (14 contre CA 12). Utiliser sa réaction ?", decision.prompt());
         assertEquals(List.of(ShieldReaction.CAST, "Parer", ReactionWindow.DECLINE), decision.options());
     }
 

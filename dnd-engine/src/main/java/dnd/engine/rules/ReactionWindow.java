@@ -32,7 +32,7 @@ public final class ReactionWindow<T> implements Resolution<GameState, GameEvent>
     private int next;
 
     /**
-     * @param situation  ce qui vient de se passer, en tête de la question (« Magicienne est touchée… »)
+     * @param situation  ce qui vient de se passer, en tête de la question (« Coup au but sur Magicienne… »)
      * @param reactorIds les créatures à interroger, dans l'ordre
      */
     public ReactionWindow(String situation, T trigger, List<Reaction<T>> reactions, List<String> reactorIds) {
