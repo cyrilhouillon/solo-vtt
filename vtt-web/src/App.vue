@@ -294,17 +294,23 @@ function onTokenChosen(tokenId: string) {
   else toggleSelection(tokenId)
 }
 
+/** Une attaque est envoyée et pas encore résolue : un second clic ne doit pas en lancer une autre. */
+let attacking = false
+
 /** Le serveur résout l'attaque ; un refus (portée…) affiche sa raison et laisse le ciblage actif. */
 function attackTarget(targetId: string) {
   const t = targeting.value
-  if (!t || scene.value?.tokens.find((token) => token.id === targetId)?.pending) return
-  attempt(async () => {
+  if (!t || attacking || scene.value?.tokens.find((token) => token.id === targetId)?.pending) return
+  attacking = true
+  void attempt(async () => {
     const result = await api.attack(t.attackerId, t.attack.id, targetId)
     journal.value.push(...result.entries)
     targeting.value = null
     tell(result.entries.at(-1)?.text ?? 'Attaque résolue.')
     const shown = sheet.value?.id
     if (shown === t.attackerId || shown === targetId) showSheet(shown)
+  }).finally(() => {
+    attacking = false
   })
 }
 
