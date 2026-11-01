@@ -19,6 +19,7 @@ public final class Creature {
     private final String name;
     private final int baseArmorClass;
     private final int maxHitPoints;
+    private final double speed;             // en mètres
     private final Weapon weapon;
     private final Set<DamageType> resistances;
     private final Set<DamageType> vulnerabilities;
@@ -38,6 +39,7 @@ public final class Creature {
         this.baseArmorClass = b.armorClass;
         this.maxHitPoints = b.hitPoints;
         this.hitPoints = b.hitPoints;
+        this.speed = b.speed;
         this.weapon = b.weapon;
         this.resistances = Set.copyOf(b.resistances);
         this.vulnerabilities = Set.copyOf(b.vulnerabilities);
@@ -56,6 +58,7 @@ public final class Creature {
         this.baseArmorClass = o.baseArmorClass;
         this.maxHitPoints = o.maxHitPoints;
         this.hitPoints = o.hitPoints;
+        this.speed = o.speed;
         this.weapon = o.weapon;
         this.resistances = o.resistances;
         this.vulnerabilities = o.vulnerabilities;
@@ -82,6 +85,8 @@ public final class Creature {
     public String name() { return name; }
     public int hitPoints() { return hitPoints; }
     public int maxHitPoints() { return maxHitPoints; }
+    /** Vitesse de déplacement, en mètres par tour. */
+    public double speed() { return speed; }
     public Weapon weapon() { return weapon; }
     public boolean reactionAvailable() { return reactionAvailable; }
 
@@ -141,6 +146,7 @@ public final class Creature {
         private final String name;
         private int armorClass = 10;
         private int hitPoints = 1;
+        private double speed = 9;
         private Weapon weapon;
         private final Set<DamageType> resistances = new HashSet<>();
         private final Set<DamageType> vulnerabilities = new HashSet<>();
@@ -157,6 +163,7 @@ public final class Creature {
 
         public Builder armorClass(int ac) { this.armorClass = ac; return this; }
         public Builder hitPoints(int hp) { this.hitPoints = hp; return this; }
+        public Builder speed(double metres) { this.speed = metres; return this; }
         public Builder weapon(Weapon w) { this.weapon = w; return this; }
         public Builder resistance(DamageType t) { resistances.add(t); return this; }
         public Builder vulnerability(DamageType t) { vulnerabilities.add(t); return this; }
