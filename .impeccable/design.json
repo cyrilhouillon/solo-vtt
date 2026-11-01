@@ -1,0 +1,874 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-01T18:31:33.557Z",
+  "title": "Design System: Solo VTT",
+  "extensions": {
+    "colorMeta": {
+      "page": {
+        "role": "neutral",
+        "displayName": "Noyer de page",
+        "canonical": "#2a1910",
+        "tonalRamp": [
+          "oklch(15.0% 0.016 48.6)",
+          "oklch(26.4% 0.020 48.6)",
+          "oklch(37.9% 0.025 48.6)",
+          "oklch(49.3% 0.030 48.6)",
+          "oklch(60.7% 0.030 48.6)",
+          "oklch(72.1% 0.025 48.6)",
+          "oklch(83.6% 0.020 48.6)",
+          "oklch(95.0% 0.016 48.6)"
+        ]
+      },
+      "wood": {
+        "role": "neutral",
+        "displayName": "Noyer",
+        "canonical": "#3b2418",
+        "tonalRamp": [
+          "oklch(15.0% 0.020 48.1)",
+          "oklch(26.4% 0.026 48.1)",
+          "oklch(37.9% 0.032 48.1)",
+          "oklch(49.3% 0.038 48.1)",
+          "oklch(60.7% 0.038 48.1)",
+          "oklch(72.1% 0.032 48.1)",
+          "oklch(83.6% 0.026 48.1)",
+          "oklch(95.0% 0.020 48.1)"
+        ]
+      },
+      "wood-raised": {
+        "role": "neutral",
+        "displayName": "Noyer relevé",
+        "canonical": "#4a2e1f",
+        "tonalRamp": [
+          "oklch(15.0% 0.024 48.7)",
+          "oklch(26.4% 0.031 48.7)",
+          "oklch(37.9% 0.038 48.7)",
+          "oklch(49.3% 0.045 48.7)",
+          "oklch(60.7% 0.045 48.7)",
+          "oklch(72.1% 0.038 48.7)",
+          "oklch(83.6% 0.031 48.7)",
+          "oklch(95.0% 0.024 48.7)"
+        ]
+      },
+      "wood-sunken": {
+        "role": "neutral",
+        "displayName": "Noyer en creux",
+        "canonical": "#2f1d13",
+        "tonalRamp": [
+          "oklch(15.0% 0.016 49.7)",
+          "oklch(26.4% 0.021 49.7)",
+          "oklch(37.9% 0.026 49.7)",
+          "oklch(49.3% 0.031 49.7)",
+          "oklch(60.7% 0.031 49.7)",
+          "oklch(72.1% 0.026 49.7)",
+          "oklch(83.6% 0.021 49.7)",
+          "oklch(95.0% 0.016 49.7)"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Filet",
+        "canonical": "#6b4a2c",
+        "tonalRamp": [
+          "oklch(15.0% 0.031 62.3)",
+          "oklch(26.4% 0.040 62.3)",
+          "oklch(37.9% 0.049 62.3)",
+          "oklch(49.3% 0.058 62.3)",
+          "oklch(60.7% 0.058 62.3)",
+          "oklch(72.1% 0.049 62.3)",
+          "oklch(83.6% 0.040 62.3)",
+          "oklch(95.0% 0.031 62.3)"
+        ]
+      },
+      "control-border": {
+        "role": "neutral",
+        "displayName": "Bord de contrôle",
+        "canonical": "#a8865a",
+        "tonalRamp": [
+          "oklch(15.0% 0.036 73.1)",
+          "oklch(26.4% 0.046 73.1)",
+          "oklch(37.9% 0.057 73.1)",
+          "oklch(49.3% 0.068 73.1)",
+          "oklch(60.7% 0.068 73.1)",
+          "oklch(72.1% 0.057 73.1)",
+          "oklch(83.6% 0.046 73.1)",
+          "oklch(95.0% 0.036 73.1)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ivoire",
+        "canonical": "#efe6d2",
+        "tonalRamp": [
+          "oklch(15.0% 0.014 86.6)",
+          "oklch(26.4% 0.018 86.6)",
+          "oklch(37.9% 0.022 86.6)",
+          "oklch(49.3% 0.026 86.6)",
+          "oklch(60.7% 0.026 86.6)",
+          "oklch(72.1% 0.022 86.6)",
+          "oklch(83.6% 0.018 86.6)",
+          "oklch(95.0% 0.014 86.6)"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Ivoire passé",
+        "canonical": "#cdbfa3",
+        "tonalRamp": [
+          "oklch(15.0% 0.020 84.6)",
+          "oklch(26.4% 0.026 84.6)",
+          "oklch(37.9% 0.032 84.6)",
+          "oklch(49.3% 0.038 84.6)",
+          "oklch(60.7% 0.038 84.6)",
+          "oklch(72.1% 0.032 84.6)",
+          "oklch(83.6% 0.026 84.6)",
+          "oklch(95.0% 0.020 84.6)"
+        ]
+      },
+      "brass": {
+        "role": "primary",
+        "displayName": "Laiton",
+        "canonical": "#dcb35c",
+        "tonalRamp": [
+          "oklch(15.0% 0.057 84.3)",
+          "oklch(26.4% 0.074 84.3)",
+          "oklch(37.9% 0.090 84.3)",
+          "oklch(49.3% 0.107 84.3)",
+          "oklch(60.7% 0.107 84.3)",
+          "oklch(72.1% 0.090 84.3)",
+          "oklch(83.6% 0.074 84.3)",
+          "oklch(95.0% 0.057 84.3)"
+        ]
+      },
+      "on-brass": {
+        "role": "neutral",
+        "displayName": "Encre sur laiton",
+        "canonical": "#24170c",
+        "tonalRamp": [
+          "oklch(15.0% 0.014 60.7)",
+          "oklch(26.4% 0.018 60.7)",
+          "oklch(37.9% 0.023 60.7)",
+          "oklch(49.3% 0.027 60.7)",
+          "oklch(60.7% 0.027 60.7)",
+          "oklch(72.1% 0.023 60.7)",
+          "oklch(83.6% 0.018 60.7)",
+          "oklch(95.0% 0.014 60.7)"
+        ]
+      },
+      "rubric": {
+        "role": "secondary",
+        "displayName": "Rubrique",
+        "canonical": "#ef8070",
+        "tonalRamp": [
+          "oklch(15.0% 0.068 29.5)",
+          "oklch(26.4% 0.089 29.5)",
+          "oklch(37.9% 0.109 29.5)",
+          "oklch(49.3% 0.129 29.5)",
+          "oklch(60.7% 0.129 29.5)",
+          "oklch(72.1% 0.109 29.5)",
+          "oklch(83.6% 0.089 29.5)",
+          "oklch(95.0% 0.068 29.5)"
+        ]
+      },
+      "felt": {
+        "role": "neutral",
+        "displayName": "Feutre vert bouteille",
+        "canonical": "#1f3a2e",
+        "tonalRamp": [
+          "oklch(15.0% 0.020 164.0)",
+          "oklch(26.4% 0.025 164.0)",
+          "oklch(37.9% 0.031 164.0)",
+          "oklch(49.3% 0.037 164.0)",
+          "oklch(60.7% 0.037 164.0)",
+          "oklch(72.1% 0.031 164.0)",
+          "oklch(83.6% 0.025 164.0)",
+          "oklch(95.0% 0.020 164.0)"
+        ]
+      },
+      "felt-deep": {
+        "role": "neutral",
+        "displayName": "Feutre profond",
+        "canonical": "#183025",
+        "tonalRamp": [
+          "oklch(15.0% 0.018 163.1)",
+          "oklch(26.4% 0.023 163.1)",
+          "oklch(37.9% 0.029 163.1)",
+          "oklch(49.3% 0.034 163.1)",
+          "oklch(60.7% 0.034 163.1)",
+          "oklch(72.1% 0.029 163.1)",
+          "oklch(83.6% 0.023 163.1)",
+          "oklch(95.0% 0.018 163.1)"
+        ]
+      },
+      "felt-rim": {
+        "role": "neutral",
+        "displayName": "Bord de feutre",
+        "canonical": "#12241b",
+        "tonalRamp": [
+          "oklch(15.0% 0.015 161.3)",
+          "oklch(26.4% 0.019 161.3)",
+          "oklch(37.9% 0.023 161.3)",
+          "oklch(49.3% 0.028 161.3)",
+          "oklch(60.7% 0.028 161.3)",
+          "oklch(72.1% 0.023 161.3)",
+          "oklch(83.6% 0.019 161.3)",
+          "oklch(95.0% 0.015 161.3)"
+        ]
+      },
+      "hp": {
+        "role": "tertiary",
+        "displayName": "Vert de vie",
+        "canonical": "#8fbf7a",
+        "tonalRamp": [
+          "oklch(15.0% 0.053 136.5)",
+          "oklch(26.4% 0.069 136.5)",
+          "oklch(37.9% 0.084 136.5)",
+          "oklch(49.3% 0.100 136.5)",
+          "oklch(60.7% 0.100 136.5)",
+          "oklch(72.1% 0.084 136.5)",
+          "oklch(83.6% 0.069 136.5)",
+          "oklch(95.0% 0.053 136.5)"
+        ]
+      },
+      "hp-low": {
+        "role": "tertiary",
+        "displayName": "Ambre de vie basse",
+        "canonical": "#e0a35a",
+        "tonalRamp": [
+          "oklch(15.0% 0.057 69.5)",
+          "oklch(26.4% 0.073 69.5)",
+          "oklch(37.9% 0.090 69.5)",
+          "oklch(49.3% 0.107 69.5)",
+          "oklch(60.7% 0.107 69.5)",
+          "oklch(72.1% 0.090 69.5)",
+          "oklch(83.6% 0.073 69.5)",
+          "oklch(95.0% 0.057 69.5)"
+        ]
+      },
+      "token-character": {
+        "role": "tertiary",
+        "displayName": "Bleu de personnage",
+        "canonical": "#4f84c4",
+        "tonalRamp": [
+          "oklch(15.0% 0.056 254.1)",
+          "oklch(26.4% 0.072 254.1)",
+          "oklch(37.9% 0.089 254.1)",
+          "oklch(49.3% 0.105 254.1)",
+          "oklch(60.7% 0.105 254.1)",
+          "oklch(72.1% 0.089 254.1)",
+          "oklch(83.6% 0.072 254.1)",
+          "oklch(95.0% 0.056 254.1)"
+        ]
+      },
+      "token-monster": {
+        "role": "tertiary",
+        "displayName": "Rouille de monstre",
+        "canonical": "#b5643a",
+        "tonalRamp": [
+          "oklch(15.0% 0.058 46.7)",
+          "oklch(26.4% 0.076 46.7)",
+          "oklch(37.9% 0.093 46.7)",
+          "oklch(49.3% 0.110 46.7)",
+          "oklch(60.7% 0.110 46.7)",
+          "oklch(72.1% 0.093 46.7)",
+          "oklch(83.6% 0.076 46.7)",
+          "oklch(95.0% 0.058 46.7)"
+        ]
+      },
+      "token-rim": {
+        "role": "neutral",
+        "displayName": "Cerclage de jeton",
+        "canonical": "#efe6d2",
+        "tonalRamp": [
+          "oklch(15.0% 0.014 86.6)",
+          "oklch(26.4% 0.018 86.6)",
+          "oklch(37.9% 0.022 86.6)",
+          "oklch(49.3% 0.026 86.6)",
+          "oklch(60.7% 0.026 86.6)",
+          "oklch(72.1% 0.022 86.6)",
+          "oklch(83.6% 0.018 86.6)",
+          "oklch(95.0% 0.014 86.6)"
+        ]
+      },
+      "map-down": {
+        "role": "neutral",
+        "displayName": "Gris à terre",
+        "canonical": "#6f6a60",
+        "tonalRamp": [
+          "oklch(15.0% 0.008 84.6)",
+          "oklch(26.4% 0.011 84.6)",
+          "oklch(37.9% 0.013 84.6)",
+          "oklch(49.3% 0.015 84.6)",
+          "oklch(60.7% 0.015 84.6)",
+          "oklch(72.1% 0.013 84.6)",
+          "oklch(83.6% 0.011 84.6)",
+          "oklch(95.0% 0.008 84.6)"
+        ]
+      },
+      "map-grid": {
+        "role": "neutral",
+        "displayName": "Grille",
+        "canonical": "rgba(239, 230, 210, 0.25)",
+        "tonalRamp": [
+          "oklch(15.0% 0.014 86.6)",
+          "oklch(26.4% 0.018 86.6)",
+          "oklch(37.9% 0.022 86.6)",
+          "oklch(49.3% 0.026 86.6)",
+          "oklch(60.7% 0.026 86.6)",
+          "oklch(72.1% 0.022 86.6)",
+          "oklch(83.6% 0.018 86.6)",
+          "oklch(95.0% 0.014 86.6)"
+        ]
+      },
+      "map-label-ground": {
+        "role": "neutral",
+        "displayName": "Fond d'étiquette",
+        "canonical": "rgba(18, 36, 27, 0.88)",
+        "tonalRamp": [
+          "oklch(15.0% 0.015 161.3)",
+          "oklch(26.4% 0.019 161.3)",
+          "oklch(37.9% 0.023 161.3)",
+          "oklch(49.3% 0.028 161.3)",
+          "oklch(60.7% 0.028 161.3)",
+          "oklch(72.1% 0.023 161.3)",
+          "oklch(83.6% 0.019 161.3)",
+          "oklch(95.0% 0.015 161.3)"
+        ]
+      },
+      "page-light": {
+        "role": "neutral",
+        "displayName": "Érable de page (clair)",
+        "canonical": "#b98f5c",
+        "tonalRamp": [
+          "oklch(15.0% 0.042 71.0)",
+          "oklch(26.4% 0.054 71.0)",
+          "oklch(37.9% 0.066 71.0)",
+          "oklch(49.3% 0.079 71.0)",
+          "oklch(60.7% 0.079 71.0)",
+          "oklch(72.1% 0.066 71.0)",
+          "oklch(83.6% 0.054 71.0)",
+          "oklch(95.0% 0.042 71.0)"
+        ]
+      },
+      "wood-light": {
+        "role": "neutral",
+        "displayName": "Érable (clair)",
+        "canonical": "#dcbc8c",
+        "tonalRamp": [
+          "oklch(15.0% 0.036 77.5)",
+          "oklch(26.4% 0.046 77.5)",
+          "oklch(37.9% 0.057 77.5)",
+          "oklch(49.3% 0.068 77.5)",
+          "oklch(60.7% 0.068 77.5)",
+          "oklch(72.1% 0.057 77.5)",
+          "oklch(83.6% 0.046 77.5)",
+          "oklch(95.0% 0.036 77.5)"
+        ]
+      },
+      "wood-raised-light": {
+        "role": "neutral",
+        "displayName": "Érable relevé (clair)",
+        "canonical": "#e6caa0",
+        "tonalRamp": [
+          "oklch(15.0% 0.031 77.8)",
+          "oklch(26.4% 0.041 77.8)",
+          "oklch(37.9% 0.050 77.8)",
+          "oklch(49.3% 0.059 77.8)",
+          "oklch(60.7% 0.059 77.8)",
+          "oklch(72.1% 0.050 77.8)",
+          "oklch(83.6% 0.041 77.8)",
+          "oklch(95.0% 0.031 77.8)"
+        ]
+      },
+      "wood-sunken-light": {
+        "role": "neutral",
+        "displayName": "Érable en creux (clair)",
+        "canonical": "#cfab78",
+        "tonalRamp": [
+          "oklch(15.0% 0.039 75.8)",
+          "oklch(26.4% 0.050 75.8)",
+          "oklch(37.9% 0.062 75.8)",
+          "oklch(49.3% 0.074 75.8)",
+          "oklch(60.7% 0.074 75.8)",
+          "oklch(72.1% 0.062 75.8)",
+          "oklch(83.6% 0.050 75.8)",
+          "oklch(95.0% 0.039 75.8)"
+        ]
+      },
+      "rule-light": {
+        "role": "neutral",
+        "displayName": "Filet (clair)",
+        "canonical": "#9b7546",
+        "tonalRamp": [
+          "oklch(15.0% 0.039 71.1)",
+          "oklch(26.4% 0.051 71.1)",
+          "oklch(37.9% 0.062 71.1)",
+          "oklch(49.3% 0.074 71.1)",
+          "oklch(60.7% 0.074 71.1)",
+          "oklch(72.1% 0.062 71.1)",
+          "oklch(83.6% 0.051 71.1)",
+          "oklch(95.0% 0.039 71.1)"
+        ]
+      },
+      "control-border-light": {
+        "role": "neutral",
+        "displayName": "Bord de contrôle (clair)",
+        "canonical": "#7a5530",
+        "tonalRamp": [
+          "oklch(15.0% 0.035 64.7)",
+          "oklch(26.4% 0.046 64.7)",
+          "oklch(37.9% 0.056 64.7)",
+          "oklch(49.3% 0.067 64.7)",
+          "oklch(60.7% 0.067 64.7)",
+          "oklch(72.1% 0.056 64.7)",
+          "oklch(83.6% 0.046 64.7)",
+          "oklch(95.0% 0.035 64.7)"
+        ]
+      },
+      "ink-light": {
+        "role": "neutral",
+        "displayName": "Encre brune (clair)",
+        "canonical": "#2a1a10",
+        "tonalRamp": [
+          "oklch(15.0% 0.015 52.7)",
+          "oklch(26.4% 0.020 52.7)",
+          "oklch(37.9% 0.024 52.7)",
+          "oklch(49.3% 0.029 52.7)",
+          "oklch(60.7% 0.029 52.7)",
+          "oklch(72.1% 0.024 52.7)",
+          "oklch(83.6% 0.020 52.7)",
+          "oklch(95.0% 0.015 52.7)"
+        ]
+      },
+      "ink-muted-light": {
+        "role": "neutral",
+        "displayName": "Encre brune passée (clair)",
+        "canonical": "#563c28",
+        "tonalRamp": [
+          "oklch(15.0% 0.024 58.2)",
+          "oklch(26.4% 0.031 58.2)",
+          "oklch(37.9% 0.038 58.2)",
+          "oklch(49.3% 0.045 58.2)",
+          "oklch(60.7% 0.045 58.2)",
+          "oklch(72.1% 0.038 58.2)",
+          "oklch(83.6% 0.031 58.2)",
+          "oklch(95.0% 0.024 58.2)"
+        ]
+      },
+      "brass-light": {
+        "role": "primary",
+        "displayName": "Laiton (clair)",
+        "canonical": "#7d520c",
+        "tonalRamp": [
+          "oklch(15.0% 0.047 72.4)",
+          "oklch(26.4% 0.061 72.4)",
+          "oklch(37.9% 0.076 72.4)",
+          "oklch(49.3% 0.090 72.4)",
+          "oklch(60.7% 0.090 72.4)",
+          "oklch(72.1% 0.076 72.4)",
+          "oklch(83.6% 0.061 72.4)",
+          "oklch(95.0% 0.047 72.4)"
+        ]
+      },
+      "on-brass-light": {
+        "role": "neutral",
+        "displayName": "Encre sur laiton (clair)",
+        "canonical": "#fbf3e2",
+        "tonalRamp": [
+          "oklch(15.0% 0.012 85.8)",
+          "oklch(26.4% 0.015 85.8)",
+          "oklch(37.9% 0.019 85.8)",
+          "oklch(49.3% 0.022 85.8)",
+          "oklch(60.7% 0.022 85.8)",
+          "oklch(72.1% 0.019 85.8)",
+          "oklch(83.6% 0.015 85.8)",
+          "oklch(95.0% 0.012 85.8)"
+        ]
+      },
+      "rubric-light": {
+        "role": "secondary",
+        "displayName": "Rubrique (clair)",
+        "canonical": "#93231d",
+        "tonalRamp": [
+          "oklch(15.0% 0.073 28.1)",
+          "oklch(26.4% 0.095 28.1)",
+          "oklch(37.9% 0.116 28.1)",
+          "oklch(49.3% 0.138 28.1)",
+          "oklch(60.7% 0.138 28.1)",
+          "oklch(72.1% 0.116 28.1)",
+          "oklch(83.6% 0.095 28.1)",
+          "oklch(95.0% 0.073 28.1)"
+        ]
+      },
+      "felt-light": {
+        "role": "neutral",
+        "displayName": "Feutre sauge (clair)",
+        "canonical": "#93ab88",
+        "tonalRamp": [
+          "oklch(15.0% 0.028 135.9)",
+          "oklch(26.4% 0.036 135.9)",
+          "oklch(37.9% 0.044 135.9)",
+          "oklch(49.3% 0.052 135.9)",
+          "oklch(60.7% 0.052 135.9)",
+          "oklch(72.1% 0.044 135.9)",
+          "oklch(83.6% 0.036 135.9)",
+          "oklch(95.0% 0.028 135.9)"
+        ]
+      },
+      "felt-deep-light": {
+        "role": "neutral",
+        "displayName": "Feutre sauge pâle (clair)",
+        "canonical": "#b4c6a7",
+        "tonalRamp": [
+          "oklch(15.0% 0.023 132.1)",
+          "oklch(26.4% 0.030 132.1)",
+          "oklch(37.9% 0.037 132.1)",
+          "oklch(49.3% 0.044 132.1)",
+          "oklch(60.7% 0.044 132.1)",
+          "oklch(72.1% 0.037 132.1)",
+          "oklch(83.6% 0.030 132.1)",
+          "oklch(95.0% 0.023 132.1)"
+        ]
+      },
+      "felt-rim-light": {
+        "role": "neutral",
+        "displayName": "Bord de feutre sauge (clair)",
+        "canonical": "#6f8a64",
+        "tonalRamp": [
+          "oklch(15.0% 0.031 136.8)",
+          "oklch(26.4% 0.041 136.8)",
+          "oklch(37.9% 0.050 136.8)",
+          "oklch(49.3% 0.059 136.8)",
+          "oklch(60.7% 0.059 136.8)",
+          "oklch(72.1% 0.050 136.8)",
+          "oklch(83.6% 0.041 136.8)",
+          "oklch(95.0% 0.031 136.8)"
+        ]
+      },
+      "hp-light": {
+        "role": "tertiary",
+        "displayName": "Vert de vie (clair)",
+        "canonical": "#3f7a2e",
+        "tonalRamp": [
+          "oklch(15.0% 0.062 139.2)",
+          "oklch(26.4% 0.080 139.2)",
+          "oklch(37.9% 0.098 139.2)",
+          "oklch(49.3% 0.116 139.2)",
+          "oklch(60.7% 0.116 139.2)",
+          "oklch(72.1% 0.098 139.2)",
+          "oklch(83.6% 0.080 139.2)",
+          "oklch(95.0% 0.062 139.2)"
+        ]
+      },
+      "hp-low-light": {
+        "role": "tertiary",
+        "displayName": "Ambre de vie basse (clair)",
+        "canonical": "#9a5a12",
+        "tonalRamp": [
+          "oklch(15.0% 0.056 61.9)",
+          "oklch(26.4% 0.073 61.9)",
+          "oklch(37.9% 0.090 61.9)",
+          "oklch(49.3% 0.107 61.9)",
+          "oklch(60.7% 0.107 61.9)",
+          "oklch(72.1% 0.090 61.9)",
+          "oklch(83.6% 0.073 61.9)",
+          "oklch(95.0% 0.056 61.9)"
+        ]
+      },
+      "token-character-light": {
+        "role": "tertiary",
+        "displayName": "Bleu de personnage (clair)",
+        "canonical": "#2f5f9a",
+        "tonalRamp": [
+          "oklch(15.0% 0.053 254.9)",
+          "oklch(26.4% 0.069 254.9)",
+          "oklch(37.9% 0.085 254.9)",
+          "oklch(49.3% 0.101 254.9)",
+          "oklch(60.7% 0.101 254.9)",
+          "oklch(72.1% 0.085 254.9)",
+          "oklch(83.6% 0.069 254.9)",
+          "oklch(95.0% 0.053 254.9)"
+        ]
+      },
+      "token-monster-light": {
+        "role": "tertiary",
+        "displayName": "Rouille de monstre (clair)",
+        "canonical": "#9a4a1c",
+        "tonalRamp": [
+          "oklch(15.0% 0.060 47.0)",
+          "oklch(26.4% 0.077 47.0)",
+          "oklch(37.9% 0.095 47.0)",
+          "oklch(49.3% 0.113 47.0)",
+          "oklch(60.7% 0.113 47.0)",
+          "oklch(72.1% 0.095 47.0)",
+          "oklch(83.6% 0.077 47.0)",
+          "oklch(95.0% 0.060 47.0)"
+        ]
+      },
+      "token-rim-light": {
+        "role": "neutral",
+        "displayName": "Cerclage de jeton (clair)",
+        "canonical": "#fbf3e2",
+        "tonalRamp": [
+          "oklch(15.0% 0.012 85.8)",
+          "oklch(26.4% 0.015 85.8)",
+          "oklch(37.9% 0.019 85.8)",
+          "oklch(49.3% 0.022 85.8)",
+          "oklch(60.7% 0.022 85.8)",
+          "oklch(72.1% 0.019 85.8)",
+          "oklch(83.6% 0.015 85.8)",
+          "oklch(95.0% 0.012 85.8)"
+        ]
+      },
+      "map-down-light": {
+        "role": "neutral",
+        "displayName": "Gris à terre (clair)",
+        "canonical": "#8d887d",
+        "tonalRamp": [
+          "oklch(15.0% 0.008 86.5)",
+          "oklch(26.4% 0.011 86.5)",
+          "oklch(37.9% 0.013 86.5)",
+          "oklch(49.3% 0.016 86.5)",
+          "oklch(60.7% 0.016 86.5)",
+          "oklch(72.1% 0.013 86.5)",
+          "oklch(83.6% 0.011 86.5)",
+          "oklch(95.0% 0.008 86.5)"
+        ]
+      },
+      "map-grid-light": {
+        "role": "neutral",
+        "displayName": "Grille (clair)",
+        "canonical": "rgba(34, 52, 30, 0.41)",
+        "tonalRamp": [
+          "oklch(15.0% 0.022 140.0)",
+          "oklch(26.4% 0.029 140.0)",
+          "oklch(37.9% 0.035 140.0)",
+          "oklch(49.3% 0.042 140.0)",
+          "oklch(60.7% 0.042 140.0)",
+          "oklch(72.1% 0.035 140.0)",
+          "oklch(83.6% 0.029 140.0)",
+          "oklch(95.0% 0.022 140.0)"
+        ]
+      },
+      "map-label-ground-light": {
+        "role": "neutral",
+        "displayName": "Fond d'étiquette (clair)",
+        "canonical": "rgba(226, 234, 218, 0.92)",
+        "tonalRamp": [
+          "oklch(15.0% 0.011 128.7)",
+          "oklch(26.4% 0.015 128.7)",
+          "oklch(37.9% 0.018 128.7)",
+          "oklch(49.3% 0.021 128.7)",
+          "oklch(60.7% 0.021 128.7)",
+          "oklch(72.1% 0.018 128.7)",
+          "oklch(83.6% 0.015 128.7)",
+          "oklch(95.0% 0.011 128.7)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Nom de l'application dans la barre."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Nom de la créature en tête de feuille, en rubrique."
+      },
+      "verdict": {
+        "displayName": "Verdict",
+        "purpose": "Verdict de la piste à dés, en rubrique."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Titres de panneau, suivis du filet effilé."
+      },
+      "tab": {
+        "displayName": "Tab",
+        "purpose": "Onglets Feuille, Cible, Journal."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Tout le texte courant ; chiffres tabulaires."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "En-têtes du tableau, groupes du catalogue, étiquettes, résumés."
+      }
+    },
+    "shadows": [
+      {
+        "name": "felt-hollow",
+        "value": "inset 0 3px 10px rgba(0, 0, 0, 0.45), inset 0 0 0 1px var(--felt-rim), 0 0 0 3px var(--rule)",
+        "purpose": "Piste à dés : cuvette de feutre dans son cadre de bois."
+      },
+      {
+        "name": "floating-banner",
+        "value": "0 4px 12px rgba(0, 0, 0, 0.3)",
+        "purpose": "Bannière d'erreur posée sur la carte."
+      },
+      {
+        "name": "tab-underline",
+        "value": "inset 0 -3px 0 var(--ink)",
+        "purpose": "Onglet actif."
+      }
+    ],
+    "motion": [
+      {
+        "name": "verdict-land",
+        "value": "320ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Seul mouvement : le verdict se pose sur la piste (opacité 0 et 0.4rem plus haut vers sa place). Aucun sous prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow-side",
+        "value": "1100px"
+      },
+      {
+        "name": "single-column",
+        "value": "900px"
+      },
+      {
+        "name": "compact-board",
+        "value": "600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Bouton",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Bouton par défaut : bois en creux, contour de contrôle.",
+      "html": "<button class=\"ds-btn\">Annuler</button>",
+      "css": ".ds-btn { font: 500 16px 'Alegreya Sans', system-ui, sans-serif; color: var(--ink); padding: 0.35rem 0.8rem; border: 1px solid var(--control-border); border-radius: 4px; background: var(--wood-sunken); cursor: pointer; } .ds-btn:hover { background: var(--wood-raised); border-color: var(--ink-muted); } .ds-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; } .ds-btn:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Bouton danger",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Action destructrice : contour et texte en danger, fond de bois.",
+      "html": "<button class=\"ds-btn-danger\">Remplacer la carte</button>",
+      "css": ".ds-btn-danger { font: 500 16px 'Alegreya Sans', system-ui, sans-serif; color: var(--danger); padding: 0.35rem 0.8rem; border: 1px solid var(--danger); border-radius: 4px; background: var(--wood-sunken); cursor: pointer; } .ds-btn-danger:hover { background: var(--wood-raised); } .ds-btn-danger:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }"
+    },
+    {
+      "name": "Puce de mode",
+      "kind": "chip",
+      "refersTo": "mode-chip",
+      "description": "Le mode en cours dans la barre : la seule puce pleine, en laiton.",
+      "html": "<strong class=\"ds-mode\">Ciblage</strong>",
+      "css": ".ds-mode { display: inline-block; font: 700 16px 'Alegreya Sans', system-ui, sans-serif; padding: 0.25rem 0.85rem; border-radius: 999px; background: var(--brass); color: var(--on-brass); }"
+    },
+    {
+      "name": "Onglets",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Onglets du panneau latéral ; l'actif est souligné d'encre, jamais de laiton.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab\" role=\"tab\" aria-selected=\"true\">Feuille</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Cible</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Journal</button></div>",
+      "css": ".ds-tabs { display: flex; gap: 0.25rem; padding: 0.6rem 0.9rem 0; background: var(--wood); border-bottom: 1px solid var(--rule); } .ds-tab { padding: 0.4rem 0.9rem 0.35rem; border: 0; border-radius: 4px 4px 0 0; background: transparent; font: 700 1.05rem 'Alegreya SC', Georgia, serif; letter-spacing: 0.04em; color: var(--ink-muted); box-shadow: inset 0 -3px 0 transparent; cursor: pointer; } .ds-tab:hover { background: var(--wood-raised); color: var(--ink); } .ds-tab[aria-selected='true'] { color: var(--ink); box-shadow: inset 0 -3px 0 var(--ink); } .ds-tab:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }"
+    },
+    {
+      "name": "Rail d'icônes",
+      "kind": "nav",
+      "refersTo": "rail-button-open",
+      "description": "Rail à gauche ; le bouton du tiroir ouvert reste en bois et encre.",
+      "html": "<nav class=\"ds-rail\"><button class=\"ds-rail-btn ds-open\" aria-label=\"Catalogue\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5C4.7 20 4 19.3 4 18.5z\"/><path d=\"M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5c.8 0 1.5-.7 1.5-1.5z\"/><path d=\"M6.5 8h2.5M6.5 11h2.5M15 8h2.5M15 11h2.5\"/></svg></button><button class=\"ds-rail-btn\" aria-label=\"Nouvelle carte\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"1.5\"/><path d=\"M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17\"/></svg></button></nav>",
+      "css": ".ds-rail { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.75rem 0.45rem; width: 3.5rem; background: var(--wood); border-right: 1px solid var(--rule); } .ds-rail-btn { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--ink-muted); cursor: pointer; } .ds-rail-btn:hover { color: var(--ink); background: var(--wood-raised); } .ds-rail-btn.ds-open, .ds-rail-btn.ds-open:hover { color: var(--ink); background: var(--wood-sunken); border-color: var(--rule); } .ds-rail-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }"
+    },
+    {
+      "name": "Champ numérique",
+      "kind": "input",
+      "refersTo": "input-number",
+      "description": "Champ en creux, chiffres tabulaires, unité accolée.",
+      "html": "<label class=\"ds-field\">Largeur <span><input class=\"ds-input\" type=\"number\" value=\"30\" /> m</span></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.25rem; color: var(--ink-muted); font: 16px 'Alegreya Sans', system-ui, sans-serif; } .ds-field span { display: flex; align-items: center; gap: 0.35rem; color: var(--ink); } .ds-input { width: 5rem; font: inherit; color: var(--ink); padding: 0.3rem 0.5rem; border: 1px solid var(--control-border); border-radius: 4px; background: var(--wood-sunken); font-variant-numeric: tabular-nums; } .ds-input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }"
+    },
+    {
+      "name": "Entrée de catalogue",
+      "kind": "custom",
+      "refersTo": "catalog-entry-armed",
+      "description": "Créature du catalogue avec sa pastille de camp ; armée, elle se cercle de laiton.",
+      "html": "<ul class=\"ds-cat\"><li><button class=\"ds-entry ds-armed\"><span class=\"ds-swatch ds-monster\"></span>Gobelin guerrier</button></li><li><button class=\"ds-entry\"><span class=\"ds-swatch ds-character\"></span>Guerrier</button></li></ul>",
+      "css": ".ds-cat { list-style: none; margin: 0; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.2rem; background: var(--wood); } .ds-entry { width: 100%; display: flex; align-items: center; gap: 0.6rem; text-align: left; font: 500 16px 'Alegreya Sans', system-ui, sans-serif; color: var(--ink); padding: 0.35rem 0.8rem; border: 1px solid transparent; border-radius: 4px; background: transparent; cursor: pointer; } .ds-entry:hover { background: var(--wood-raised); } .ds-entry.ds-armed { background: var(--wood-raised); border-color: var(--brass); font-weight: 700; } .ds-entry:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; } .ds-swatch { width: 0.8rem; height: 0.8rem; flex: none; border: 1.5px solid var(--token-rim); } .ds-character { border-radius: 50%; background: var(--token-character); } .ds-monster { border-radius: 2px; background: var(--token-monster); }"
+    },
+    {
+      "name": "Tableau Sur la carte",
+      "kind": "custom",
+      "refersTo": "tag-down",
+      "description": "Tableau des départs : lattes alternées, pastille de camp, jauge de PV ; à terre, pastille grise, nom barré, étiquette en rubrique.",
+      "html": "<table class=\"ds-board\"><thead><tr><th>Créature</th><th class=\"ds-num\">PV</th><th>État</th></tr></thead><tbody><tr><td><span class=\"ds-who\"><span class=\"ds-sw ds-c\"></span>Guerrier</span></td><td class=\"ds-num\"><span class=\"ds-gauge\"><i style=\"width:70%\"></i></span> 9 / 13</td><td></td></tr><tr class=\"ds-down\"><td><span class=\"ds-who\"><span class=\"ds-sw ds-m\"></span><span class=\"ds-name\">Gobelin guerrier</span></span></td><td class=\"ds-num\"><span class=\"ds-gauge\"><i style=\"width:0\"></i></span> 0 / 10</td><td><span class=\"ds-tag\">À terre</span></td></tr></tbody></table>",
+      "css": ".ds-board { width: 100%; border-collapse: collapse; background: var(--wood); color: var(--ink); font: 16px/1.45 'Alegreya Sans', system-ui, sans-serif; font-variant-numeric: tabular-nums; } .ds-board th { text-align: left; font: 500 0.9rem 'Alegreya SC', Georgia, serif; letter-spacing: 0.06em; color: var(--ink-muted); padding: 0.35rem 0.75rem 0.25rem; border-bottom: 1px solid var(--rule); } .ds-board td { padding: 0.2rem 0.75rem; white-space: nowrap; } .ds-board tbody tr:nth-child(even) td { background: var(--wood-sunken); } .ds-board tbody tr:hover td { background: var(--wood-raised); } .ds-num { text-align: right; } .ds-who { display: inline-flex; align-items: center; gap: 0.6rem; } .ds-sw { width: 0.8rem; height: 0.8rem; border: 1.5px solid var(--token-rim); } .ds-c { border-radius: 50%; background: var(--token-character); } .ds-m { border-radius: 2px; background: var(--token-monster); } .ds-gauge { display: inline-block; vertical-align: middle; width: 4.5rem; height: 0.4rem; border-radius: 2px; background: var(--wood-sunken); overflow: hidden; } .ds-gauge i { display: block; height: 100%; background: var(--hp); } .ds-tag { font: 0.85rem 'Alegreya SC', Georgia, serif; letter-spacing: 0.04em; padding: 0 0.4rem; border: 1px solid var(--rubric); border-radius: 3px; color: var(--rubric); } .ds-down .ds-sw { background: var(--map-down); } .ds-down .ds-name { text-decoration: line-through; color: var(--ink-muted); }"
+    },
+    {
+      "name": "Bloc de statistiques",
+      "kind": "card",
+      "refersTo": "attack-button-aiming",
+      "description": "Feuille de créature : nom et chiffres en rubrique, filet effilé ; l'attaque visée se cercle de laiton.",
+      "html": "<article class=\"ds-block\"><h3 class=\"ds-name\">Gobelin guerrier</h3><p class=\"ds-kind\">Petit humanoïde</p><hr class=\"ds-tapered\" /><dl class=\"ds-stats\"><div><dt>CA</dt><dd>15</dd></div><div><dt>PV</dt><dd>10 / 10</dd></div></dl><h4 class=\"ds-h4\">Actions</h4><ul class=\"ds-attacks\"><li class=\"ds-aiming\"><span class=\"ds-label\">Cimeterre</span><button class=\"ds-atk ds-atk-aiming\">Annuler</button></li><li><span class=\"ds-label\">Arc court</span><button class=\"ds-atk\">Attaquer</button></li></ul></article>",
+      "css": ".ds-block { display: flex; flex-direction: column; padding: 1rem 1.1rem; background: var(--wood); color: var(--ink); font: 16px/1.45 'Alegreya Sans', system-ui, sans-serif; } .ds-name { margin: 0; font: 700 1.6rem/1.1 'Alegreya SC', Georgia, serif; color: var(--rubric); } .ds-kind { margin: 0.15rem 0 0; font-style: italic; color: var(--ink-muted); } .ds-tapered { height: 2px; border: 0; margin: 0.4rem 0 0.6rem; background: linear-gradient(90deg, var(--rubric), transparent); } .ds-stats { margin: 0; display: flex; flex-direction: column; gap: 0.1rem; } .ds-stats div { display: flex; align-items: baseline; gap: 0.5rem; } .ds-stats dt { font-weight: 700; } .ds-stats dd { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--rubric); font-variant-numeric: tabular-nums; } .ds-h4 { margin: 1.1rem 0 0.4rem; font: 700 1.1rem 'Alegreya SC', Georgia, serif; color: var(--rubric); border-bottom: 1px solid var(--rubric); } .ds-attacks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; } .ds-attacks li { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.45rem 0.6rem; border-radius: 4px; border: 1px solid transparent; } .ds-attacks li.ds-aiming { border-color: var(--brass); background: var(--wood-raised); } .ds-label { font-weight: 700; } .ds-atk { font: 500 16px 'Alegreya Sans', system-ui, sans-serif; color: var(--ink); padding: 0.35rem 0.8rem; border: 1px solid var(--control-border); border-radius: 4px; background: var(--wood-sunken); cursor: pointer; } .ds-atk:hover { background: var(--wood-raised); border-color: var(--ink-muted); } .ds-atk:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; } .ds-atk.ds-atk-aiming { background: var(--brass); border-color: var(--brass); color: var(--on-brass); }"
+    },
+    {
+      "name": "Piste à dés",
+      "kind": "custom",
+      "refersTo": "dice-tray",
+      "description": "Cuvette de feutre sous la carte ; le verdict en rubrique s'y pose en 320 ms.",
+      "html": "<div class=\"ds-rim\"><div class=\"ds-tray\"><p class=\"ds-verdict\">Touché : 6 dégâts tranchants</p><p class=\"ds-title\">Guerrier attaque Gobelin guerrier (Épée longue)</p><p class=\"ds-target\"><b>Gobelin guerrier</b><span class=\"ds-g\"><i style=\"width:40%\"></i></span><span>4 / 10 PV</span></p></div></div>",
+      "css": ".ds-rim { padding: 0.6rem 0.75rem 0.75rem; background: var(--wood); border-top: 1px solid var(--rule); font: 16px/1.45 'Alegreya Sans', system-ui, sans-serif; } .ds-tray { min-height: 5.25rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: 1.5rem; padding: 0.6rem 1.25rem; border-radius: 8px; background: var(--felt-deep); box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.45), inset 0 0 0 1px var(--felt-rim), 0 0 0 3px var(--rule); color: var(--map-label); } .ds-tray p { margin: 0; } .ds-verdict { grid-column: 1; font: 700 1.5rem/1.2 'Alegreya SC', Georgia, serif; letter-spacing: 0.02em; color: var(--rubric); animation: ds-land 320ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-title { grid-column: 1; font-size: 0.95rem; opacity: 0.85; } .ds-target { grid-column: 2; grid-row: 1 / 3; display: flex; align-items: center; gap: 0.6rem; font-variant-numeric: tabular-nums; } .ds-g { width: 6rem; height: 0.5rem; border-radius: 3px; background: rgba(0, 0, 0, 0.3); overflow: hidden; } .ds-g i { display: block; height: 100%; background: var(--hp); } @keyframes ds-land { from { opacity: 0; transform: translateY(-0.4rem); } } @media (prefers-reduced-motion: reduce) { .ds-verdict { animation: none; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Le Plateau de dés",
+    "overview": "Une table de D&D posée sur un plateau de feutre bordé de bois : le moteur lance sur la piste, le joueur lit le verdict. Le cadre est en bois (barre, rail, tiroir, panneaux), le jeu se passe sur le feutre (carte, piste à dés). Deux heures d'éclairage : le soir, noyer et feutre vert bouteille avec un texte ivoire ; en journée, érable et feutre sauge avec une encre brune. Le thème suit le système, puis le choix du joueur (`data-theme` sur la racine).\n\nLa densité est celle d'un outil ouvert toute une session : panneaux serrés, chiffres tabulaires, peu de vide décoratif. Les panneaux se composent comme un bloc de statistiques : titres en petites capitales, filet effilé dessous, chiffres clés en rubrique. L'ornement est permis tant que la carte reste lisible ; un jeu vidéo (néons, effets) et un tableau de bord d'administration interchangeable sont les deux mondes refusés.\n\nTrois couleurs portent du sens, chacune pour un seul rôle : le laiton pour ce qui est vivant maintenant, la rubrique pour ce que le moteur a tranché, l'encre pour le reste.",
+    "keyCharacteristics": [
+      "Bois pour le cadre, feutre pour le jeu ; aucune surface neutre grise.",
+      "Laiton réservé à l'état vivant, rubrique réservée au verdict du moteur.",
+      "Le camp se lit par la forme (disque, carré), jamais par la seule couleur.",
+      "Petites capitales Alegreya SC pour les titres, Alegreya Sans pour le texte.",
+      "Un seul mouvement : le verdict qui se pose sur la piste."
+    ],
+    "rules": [
+      {
+        "name": "The Brass Is Alive Rule",
+        "body": "Le laiton ne marque que ce qui est vivant à cet instant : un mode, une créature armée, une sélection, une cible, une attaque visée. Un état d'interface (tiroir ouvert, onglet actif) n'est pas un état vivant et reste en bois et encre.",
+        "section": "colors"
+      },
+      {
+        "name": "The Engine Speaks In Rubric Rule",
+        "body": "La rubrique est la voix du moteur : verdicts, issues, chiffres tranchés, « À terre », et les intertitres du bloc de statistiques. Aucune décoration ni appel à l'action n'est en rubrique.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Lights Rule",
+        "body": "Toute nouvelle couleur se déclare dans les deux thèmes, sous le même nom, dans `style.css` ; la carte lit ces variables au rendu, jamais une valeur en dur.",
+        "section": "colors"
+      },
+      {
+        "name": "The Small Caps Are Headings Rule",
+        "body": "Alegreya SC sert aux titres, en-têtes, onglets, étiquettes et au verdict ; jamais à un paragraphe ni à un texte de plus d'une ligne.",
+        "section": "typography"
+      },
+      {
+        "name": "The Matter Not Shadow Rule",
+        "body": "Un élément monte en passant à `wood-raised`, descend en passant à `wood-sunken` ; aucune ombre portée sur les panneaux, boutons ou lignes.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do réserver le laiton à l'état vivant : mode, entrée armée, sélection, cible survolée, attaque visée.",
+      "Do mettre en rubrique ce que le moteur tranche (verdict, issue, chiffres clés, « À terre ») et les intertitres du bloc de statistiques.",
+      "Do dire le camp par la forme : disque pour un personnage, carré pour un monstre, répété dans une pastille cerclée de `token-rim` partout où la créature est nommée.",
+      "Do marquer une créature à 0 PV par trois signes : jeton gris, croix dessinée, nom barré.",
+      "Do dessiner la portée longue en hachures, pas seulement en couleur.",
+      "Do suivre chaque titre de panneau d'un filet effilé rubrique.",
+      "Do déclarer toute couleur dans les deux thèmes et la lire depuis les variables, carte comprise."
+    ],
+    "donts": [
+      "Don't mettre en laiton un état d'interface : l'onglet actif se souligne d'encre, le bouton de tiroir ouvert reste en `wood-sunken` et encre.",
+      "Don't marquer le camp par une bande latérale colorée : la pastille de forme la remplace.",
+      "Don't ajouter un mouvement autre que la pose du verdict, ni l'animer sous `prefers-reduced-motion`.",
+      "Don't poser d'ombre portée sur un panneau, une ligne ou un bouton ; la profondeur passe par le bois et le feutre.",
+      "Don't introduire de surface grise neutre ni de néon : tout fond est bois ou feutre.",
+      "Don't employer Alegreya SC pour un texte courant."
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 package dnd.engine.attack;
 
+import dnd.engine.state.Attack;
 import dnd.engine.state.Weapon;
 
 import java.util.ArrayList;
@@ -20,7 +21,8 @@ public final class AttackContext {
 
     private final String attackerId;
     private final String targetId;
-    private final Weapon weapon;
+    private final Attack attack;
+    private final double distance;
 
     private final List<String> advantageSources = new ArrayList<>();
     private final List<String> disadvantageSources = new ArrayList<>();
@@ -32,15 +34,20 @@ public final class AttackContext {
     private boolean critical;
     private int damage;
 
-    public AttackContext(String attackerId, String targetId, Weapon weapon) {
+    /** {@code distance} : de l'attaquant à la cible, en mètres. */
+    public AttackContext(String attackerId, String targetId, Attack attack, double distance) {
         this.attackerId = attackerId;
         this.targetId = targetId;
-        this.weapon = weapon;
+        this.attack = attack;
+        this.distance = distance;
     }
 
     public String attackerId() { return attackerId; }
     public String targetId() { return targetId; }
-    public Weapon weapon() { return weapon; }
+    public Attack attack() { return attack; }
+    public Weapon weapon() { return attack.weapon(); }
+    /** De l'attaquant à la cible, en mètres. */
+    public double distance() { return distance; }
 
     // Accumulation : l'ordre d'ajout n'a aucune importance, c'est voulu.
     public void addAdvantage(String source) { advantageSources.add(source); }

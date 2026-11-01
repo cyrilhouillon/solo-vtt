@@ -7,12 +7,14 @@ import solovtt.engine.Decision;
 import solovtt.engine.Engine;
 import dnd.engine.events.GameEvent;
 import dnd.engine.events.GameEvent.RuleApplied;
+import dnd.engine.state.Attack;
 import dnd.engine.state.GameState;
 
 import java.util.Optional;
 
 /**
- * Style de combat Duel : +2 aux dégâts avec une arme de corps à corps tenue à une main.
+ * Style de combat Duel : +2 aux dégâts avec une arme de corps à corps tenue à une main,
+ * pour une attaque au corps à corps (pas quand on la lance).
  * Placé en DAMAGE_ADJUST, il s'applique donc AVANT une éventuelle résistance.
  */
 public final class DuelingStyle implements AttackRule {
@@ -22,7 +24,7 @@ public final class DuelingStyle implements AttackRule {
     public AttackPhase phase() { return AttackPhase.DAMAGE_ADJUST; }
 
     public boolean appliesTo(AttackContext ctx, GameState s) {
-        return ctx.hit() && ctx.weapon().oneHandedMelee() && s.get(ctx.attackerId()).hasFeature(FEATURE);
+        return ctx.hit() && ctx.attack().mode() == Attack.Mode.MELEE && ctx.weapon().oneHandedMelee() && s.get(ctx.attackerId()).hasFeature(FEATURE);
     }
 
     public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {

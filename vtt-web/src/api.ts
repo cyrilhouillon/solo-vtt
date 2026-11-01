@@ -1,4 +1,4 @@
-import type { CatalogEntry, CreatureSheet, DistanceUnit, SceneView, TokenView } from './types'
+import type { AttackResult, CatalogEntry, CreatureSheet, DistanceUnit, JournalEntry, SceneView, TokenView } from './types'
 
 /** Erreur rendue par le serveur, avec son message lisible. */
 export class ApiError extends Error {
@@ -25,7 +25,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     // Sans message, un 502-504 vient du proxy de Vite : vtt-server ne répond pas.
-    const fallback = response.status >= 502 && response.status <= 504 ? UNREACHABLE : `Erreur du serveur (${response.status})`
+    const fallback = response.status >= 502 && response.status <= 504 ? UNREACHABLE : `Le serveur a échoué (erreur ${response.status}). Réessayer ; si l'erreur persiste, voir la console de vtt-server.`
     const message = body?.message ?? fallback
     throw new ApiError(response.status, message)
   }
@@ -48,4 +48,9 @@ export const api = {
     request<void>(`/api/scene/tokens/${encodeURIComponent(tokenId)}`, { method: 'DELETE' }),
 
   sheet: (creatureId: string) => request<CreatureSheet>(`/api/creatures/${encodeURIComponent(creatureId)}`),
+
+  attack: (attackerId: string, attackId: string, targetId: string) =>
+    request<AttackResult>('/api/attacks', { method: 'POST', body: JSON.stringify({ attackerId, attackId, targetId }) }),
+
+  journal: () => request<JournalEntry[]>('/api/journal'),
 }

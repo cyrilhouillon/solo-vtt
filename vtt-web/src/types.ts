@@ -18,6 +18,10 @@ export interface TokenView {
   kind: CreatureKind
   x: number
   y: number
+  /** CA et PV de la créature ; absents tant qu'un jeton attend la réponse du serveur. */
+  armorClass?: number
+  hitPoints?: number
+  maxHitPoints?: number
   /** Côté client seulement : affiché dès le clic, en attendant la réponse du serveur. */
   pending?: boolean
 }
@@ -30,6 +34,36 @@ export interface SceneView {
   tokens: TokenView[]
 }
 
+export interface Measure {
+  value: number
+  unitSymbol: string
+}
+
+/** Une attaque de la feuille : allonge au corps à corps, portée normale et longue à distance. */
+export interface Attack {
+  id: string
+  label: string
+  mode: 'MELEE' | 'RANGED'
+  attackBonus: number
+  damage: string
+  damageType: string
+  reach: Measure | null
+  range: { normal: number; longRange: number; unitSymbol: string } | null
+}
+
+export interface JournalEntry {
+  /** Numéro de l'action qui a produit l'entrée : les entrées d'une même attaque le partagent. */
+  action: number
+  text: string
+}
+
+export interface AttackResult {
+  entries: JournalEntry[]
+  targetId: string
+  targetHitPoints: number
+  targetMaxHitPoints: number
+}
+
 export interface CreatureSheet {
   id: string
   name: string
@@ -37,8 +71,8 @@ export interface CreatureSheet {
   armorClass: number
   hitPoints: number
   maxHitPoints: number
-  speed: { value: number; unitSymbol: string }
-  weapon: { name: string; attackBonus: number; damage: string; damageType: string } | null
+  speed: Measure
+  attacks: Attack[]
   resistances: string[]
   vulnerabilities: string[]
 }

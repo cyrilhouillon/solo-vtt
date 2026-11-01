@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { CELL, occupant, snapToCell, type Point } from '../map/grid'
-import { SceneCanvas } from '../map/SceneCanvas'
+import { SceneCanvas, type Targeting } from '../map/SceneCanvas'
 import { formatLength, type CreatureKind, type SceneView } from '../types'
 
-const props = defineProps<{ scene: SceneView; selected: string[]; placing: CreatureKind | null }>()
+const props = defineProps<{
+  scene: SceneView
+  selected: string[]
+  placing: CreatureKind | null
+  targeting: Targeting | null
+  /** Thème courant : la carte relit ses couleurs quand il change. */
+  theme: string
+}>()
 const emit = defineEmits<{ backgroundClick: [x: number, y: number, free: boolean]; tokenClick: [tokenId: string] }>()
 
 /** Le canvas est muet pour un lecteur d'écran : la liste « Sur la carte » en est le double accessible. */
@@ -12,6 +19,7 @@ const label = computed(() => {
   const { width, height, unitSymbol, tokens } = props.scene
   const n = tokens.length
   const summary = `Carte de ${formatLength(width, unitSymbol)} sur ${formatLength(height, unitSymbol)}, ${n} ${n > 1 ? 'créatures' : 'créature'}`
+  if (props.targeting) return `${summary}. Ciblage : choisir la cible dans le tableau « Sur la carte ».`
   return props.placing ? `${summary}. Flèches pour choisir une case, Entrée pour poser.` : summary
 })
 
@@ -24,7 +32,13 @@ let canvas: SceneCanvas | null = null
 let observer: ResizeObserver | null = null
 
 function render() {
-  canvas?.render({ scene: props.scene, selected: props.selected, placing: props.placing, cursor: cursor.value })
+  canvas?.render({
+    scene: props.scene,
+    selected: props.selected,
+    placing: props.placing,
+    cursor: cursor.value,
+    targeting: props.targeting,
+  })
 }
 
 onMounted(() => {
@@ -34,11 +48,13 @@ onMounted(() => {
     onTokenClick: (id) => emit('tokenClick', id),
   })
   render()
+  // Le canvas ne redessine pas seul quand les polices finissent de charger.
+  void document.fonts.ready.then(render)
   observer = new ResizeObserver(() => canvas?.resize(el.clientWidth, el.clientHeight))
   observer.observe(el)
 })
 
-watch(() => [props.scene, props.selected, props.placing, cursor.value], render, { deep: true })
+watch(() => [props.scene, props.selected, props.placing, props.targeting, props.theme, cursor.value], render, { deep: true })
 watch(
   () => props.placing,
   (placing) => {
@@ -112,7 +128,7 @@ onBeforeUnmount(() => {
   <div
     ref="container"
     class="map"
-    :class="{ placing }"
+    :class="{ placing, targeting: targeting !== null }"
     :role="placing ? 'application' : 'img'"
     :tabindex="placing ? 0 : -1"
     :aria-label="label"
@@ -134,5 +150,9 @@ onBeforeUnmount(() => {
 }
 .map:focus-visible {
   outline-offset: -2px;
+}
+/* Le focus pris à la souris (clic sur la carte) ne laisse pas de contour. */
+.map:focus:not(:focus-visible) {
+  outline: none;
 }
 </style>

@@ -86,7 +86,7 @@ Aucune autre modification n'est nécessaire : si la cible est aussi entravée et
 
 ```
 core/     moteur générique : Engine, Pipeline, Listener, RuleBook, Decision, Dice
-state/    état du jeu : GameState, Creature, Weapon, Condition, DamageType
+state/    état du jeu : GameState, Creature, Weapon, Attack (allonge, portée, lancer), Condition, DamageType
 events/   GameEvent (sealed) : tout ce qui se passe, et comment ça modifie l'état
 attack/   l'action « attaque » : phases, contexte, règles de base 2024
 rules/    règles optionnelles : conditions, Bénédiction, Bouclier, style Duel

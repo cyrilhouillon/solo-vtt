@@ -46,9 +46,7 @@ public class SceneResource {
         var entry = SceneSession.catalogEntry(request.catalogId())
                 .orElseThrow(() -> new NotFoundException("Créature inconnue au catalogue : " + request.catalogId()));
         var token = session.place(entry, request.x(), request.y());
-        var creature = session.creature(token.entityId()).orElseThrow();
-        return new Dtos.TokenDto(token.id(), token.entityId(), entry.id(), creature.name(), entry.kind(),
-                token.position().x(), token.position().y());
+        return Dtos.TokenDto.of(token, entry, session.creature(token.entityId()).orElseThrow());
     }
 
     /** Retire un jeton et sa créature. */

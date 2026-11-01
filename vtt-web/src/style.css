@@ -1,30 +1,81 @@
-/* Thème sombre par défaut : longues sessions sur grand écran. */
-:root {
+/*
+ * Plateau de dés : feutre et bois. Sombre (noyer, feutre vert) le soir, clair (érable, feutre sauge)
+ * en journée. Laiton : le seul état vivant (mode, cible). Rubrique : ce que le moteur tranche.
+ */
+:root,
+:root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #15171c;
-  --surface: #1c1f26;
-  --surface-hover: #252933;
-  --surface-active: #2c3240;
-  --border: #2f3440;
-  --text: #e6e8ec;
-  --text-muted: #9aa1ad;
-  --accent: #7aa2f7;
-  --danger: #f28b82;
+  --page: #2a1910;
+  --wood: #3b2418;
+  --wood-raised: #4a2e1f;
+  --wood-sunken: #2f1d13;
+  --rule: #6b4a2c;
+  --control-border: #a8865a;
+  --ink: #efe6d2;
+  --ink-muted: #cdbfa3;
+  --brass: #dcb35c;
+  --on-brass: #24170c;
+  --rubric: #ef8070;
+  --felt: #1f3a2e;
+  --felt-deep: #183025;
+  --felt-rim: #12241b;
+  --hp: #8fbf7a;
+  --hp-low: #e0a35a;
 
-  --map-ground: #20242c;
-  --map-grid: #2d323d;
-  --map-border: #3a404d;
-  --map-label: #d5d9e0;
-  --map-measure: #e0c36a;
-  --token-character: #5b9cf0;
-  --token-monster: #e0675c;
-  --token-selected: #f5f0dc;
+  --map-ground: #183025;
+  --map-grid: rgba(239, 230, 210, 0.25);
+  --map-border: #7f9a86;
+  --map-label: #efe6d2;
+  --map-label-ground: rgba(18, 36, 27, 0.88);
+  --map-live: #dcb35c;
+  --map-down: #6f6a60;
+  --token-character: #4f84c4;
+  --token-monster: #b5643a;
+  --token-rim: #efe6d2;
+  --danger: #ef8070;
+}
 
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  font-size: 15px;
+:root[data-theme='light'] {
+  color-scheme: light;
+  --page: #b98f5c;
+  --wood: #dcbc8c;
+  --wood-raised: #e6caa0;
+  --wood-sunken: #cfab78;
+  --rule: #9b7546;
+  --control-border: #7a5530;
+  --ink: #2a1a10;
+  --ink-muted: #563c28;
+  --brass: #7d520c;
+  --on-brass: #fbf3e2;
+  --rubric: #93231d;
+  --felt: #93ab88;
+  --felt-deep: #b4c6a7;
+  --felt-rim: #6f8a64;
+  --hp: #3f7a2e;
+  --hp-low: #9a5a12;
+
+  --map-ground: #b4c6a7;
+  --map-grid: rgba(34, 52, 30, 0.41);
+  --map-border: #3f5537;
+  --map-label: #1f160d;
+  --map-label-ground: rgba(226, 234, 218, 0.92);
+  --map-live: #7d520c;
+  --map-down: #8d887d;
+  --token-character: #2f5f9a;
+  --token-monster: #9a4a1c;
+  --token-rim: #fbf3e2;
+  --danger: #93231d;
+}
+
+:root {
+  --font-body: 'Alegreya Sans', system-ui, sans-serif;
+  --font-title: 'Alegreya SC', Georgia, serif;
+  font-family: var(--font-body);
+  font-size: 16px;
   line-height: 1.45;
-  color: var(--text);
-  background: var(--bg);
+  color: var(--ink);
+  background: var(--page);
+  accent-color: var(--brass);
 }
 
 * {
@@ -33,7 +84,17 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--page);
+}
+
+::selection {
+  background: var(--brass);
+  color: var(--on-brass);
+}
+
+* {
+  scrollbar-color: var(--rule) transparent;
+  scrollbar-width: thin;
 }
 
 button,
@@ -43,11 +104,17 @@ input {
 }
 
 button {
-  padding: 0.35rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface-active);
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  background: var(--wood-sunken);
   cursor: pointer;
+  font-weight: 500;
+}
+
+button:hover:not(:disabled) {
+  background: var(--wood-raised);
+  border-color: var(--ink-muted);
 }
 
 button:disabled {
@@ -56,15 +123,33 @@ button:disabled {
 }
 
 input[type='number'] {
-  padding: 0.3rem 0.45rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  background: var(--wood-sunken);
+  font-variant-numeric: tabular-nums;
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brass);
   outline-offset: 2px;
+}
+
+/* Titres de panneau : petites capitales, filet effilé dessous (bloc de statistiques). */
+.panel-title {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+}
+
+.tapered {
+  height: 2px;
+  border: 0;
+  margin: 0.4rem 0 0.6rem;
+  background: linear-gradient(90deg, var(--rubric), transparent);
 }
 
 .sr-only {

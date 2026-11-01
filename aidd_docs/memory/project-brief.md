@@ -16,7 +16,7 @@ Le code, les commentaires et les messages sont en français ; les identifiants s
 
 | Terme | Sens |
 | ----- | ---- |
-| SRD 5.2 | Référence de règles D&D 2024 sous licence CC-BY-4.0, base des règles implémentées |
+| SRD 5.2 | Référence de règles D&D 2024 sous licence CC-BY-4.0, base des règles implémentées. Source à consulter pour toute règle ou fiche : le PDF officiel 5.2.1, https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf (pas de wiki tiers) |
 | Phase | Étape ordonnée d'une action (`AttackPhase`) ; l'ordre de l'enum est l'ordre d'exécution |
 | Listener | Une règle qui agit dans une phase ; règles de base et exceptions ont le même statut |
 | RuleBook | Registre des listeners actifs ; activer un module = enregistrer ses listeners |
@@ -36,3 +36,4 @@ Le code, les commentaires et les messages sont en français ; les identifiants s
 - Moteur suspendable sur décision, pile de résolutions, journal d'événements rejouable.
 - Démo console (`dnd.engine.demo.Main`), avec un mode interactif.
 - Préparation de scène dans le navigateur : carte vide en mètres ou en pieds, créatures du catalogue SRD posées au clic, distance entre deux créatures, feuille de chaque créature.
+- Attaque depuis la feuille : ciblage sur la carte, allonge, portée normale et longue, lancer ; résultat dans le journal et PV mis à jour.

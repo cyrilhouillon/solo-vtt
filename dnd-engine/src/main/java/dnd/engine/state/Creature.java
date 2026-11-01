@@ -1,9 +1,11 @@
 package dnd.engine.state;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -20,7 +22,7 @@ public final class Creature {
     private final int baseArmorClass;
     private final int maxHitPoints;
     private final double speed;             // en mètres
-    private final Weapon weapon;
+    private final List<Weapon> weapons;
     private final Set<DamageType> resistances;
     private final Set<DamageType> vulnerabilities;
     private final Set<Condition> conditions;
@@ -40,7 +42,7 @@ public final class Creature {
         this.maxHitPoints = b.hitPoints;
         this.hitPoints = b.hitPoints;
         this.speed = b.speed;
-        this.weapon = b.weapon;
+        this.weapons = List.copyOf(b.weapons);
         this.resistances = Set.copyOf(b.resistances);
         this.vulnerabilities = Set.copyOf(b.vulnerabilities);
         this.conditions = b.conditions.isEmpty() ? EnumSet.noneOf(Condition.class) : EnumSet.copyOf(b.conditions);
@@ -59,7 +61,7 @@ public final class Creature {
         this.maxHitPoints = o.maxHitPoints;
         this.hitPoints = o.hitPoints;
         this.speed = o.speed;
-        this.weapon = o.weapon;
+        this.weapons = o.weapons;
         this.resistances = o.resistances;
         this.vulnerabilities = o.vulnerabilities;
         this.conditions = o.conditions.isEmpty() ? EnumSet.noneOf(Condition.class) : EnumSet.copyOf(o.conditions);
@@ -87,7 +89,15 @@ public final class Creature {
     public int maxHitPoints() { return maxHitPoints; }
     /** Vitesse de déplacement, en mètres par tour. */
     public double speed() { return speed; }
-    public Weapon weapon() { return weapon; }
+    public List<Weapon> weapons() { return weapons; }
+
+    /** Les attaques possibles : celles de corps à corps, puis celles à distance (lancer compris). */
+    public List<Attack> attacks() {
+        List<Attack> attacks = new ArrayList<>();
+        for (Weapon w : weapons) if (w.isMelee()) attacks.add(new Attack(w, Attack.Mode.MELEE));
+        for (Weapon w : weapons) if (w.range() != null) attacks.add(new Attack(w, Attack.Mode.RANGED));
+        return attacks;
+    }
     public boolean reactionAvailable() { return reactionAvailable; }
 
     public int armorClass() {
@@ -147,7 +157,7 @@ public final class Creature {
         private int armorClass = 10;
         private int hitPoints = 1;
         private double speed = 9;
-        private Weapon weapon;
+        private final List<Weapon> weapons = new ArrayList<>();
         private final Set<DamageType> resistances = new HashSet<>();
         private final Set<DamageType> vulnerabilities = new HashSet<>();
         private final Set<Condition> conditions = new HashSet<>();
@@ -164,7 +174,8 @@ public final class Creature {
         public Builder armorClass(int ac) { this.armorClass = ac; return this; }
         public Builder hitPoints(int hp) { this.hitPoints = hp; return this; }
         public Builder speed(double metres) { this.speed = metres; return this; }
-        public Builder weapon(Weapon w) { this.weapon = w; return this; }
+        /** Ajoute une arme ; une créature peut en avoir plusieurs. */
+        public Builder weapon(Weapon w) { weapons.add(w); return this; }
         public Builder resistance(DamageType t) { resistances.add(t); return this; }
         public Builder vulnerability(DamageType t) { vulnerabilities.add(t); return this; }
         public Builder condition(Condition c) { conditions.add(c); return this; }
