@@ -1,0 +1,32 @@
+package dnd.engine.rules;
+
+import dnd.engine.attack.AttackContext;
+import dnd.engine.attack.AttackPhase;
+import dnd.engine.core.Decision;
+import dnd.engine.core.Engine;
+import dnd.engine.core.Listener;
+import dnd.engine.events.GameEvent.RuleApplied;
+import dnd.engine.state.GameState;
+
+import java.util.Optional;
+
+/**
+ * Style de combat Duel : +2 aux dégâts avec une arme de corps à corps tenue à une main.
+ * Placé en DAMAGE_ADJUST, il s'applique donc AVANT une éventuelle résistance.
+ */
+public final class DuelingStyle implements Listener<AttackPhase, AttackContext> {
+
+    public static final String FEATURE = "dueling";
+
+    public AttackPhase phase() { return AttackPhase.DAMAGE_ADJUST; }
+
+    public boolean appliesTo(AttackContext ctx, GameState s) {
+        return ctx.hit() && ctx.weapon().oneHandedMelee() && s.get(ctx.attackerId()).hasFeature(FEATURE);
+    }
+
+    public Optional<Decision> handle(AttackContext ctx, Engine e) {
+        ctx.setDamage(ctx.damage() + 2);
+        e.emit(new RuleApplied("Style Duel", "+2 → %d".formatted(ctx.damage())));
+        return Optional.empty();
+    }
+}
