@@ -87,7 +87,8 @@ class CombatApiTest {
         finDuTour().statusCode(200)
                 .body("combat.activeId", equalTo("gobelin-1"))
                 .body("combat.round", equalTo(2))
-                .body("entries.text", equalTo(List.of("Fin du tour de Squelette", "Round 2", "Tour de Gobelin guerrier")));
+                .body("entries.text", equalTo(List.of("Fin du tour de Squelette", "Round 2", "Tour de Gobelin guerrier")))
+                .body("entries.round", equalTo(List.of(false, true, false)));
 
         when().get("/api/journal").then().statusCode(200)
                 .body("text", hasItem("Le combat commence"))

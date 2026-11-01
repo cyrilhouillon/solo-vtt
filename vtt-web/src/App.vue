@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, ApiError } from './api'
 import AppIcon from './components/AppIcon.vue'
 import CatalogPanel from './components/CatalogPanel.vue'
+import CombatControl from './components/CombatControl.vue'
 import CreatureSheet from './components/CreatureSheet.vue'
 import DecisionDialog from './components/DecisionDialog.vue'
 import DiceTray, { type TrayResult } from './components/DiceTray.vue'
@@ -17,8 +18,9 @@ import { initialTheme, saveTheme, type Theme } from './theme'
 import {
   formatLength,
   type Attack,
-  type AttackResult,
+  type ActionResult,
   type CatalogEntry,
+  type Combat,
   type CreatureSheet as Sheet,
   type Decision,
   type DistanceUnit,
@@ -47,6 +49,10 @@ const theme = ref<Theme>(initialTheme())
 const decision = ref<Decision | null>(null)
 /** La réponse est envoyée et pas encore revenue : un second clic ne doit pas en envoyer une autre. */
 const answering = ref(false)
+/** Le combat en cours, ou `null` hors combat. */
+const combat = ref<Combat | null>(null)
+/** Lancement ou fin de tour envoyés et pas encore revenus. */
+const combatBusy = ref(false)
 
 function toggleTheme() {
   theme.value = theme.value === 'dark' ? 'light' : 'dark'
@@ -180,12 +186,14 @@ async function resync(): Promise<string> {
     targetSheet.value = null
     lastResult.value = null
     decision.value = null
+    combat.value = null
     drawer.value = 'map'
     return "Le serveur n'a plus de carte (redémarrage ?). En créer une nouvelle."
   }
   targeting.value = null
   journal.value = await api.journal()
   decision.value = await api.pendingDecision()
+  combat.value = await api.combat()
   lastResult.value = trayFromJournal()
   const ids = new Set(fresh.tokens.map((t) => t.id))
   selected.value = selected.value.filter((id) => ids.has(id))
@@ -218,6 +226,7 @@ onMounted(() =>
     scene.value = await loadScene()
     journal.value = await api.journal()
     decision.value = await api.pendingDecision()
+    combat.value = await api.combat()
     lastResult.value = trayFromJournal()
     openDefaultDrawer()
   }),
@@ -232,6 +241,7 @@ function createScene(width: number, height: number, unit: DistanceUnit) {
     journal.value = []
     lastResult.value = null
     decision.value = null
+    combat.value = null
     targetSheet.value = null
     clearSelection()
     history.length = 0
@@ -243,7 +253,19 @@ function createScene(width: number, height: number, unit: DistanceUnit) {
 async function placeToken(catalogId: string, x: number, y: number): Promise<TokenView> {
   const token = await api.placeToken(catalogId, x, y)
   scene.value?.tokens.push(token)
+  await afterRosterChange()
   return token
+}
+
+/**
+ * En combat, une créature posée tire son initiative et une créature retirée quitte l'ordre (son départ peut ouvrir
+ * le tour suivant, voire « Qui joue ? ») : l'ordre, le journal et la décision se relisent.
+ */
+async function afterRosterChange() {
+  if (!combat.value) return
+  combat.value = await api.combat()
+  journal.value = await api.journal()
+  decision.value = await api.pendingDecision()
 }
 
 /** Retire les jetons côté serveur puis à l'écran ; rend ceux qui ont été retirés. */
@@ -257,6 +279,7 @@ async function deleteTokens(ids: string[]): Promise<TokenView[]> {
     const index = tokens.findIndex((t) => t.id === id)
     if (index >= 0) removed.push(tokens.splice(index, 1)[0])
   }
+  await afterRosterChange()
   selected.value = selected.value.filter((id) => !ids.includes(id))
   if (targeting.value && ids.includes(targeting.value.attackerId)) targeting.value = null
   if (sheet.value && ids.includes(sheet.value.id)) showSheet(selected.value.at(-1) ?? null)
@@ -305,6 +328,7 @@ function onBackgroundClick(x: number, y: number, free: boolean) {
     try {
       const token = await api.placeToken(entry.id, x, y)
       settle(token)
+      await afterRosterChange()
       history.push({ type: 'place', tokenId: token.id })
       tell(`${token.name} posé. Ctrl+Z pour annuler.`)
     } catch (e) {
@@ -413,16 +437,22 @@ function attackTarget(targetId: string) {
 }
 
 /**
- * Ce que l'attaque, ou sa reprise après une décision, a produit : une nouvelle décision ouvre le dialogue ;
- * sinon l'action est finie (journal, PV du jeton, piste à dés, feuilles).
+ * Ce qu'une action (attaque, combat), ou sa reprise après une décision, a produit : une nouvelle décision ouvre
+ * le dialogue ; sinon l'action est finie (journal, combat, et pour une attaque PV du jeton, piste à dés, feuilles).
  */
-async function settleAction(result: AttackResult) {
+async function settleAction(result: ActionResult) {
   journal.value.push(...result.entries)
   decision.value = result.decision
+  combat.value = result.combat
+  // Une attaque suspendue garde l'annonce précédente ; un tour suspendu dit qui peut jouer.
+  if (result.decision && result.targetId === null) tell(result.entries.at(-1)?.text ?? result.decision.prompt)
   if (result.decision) return
   const last = result.entries.at(-1)
+  tell(last?.text ?? 'Action résolue.')
   const actionEntries = last ? journal.value.filter((e) => e.action === last.action) : result.entries
-  tell(last?.text ?? 'Attaque résolue.')
+  // Comme après un rechargement, la piste montre la dernière action, tour de combat compris.
+  lastResult.value = trayFrom(actionEntries)
+  if (result.targetId === null || result.targetHitPoints === null || result.targetMaxHitPoints === null) return
   const target = scene.value?.tokens.find((token) => token.id === result.targetId)
   if (target) target.hitPoints = result.targetHitPoints
   lastResult.value = {
@@ -432,6 +462,17 @@ async function settleAction(result: AttackResult) {
   // Une réaction peut changer la feuille de la cible comme de l'attaquant (emplacement, CA).
   if (sheet.value) showSheet(sheet.value.id)
   targetSheet.value = await api.sheet(result.targetId)
+}
+
+/** Lance le combat ou termine le tour ; un second clic avant la réponse n'envoie rien. */
+function combatAction(send: () => Promise<ActionResult>) {
+  if (combatBusy.value) return
+  combatBusy.value = true
+  void attempt(async () => {
+    await settleAction(await send())
+  }).finally(() => {
+    combatBusy.value = false
+  })
 }
 
 /** Le joueur répond à la décision ; l'action suspendue reprend côté serveur. */
@@ -559,6 +600,14 @@ onBeforeUnmount(() => {
         {{ scene.tokens.length }} {{ scene.tokens.length > 1 ? 'créatures' : 'créature' }}
       </p>
       <span class="spacer" />
+      <CombatControl
+        v-if="scene"
+        :combat="combat"
+        :creature-count="scene.tokens.filter((t) => !t.pending).length"
+        :blocked="combatBusy"
+        @start="combatAction(api.startCombat)"
+        @end-turn="combatAction(api.endTurn)"
+      />
       <strong v-if="mode" class="mode">{{ mode }}</strong>
       <button
         type="button"
@@ -616,6 +665,7 @@ onBeforeUnmount(() => {
           :attacker="targeting?.attackerId ?? null"
           :target="targetSheet?.id ?? null"
           :ranges="rangeVerdicts"
+          :combat="combat"
           @select="onTokenChosen"
           @remove="removeTokens([$event])"
         />
@@ -625,6 +675,7 @@ onBeforeUnmount(() => {
             :selected="selected"
             :placing="armedEntry?.kind ?? null"
             :targeting="targetingView"
+            :active-id="combat?.activeId ?? null"
             :theme="theme"
             @background-click="onBackgroundClick"
             @token-click="onTokenChosen"

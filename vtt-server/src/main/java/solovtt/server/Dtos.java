@@ -62,9 +62,10 @@ final class Dtos {
 
     record AttackRequest(String attackerId, String attackId, String targetId) {}
 
-    record JournalEntryDto(int action, String text) {
+    /** {@code round} : l'entrée ouvre un round, le journal la montre en séparateur. */
+    record JournalEntryDto(int action, String text, boolean round) {
         static JournalEntryDto of(SceneSession.JournalEntry e) {
-            return new JournalEntryDto(e.action(), e.text());
+            return new JournalEntryDto(e.action(), e.text(), e.round());
         }
     }
 

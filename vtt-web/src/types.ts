@@ -55,6 +55,8 @@ export interface JournalEntry {
   /** Numéro de l'action qui a produit l'entrée : les entrées d'une même attaque le partagent. */
   action: number
   text: string
+  /** L'entrée ouvre un round : le journal la montre en séparateur. */
+  round: boolean
 }
 
 /** Une question du moteur au milieu d'une action ; le joueur y répond pour toute créature. */
@@ -66,13 +68,38 @@ export interface Decision {
   options: string[]
 }
 
-export interface AttackResult {
+/** Un membre d'un rang d'initiative ; `played` s'il a déjà joué ce round. */
+export interface TurnMember {
+  creatureId: string
+  name: string
+  played: boolean
+}
+
+/** Les créatures qui partagent un rang d'initiative. */
+export interface InitiativeGroup {
+  initiative: number
+  members: TurnMember[]
+}
+
+/** Le combat en cours : round, créature qui joue (`null` tant que « Qui joue ? » attend), ordre de jeu. */
+export interface Combat {
+  round: number
+  activeId: string | null
+  candidates: string[]
+  groups: InitiativeGroup[]
+}
+
+/** Ce qu'une action (attaque, combat) ou sa reprise a produit. */
+export interface ActionResult {
   entries: JournalEntry[]
-  targetId: string
-  targetHitPoints: number
-  targetMaxHitPoints: number
-  /** La décision qui suspend l'attaque ; `null` quand elle est finie. */
+  /** La cible et ses PV après coup ; `null` pour une action sans cible (combat). */
+  targetId: string | null
+  targetHitPoints: number | null
+  targetMaxHitPoints: number | null
+  /** La décision qui suspend l'action ; `null` quand elle est finie. */
   decision: Decision | null
+  /** Le combat après l'action ; `null` hors combat. */
+  combat: Combat | null
 }
 
 export interface CreatureSheet {

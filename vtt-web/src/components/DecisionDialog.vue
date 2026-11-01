@@ -3,7 +3,7 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import type { Decision } from '../types'
 
 /**
- * La question que pose le moteur au milieu d'une action (réaction Bouclier…). Modal : la page derrière
+ * La question que pose le moteur au milieu d'une action (réaction Bouclier, « Qui joue ? » en combat). Modal : la page derrière
  * est inerte tant qu'il n'y a pas de réponse. Rien ne le ferme hormis une option.
  */
 const props = defineProps<{ decision: Decision | null; answering: boolean }>()
@@ -51,7 +51,7 @@ onMounted(sync)
     @close="onClose"
   >
     <template v-if="decision">
-      <h2 id="decision-title" class="title">Réaction · {{ decision.chooserName }}</h2>
+      <h2 id="decision-title" class="title">{{ decision.chooserName ? `Réaction · ${decision.chooserName}` : 'Combat' }}</h2>
       <p id="decision-prompt" class="prompt">{{ decision.prompt }}</p>
       <div class="options">
         <button

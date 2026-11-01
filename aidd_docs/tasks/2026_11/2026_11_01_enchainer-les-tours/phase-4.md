@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Client : lancer le combat, ordre de jeu, créature active

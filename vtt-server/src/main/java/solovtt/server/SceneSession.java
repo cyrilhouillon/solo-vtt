@@ -63,8 +63,8 @@ public class SceneSession {
     /** La cible de la dernière action (aucune pour le combat), pour rendre ses PV quand l'action reprend après une décision. */
     private String actionTargetId;
 
-    /** Une ligne du journal : la description d'un événement, et l'action à laquelle il appartient. */
-    public record JournalEntry(int action, String text) {}
+    /** Une ligne du journal : la description d'un événement, l'action à laquelle il appartient, et si elle ouvre un round. */
+    public record JournalEntry(int action, String text, boolean round) {}
 
     /** Ce qu'une action (ou sa reprise) a ajouté au journal, sa cible ({@code null} sans cible), et la décision qui l'arrête, s'il y en a une. */
     public record ActionOutcome(List<JournalEntry> entries, String targetId, Optional<Decision> decision) {}
@@ -79,7 +79,7 @@ public class SceneSession {
         scene = created;
         state = new GameState();
         engine = new Engine<>(state, StandardRules.create(), dice);
-        engine.subscribe(event -> journal.add(new JournalEntry(action, event.describe(state))));
+        engine.subscribe(event -> journal.add(new JournalEntry(action, event.describe(state), event instanceof GameEvent.RoundStarted)));
         journal.clear();
         action = 0;
         actionTargetId = null;

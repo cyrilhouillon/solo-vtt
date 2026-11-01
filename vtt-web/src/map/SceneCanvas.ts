@@ -19,6 +19,8 @@ export interface SceneCanvasState {
   cursor: Point | null
   /** Ciblage en cours, ou `null`. */
   targeting: Targeting | null
+  /** La créature dont c'est le tour en combat, ou `null`. */
+  activeId: string | null
 }
 
 /**
@@ -161,7 +163,7 @@ export class SceneCanvas {
     const ordered = [...scene.tokens].sort((a, b) => Number(selected.includes(a.id)) - Number(selected.includes(b.id)))
     const verdictOf = this.verdicts(scene, this.state.targeting)
     for (const token of ordered) {
-      this.drawToken(scene, token, selected.includes(token.id), placing === null, names, verdictOf(token))
+      this.drawToken(scene, token, selected.includes(token.id), token.creatureId === this.state.activeId, placing === null, names, verdictOf(token))
     }
     this.layer.add(names)
     if (measure) this.layer.add(measure)
@@ -349,6 +351,7 @@ export class SceneCanvas {
     scene: SceneView,
     token: TokenView,
     isSelected: boolean,
+    isActive: boolean,
     clickable: boolean,
     names: Konva.Group,
     hint: TargetHint | null,
@@ -362,6 +365,10 @@ export class SceneCanvas {
     // Un jeton en attente du serveur est estompé et ne réagit pas encore ; hors de portée aussi, estompé.
     const opacity = token.pending ? 0.55 : reachable ? 1 : 0.4
     const group = new Konva.Group({ x, y, listening: clickable && !token.pending, opacity })
+    // À son tour : un anneau laiton en tirets, plus large que l'anneau de cible et distinct du contour de sélection.
+    if (isActive) {
+      group.add(new Konva.Circle({ radius: radius * 1.55, stroke: this.colors.live, strokeWidth: 3, dash: [7, 5], listening: false }))
+    }
     group.add(
       this.tokenShape(token.kind, radius, {
         stroke: isSelected ? this.colors.live : this.colors.rim,

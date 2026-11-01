@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import type { RangeVerdict } from '../map/range'
-import { KIND_LABELS, type TokenView } from '../types'
+import { KIND_LABELS, type Combat, type TokenView } from '../types'
 import AppIcon from './AppIcon.vue'
 
 /**
@@ -10,6 +10,7 @@ import AppIcon from './AppIcon.vue'
  * `attacker` : l'attaquant d'un ciblage en cours ; choisir une ligne vise alors la créature.
  * `target` : la créature de l'onglet Cible, visée par la dernière attaque.
  * `ranges` : en ciblage, ce que la distance permet pour chaque créature (indicatif).
+ * `combat` : en combat, les lignes suivent l'ordre d'initiative et la créature qui joue est marquée.
  */
 const props = defineProps<{
   tokens: TokenView[]
@@ -17,7 +18,36 @@ const props = defineProps<{
   attacker: string | null
   target: string | null
   ranges: Record<string, RangeVerdict>
+  combat: Combat | null
 }>()
+
+/** Ce que le combat dit d'une créature : son initiative, si elle joue, si elle a joué ce round. */
+type TurnInfo = { initiative: number; active: boolean; played: boolean; candidate: boolean }
+
+const turns = computed(() => {
+  const info = new Map<string, TurnInfo>()
+  const c = props.combat
+  if (!c) return info
+  for (const group of c.groups) {
+    for (const m of group.members) {
+      info.set(m.creatureId, {
+        initiative: group.initiative,
+        active: m.creatureId === c.activeId,
+        played: m.played && m.creatureId !== c.activeId,
+        candidate: c.activeId === null && c.candidates.includes(m.creatureId),
+      })
+    }
+  }
+  return info
+})
+
+/** En combat, l'ordre d'initiative (les créatures hors de l'ordre, en attente de pose, à la fin) ; sinon l'ordre de pose. */
+const rows = computed(() => {
+  const c = props.combat
+  if (!c) return props.tokens
+  const rank = new Map(c.groups.flatMap((g) => g.members.map((m) => m.creatureId)).map((id, i) => [id, i]))
+  return [...props.tokens].sort((a, b) => (rank.get(a.creatureId) ?? Infinity) - (rank.get(b.creatureId) ?? Infinity))
+})
 const aiming = computed(() => props.attacker !== null)
 const emit = defineEmits<{ select: [tokenId: string]; remove: [tokenId: string] }>()
 
@@ -74,8 +104,9 @@ function health(token: TokenView): number {
       <table aria-labelledby="board-title">
         <thead>
           <tr>
+            <th v-if="combat" scope="col" class="num init-col"><abbr title="Initiative">Init.</abbr></th>
             <th scope="col"><h2 id="board-title" ref="title" tabindex="-1" class="board-title">Sur la carte</h2></th>
-            <th scope="col">Camp</th>
+            <th scope="col" class="side">Camp</th>
             <th scope="col" class="num">PV</th>
             <th scope="col" class="num">CA</th>
             <th scope="col" class="state-col">État</th>
@@ -84,10 +115,12 @@ function health(token: TokenView): number {
         </thead>
         <tbody>
           <tr
-            v-for="(token, index) in tokens"
+            v-for="(token, index) in rows"
             :key="token.id"
-            :class="[token.kind.toLowerCase(), { selected: selected.includes(token.id), down: isDown(token) }]"
+            :class="[token.kind.toLowerCase(), { selected: selected.includes(token.id), down: isDown(token), active: turns.get(token.creatureId)?.active }]"
+            :aria-current="turns.get(token.creatureId)?.active ? 'true' : undefined"
           >
+            <td v-if="combat" class="num figure init-col">{{ turns.get(token.creatureId)?.initiative ?? '…' }}</td>
             <td class="who">
               <button
                 ref="entries"
@@ -115,6 +148,9 @@ function health(token: TokenView): number {
               <span class="state">
               <span v-if="token.pending" class="tag">Pose en cours…</span>
               <span v-else-if="isDown(token)" class="tag down-tag">À terre</span>
+              <span v-if="turns.get(token.creatureId)?.active" class="tag turn-tag">À son tour</span>
+              <span v-else-if="turns.get(token.creatureId)?.candidate" class="tag">Au choix</span>
+              <span v-else-if="turns.get(token.creatureId)?.played" class="tag">Joué</span>
               <span v-if="token.id === attacker" class="tag">Attaquant</span>
               <span v-else-if="!aiming && token.id === target" class="tag">Cible</span>
               <span v-if="ranges[token.id]" class="tag" :class="{ allowed: ranges[token.id].allowed }">{{ ranges[token.id].label }}</span>
@@ -244,7 +280,7 @@ tr.selected .ribbon {
   border-radius: 2px;
   background: var(--token-monster);
 }
-.side {
+td.side {
   color: var(--ink-muted);
 }
 .hp {
@@ -314,6 +350,22 @@ tr.down .name {
   width: 1%;
   text-align: right;
 }
+/* La créature qui joue : un état vivant, repère et étiquette en laiton. */
+tbody tr.active td:first-child {
+  box-shadow: inset 4px 0 0 var(--brass);
+}
+.tag.turn-tag {
+  color: var(--on-brass);
+  background: var(--brass);
+  border-color: var(--brass);
+}
+.init-col {
+  width: 1%;
+  padding-right: 0.25rem;
+}
+abbr {
+  text-decoration: none;
+}
 .remove {
   padding: 0.25rem;
   border-color: transparent;
@@ -333,8 +385,8 @@ h2:focus {
  * déjà les PV : la colonne État garde la place de son étiquette la plus longue.
  */
 @media (max-width: 1280px) {
-  th:nth-child(2),
-  td:nth-child(2) {
+  th.side,
+  td.side {
     display: none;
   }
 }
