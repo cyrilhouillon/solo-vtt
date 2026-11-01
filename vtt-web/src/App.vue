@@ -66,6 +66,13 @@ function toggleDrawer(which: 'catalog' | 'map') {
   drawer.value = drawer.value === which ? null : which
 }
 
+/** Entre 901 et 1280 px, tiroir et panneau latéral ne tiennent pas ensemble à côté de la carte. */
+const PANELS_SHARE = window.matchMedia('(min-width: 901px) and (max-width: 1280px)')
+const panelsShare = ref(PANELS_SHARE.matches)
+const syncPanelsShare = (e: MediaQueryListEvent) => (panelsShare.value = e.matches)
+/** Le tiroir ouvert replie le panneau latéral en bande d'onglets. */
+const sideFolded = computed(() => panelsShare.value && drawer.value !== null)
+
 /** L'attaque dont on choisit la cible, ou `null` hors ciblage. Exclusif du placement. */
 const targeting = ref<{ attackerId: string; attackerName: string; attack: Attack } | null>(null)
 
@@ -418,12 +425,25 @@ const tabButtons = ref<HTMLButtonElement[]>([])
 
 /** Onglets au clavier : flèches gauche et droite, Début et Fin. */
 function onTabKey(e: KeyboardEvent, index: number) {
-  const moves: Record<string, number> = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: TABS.length - 1 }
+  const moves: Record<string, number> = {
+    ArrowLeft: index - 1,
+    ArrowRight: index + 1,
+    ArrowUp: index - 1,
+    ArrowDown: index + 1,
+    Home: 0,
+    End: TABS.length - 1,
+  }
   if (!(e.key in moves)) return
   e.preventDefault()
   const next = (moves[e.key] + TABS.length) % TABS.length
   tab.value = TABS[next].id
   tabButtons.value[next]?.focus()
+}
+
+/** Choisir un onglet du panneau replié le déplie : le tiroir se ferme. */
+function chooseTab(id: (typeof TABS)[number]['id']) {
+  tab.value = id
+  if (sideFolded.value) drawer.value = null
 }
 
 /** Seule la réponse à la dernière demande s'affiche : des sélections rapides ne se doublent pas. */
@@ -463,8 +483,14 @@ function onKey(e: KeyboardEvent) {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+onMounted(() => {
+  window.addEventListener('keydown', onKey)
+  PANELS_SHARE.addEventListener('change', syncPanelsShare)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
+  PANELS_SHARE.removeEventListener('change', syncPanelsShare)
+})
 </script>
 
 <template>
@@ -536,7 +562,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           @select="onTokenChosen"
           @remove="removeTokens([$event])"
         />
-        <div class="map-frame">
+        <div class="map-frame" :style="{ '--map-ratio': `${scene.width} / ${scene.height}` }">
           <MapView
             :scene="scene"
             :selected="selected"
@@ -572,7 +598,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <p class="sr-only" aria-live="polite">{{ announcement }}</p>
     </main>
 
-    <aside class="side" aria-label="Créatures">
+    <aside class="side" :class="{ folded: sideFolded }" aria-label="Créatures">
       <div class="tabs" role="tablist" aria-label="Panneau">
         <button
           v-for="(t, index) in TABS"
@@ -585,13 +611,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           :aria-selected="tab === t.id"
           :aria-controls="`panel-${t.id}`"
           :tabindex="tab === t.id ? 0 : -1"
-          @click="tab = t.id"
+          :title="sideFolded ? `Ouvrir ${t.label}` : undefined"
+          @click="chooseTab(t.id)"
           @keydown="onTabKey($event, index)"
         >
           {{ t.label }}
         </button>
       </div>
-      <div :id="`panel-${tab}`" class="tab-panel" role="tabpanel" :aria-labelledby="`tab-${tab}`" tabindex="0">
+      <div
+        v-show="!sideFolded"
+        :id="`panel-${tab}`"
+        class="tab-panel" role="tabpanel" :aria-labelledby="`tab-${tab}`" tabindex="0">
         <CreatureSheet
           v-if="tab === 'sheet'"
           :sheet="sheet"
@@ -813,8 +843,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   .layout {
     grid-template-columns: 3.5rem 1fr 20rem;
   }
+}
+/* Tiroir ouvert sous 1280 px : le panneau latéral se replie en bande d'onglets verticaux. */
+@media (min-width: 901px) and (max-width: 1280px) {
   .layout.with-drawer {
-    grid-template-columns: 3.5rem 15rem 1fr 20rem;
+    grid-template-columns: 3.5rem 17rem 1fr 3rem;
+  }
+  .side.folded .tabs {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+    border-bottom: 0;
+  }
+  .side.folded .tab {
+    writing-mode: vertical-rl;
+    padding: 0.9rem 0.4rem;
+    border-radius: 4px;
+  }
+  .side.folded .tab[aria-selected='true'] {
+    box-shadow: inset 3px 0 0 var(--ink);
   }
 }
 @media (max-width: 900px) {
@@ -844,9 +892,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     border-left: 0;
     min-height: 24rem;
   }
+  /* La carte prend sa propre forme : pas de bande de feutre vide au-dessus ni en dessous. */
   .map-frame {
     flex: none;
-    height: 60vh;
+    aspect-ratio: var(--map-ratio, 3 / 2);
+    min-height: 14rem;
+    max-height: 70svh;
   }
 }
 </style>

@@ -218,8 +218,9 @@ Une palette de matières (bois, feutre, encre) avec deux pigments de sens, décl
 
 Grille d'application pleine hauteur : barre en haut, puis rail d'icônes (3.5rem), table au centre (fluide), panneau latéral à onglets (24rem). Un tiroir de 17rem s'insère entre le rail et la table quand Catalogue ou Nouvelle carte est ouvert. La table empile, de haut en bas : le tableau « Sur la carte » (cinq lignes visibles, 14rem, défile au-delà), la carte encadrée de 6px de bois à gauche et à droite, la piste à dés, la barre d'état.
 
-- Sous 1100px : latéral à 20rem, tiroir à 15rem.
-- Sous 900px : une colonne ; la page défile, la carte prend 60vh, le panneau latéral passe dessous (24rem minimum), le rail se couche à l'horizontale quand le tiroir est fermé.
+- Sous 1280px : tiroir et panneau latéral ne partagent plus l'écran. Le tiroir ouvert replie le latéral en une bande de 3rem d'onglets verticaux (l'actif souligné d'un trait d'encre côté table) ; choisir un onglet ferme le tiroir et rouvre le panneau.
+- Sous 1100px : latéral à 20rem.
+- Sous 900px : une colonne ; la page défile, le cadre de la carte prend la forme de la carte (14rem minimum, 70svh maximum), le panneau latéral passe dessous (24rem minimum), le rail se couche à l'horizontale quand le tiroir est fermé.
 - Sous 600px : le tableau masque le camp en toutes lettres, l'état et la jauge ; la forme de la pastille dit déjà le camp.
 
 Le rythme est en rem : 0.25 entre les entrées d'une liste, 0.4 à 0.6 à l'intérieur d'une ligne, 0.75 à 1 entre blocs, 1 à 1.1 en marge de panneau. Les erreurs se posent par-dessus la carte sans la redimensionner.
