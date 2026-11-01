@@ -9,12 +9,12 @@ const props = defineProps<{ entries: JournalEntry[] }>()
  * et le détail des règles replié entre les deux. Une entrée qui ouvre un round coupe le groupe :
  * elle s'affiche en séparateur, à sa place.
  */
-type Item =
-  | { kind: 'round'; key: string; text: string }
-  | { kind: 'action'; key: string; title: string; outcome: string | null; detail: string[] }
+type Round = { kind: 'round'; key: string; text: string }
+type Group = Round | { kind: 'action'; key: string; action: number; title: string; lines: string[] }
+type Item = Round | { kind: 'action'; key: string; title: string; outcome: string | null; detail: string[] }
 
 const items = computed(() => {
-  const groups: ({ kind: 'round'; key: string; text: string } | { kind: 'action'; key: string; action: number; title: string; lines: string[] })[] = []
+  const groups: Group[] = []
   props.entries.forEach((entry, index) => {
     const last = groups.at(-1)
     if (entry.round) groups.push({ kind: 'round', key: `r${index}`, text: entry.text })

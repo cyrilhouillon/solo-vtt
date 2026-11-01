@@ -273,17 +273,23 @@ async function deleteTokens(ids: string[]): Promise<TokenView[]> {
   const removed: TokenView[] = []
   // Un jeton en attente n'existe pas encore côté serveur : il n'y a rien à retirer.
   const known = ids.filter((id) => !scene.value?.tokens.find((t) => t.id === id)?.pending)
+  // Ceux que « Qui joue ? » empêche de retirer restent sur la carte, et sélectionnés.
+  const kept = [...known]
   for (const id of known) {
     await api.removeToken(id)
+    kept.shift()
     const tokens = scene.value?.tokens ?? []
     const index = tokens.findIndex((t) => t.id === id)
     if (index >= 0) removed.push(tokens.splice(index, 1)[0])
+    // Retirer la créature active peut poser « Qui joue ? » : le serveur refuserait les retraits suivants.
+    if (combat.value && (await api.pendingDecision())) break
   }
   await afterRosterChange()
-  selected.value = selected.value.filter((id) => !ids.includes(id))
-  if (targeting.value && ids.includes(targeting.value.attackerId)) targeting.value = null
-  if (sheet.value && ids.includes(sheet.value.id)) showSheet(selected.value.at(-1) ?? null)
-  if (targetSheet.value && ids.includes(targetSheet.value.id)) targetSheet.value = null
+  const gone = ids.filter((id) => !kept.includes(id))
+  selected.value = selected.value.filter((id) => !gone.includes(id))
+  if (targeting.value && gone.includes(targeting.value.attackerId)) targeting.value = null
+  if (sheet.value && gone.includes(sheet.value.id)) showSheet(selected.value.at(-1) ?? null)
+  if (targetSheet.value && gone.includes(targetSheet.value.id)) targetSheet.value = null
   return removed
 }
 

@@ -62,8 +62,9 @@ export interface JournalEntry {
 /** Une question du moteur au milieu d'une action ; le joueur y répond pour toute créature. */
 export interface Decision {
   id: string
-  chooserId: string
-  chooserName: string
+  /** La créature qui choisit (réaction), ou `null` quand la question ne revient à personne (« Qui joue ? »). */
+  chooserId: string | null
+  chooserName: string | null
   prompt: string
   options: string[]
 }

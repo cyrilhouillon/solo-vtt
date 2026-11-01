@@ -42,13 +42,14 @@ public final class JoinCombat extends CombatStep {
         // Le groupe qui joue est celui des candidats du tour en cours.
         boolean passed = combat.turn()
                 .flatMap(t -> combat.groupOf(t.candidates().getFirst()))
-                .map(current -> ranksBefore(total, creature.initiative(), current))
+                .map(current -> ranksAhead(total, creature.initiative(), current))
                 .orElse(false);
         engine.emit(new JoinedCombat(creatureId, total, creature.initiative(), passed));
         return Optional.empty();
     }
 
-    private static boolean ranksBefore(int total, int modifier, InitiativeGroup current) {
+    /** La créature arrivée (total, modificateur) passe avant le groupe {@code current}. */
+    private static boolean ranksAhead(int total, int modifier, InitiativeGroup current) {
         return !current.ranksBefore(total, modifier) && !current.sameRank(total, modifier);
     }
 }

@@ -84,11 +84,15 @@ public final class Combat {
         this.turn = turn;
     }
 
-    /** Ce candidat joue : il est actif et a joué ce round. Hors des candidats proposés, il est seul candidat. */
+    /**
+     * La créature joue : elle est active et a joué ce round. Sans tour proposé, elle est le candidat unique
+     * (aucun {@code TurnOffered} ne la précède) ; sinon elle doit être parmi les candidats.
+     *
+     * @throws IllegalArgumentException hors des candidats proposés
+     * @throws IllegalStateException si une créature joue déjà
+     */
     public void startTurn(String creatureId) {
-        turn = turn != null && turn.awaitingChoice() && turn.candidates().contains(creatureId)
-                ? turn.choose(creatureId)
-                : TurnOrder.offer(round, List.of(creatureId));
+        turn = turn == null ? TurnOrder.offer(round, List.of(creatureId)) : turn.choose(creatureId);
         played.add(creatureId);
     }
 

@@ -6,12 +6,11 @@ import type { Combat } from '../types'
  * Le combat dans la barre : hors combat, « Lancer le combat » ; en combat, le round, la créature qui joue,
  * et « Fin du tour ». `blocked` : une demande est en cours, un second clic n'en lance pas une autre.
  */
-const props = defineProps<{ combat: Combat | null; creatureCount: number | null; blocked: boolean }>()
+const props = defineProps<{ combat: Combat | null; creatureCount: number; blocked: boolean }>()
 const emit = defineEmits<{ start: []; endTurn: [] }>()
 
 /** Pourquoi le combat ne peut pas commencer, ou `null`. */
 const startRefusal = computed(() => {
-  if (props.creatureCount === null) return "Créer d'abord une carte."
   if (props.creatureCount === 0) return "Poser au moins une créature avant de lancer le combat."
   return null
 })

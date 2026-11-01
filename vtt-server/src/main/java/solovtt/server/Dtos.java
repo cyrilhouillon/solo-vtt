@@ -69,7 +69,10 @@ final class Dtos {
         }
     }
 
-    /** Une question du moteur ; le joueur y répond pour toute créature (jeu solo). */
+    /**
+     * Une question du moteur ; le joueur y répond pour toute créature (jeu solo). {@code chooserId} et
+     * {@code chooserName} sont {@code null} quand aucune créature ne choisit (« Qui joue ? »).
+     */
     record DecisionDto(String id, String chooserId, String chooserName, String prompt, List<String> options) {
         static DecisionDto of(Decision d, SceneSession session) {
             String name = session.creature(d.chooserId()).map(Creature::name).orElse(d.chooserId());
