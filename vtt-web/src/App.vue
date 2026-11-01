@@ -347,7 +347,21 @@ function arm(entryId: string | null) {
   notice.value = ''
 }
 
-/** Une attaque de la feuille affichée : passe la carte en ciblage ; un second clic l'arrête. */
+const board = ref<InstanceType<typeof TokenBoard> | null>(null)
+/** Le bouton d'attaque qui a lancé le ciblage : le focus y revient une fois le ciblage fini. */
+let attackOrigin: HTMLElement | null = null
+
+/** Fin du ciblage par la résolution ou Échap : le clavier reprend là où l'attaque est partie. */
+function endTargeting() {
+  targeting.value = null
+  if (attackOrigin?.isConnected) attackOrigin.focus()
+  attackOrigin = null
+}
+
+/**
+ * Une attaque de la feuille affichée : passe la carte en ciblage ; un second clic l'arrête.
+ * Le focus va au tableau, où le clavier choisit la cible.
+ */
 function startAttack(attack: Attack) {
   const attacker = sheet.value
   if (!attacker) return
@@ -358,6 +372,9 @@ function startAttack(attack: Attack) {
   arm(null)
   error.value = null
   targeting.value = { attackerId: attacker.id, attackerName: attacker.name, attack }
+  attackOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  announcement.value = `Ciblage : ${attack.label} de ${attacker.name}. Choisir la cible dans le tableau ; Échap annule.`
+  board.value?.focusTitle()
 }
 
 /** Un clic sur une créature : la cible en ciblage, la sélection sinon. */
@@ -377,7 +394,7 @@ function attackTarget(targetId: string) {
   void attempt(async () => {
     const result = await api.attack(t.attackerId, t.attack.id, targetId)
     journal.value.push(...result.entries)
-    targeting.value = null
+    endTargeting()
     tell(result.entries.at(-1)?.text ?? 'Attaque résolue.')
     const target = scene.value?.tokens.find((token) => token.id === result.targetId)
     if (target) target.hitPoints = result.targetHitPoints
@@ -400,7 +417,9 @@ function toggleSelection(tokenId: string) {
   selected.value = current.includes(tokenId)
     ? current.filter((id) => id !== tokenId)
     : [...current, tokenId].slice(-2)
-  showSheet(selected.value.at(-1) ?? null)
+  const shown = selected.value.at(-1) ?? null
+  if (shown) tab.value = 'sheet'
+  showSheet(shown)
 }
 
 function clearSelection() {
@@ -466,7 +485,7 @@ function isTyping(target: EventTarget | null): boolean {
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     // Un pas à la fois : d'abord le ciblage ou le placement, puis la sélection.
-    if (targeting.value) targeting.value = null
+    if (targeting.value) endTargeting()
     else if (armed.value) arm(null)
     else clearSelection()
     notice.value = ''
@@ -553,6 +572,7 @@ onBeforeUnmount(() => {
       </div>
       <template v-if="scene">
         <TokenBoard
+          ref="board"
           :tokens="scene.tokens"
           :selected="selected"
           :shown="sheet?.id ?? null"

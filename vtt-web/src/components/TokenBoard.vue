@@ -41,6 +41,19 @@ watch(
   },
 )
 
+/** En ciblage, le focus vient sur le tableau : c'est là que le clavier choisit la cible. */
+function focusTitle() {
+  title.value?.focus()
+}
+defineExpose({ focusTitle })
+
+/** En ciblage, la ligne vise : son nom dit ce que la distance permet, et elle n'est plus un interrupteur. */
+function entryLabel(token: TokenView): string | undefined {
+  if (!props.aiming) return undefined
+  const range = props.ranges[token.id]
+  return range ? `Viser ${token.name}, ${range}` : `Viser ${token.name}`
+}
+
 function isDown(token: TokenView): boolean {
   return token.hitPoints === 0
 }
@@ -79,7 +92,8 @@ function health(token: TokenView): number {
                 ref="entries"
                 type="button"
                 class="entry"
-                :aria-pressed="selected.includes(token.id)"
+                :aria-pressed="aiming ? undefined : selected.includes(token.id)"
+                :aria-label="entryLabel(token)"
                 :disabled="token.pending"
                 @click="emit('select', token.id)"
               >
@@ -210,12 +224,16 @@ tr.selected .name {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Ruban de camp : forme et couleur du jeton. */
+/* Ruban de camp : forme et couleur du jeton ; sélectionné, il se cercle de laiton comme le jeton. */
 .ribbon {
   width: 0.8rem;
   height: 0.8rem;
   flex: none;
   border: 1.5px solid var(--token-rim);
+}
+tr.selected .ribbon {
+  outline: 2px solid var(--brass);
+  outline-offset: 1px;
 }
 .character .ribbon {
   border-radius: 50%;

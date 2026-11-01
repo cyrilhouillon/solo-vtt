@@ -409,8 +409,11 @@ export class SceneCanvas {
       e.cancelBubble = true
       this.events.onTokenClick(token.id)
     })
+    // En ciblage, le viseur n'apparaît que là où un clic lance l'attaque.
+    const targeting = this.state?.targeting
+    const cursor = !targeting ? 'pointer' : token.id === targeting.attackerId || !reachable ? 'not-allowed' : 'crosshair'
     group.on('mouseenter', () => {
-      this.stage.container().style.cursor = 'pointer'
+      this.stage.container().style.cursor = cursor
       full.visible(true)
       full.moveToTop()
       ring.visible(hint !== null && reachable)

@@ -145,8 +145,7 @@ onBeforeUnmount(() => {
   height: 100%;
   min-height: 0;
 }
-.map.placing,
-.map.targeting {
+.map.placing {
   cursor: crosshair;
 }
 .map:focus-visible {

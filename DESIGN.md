@@ -22,7 +22,8 @@ colors:
   token-monster: "#b5643a"
   token-rim: "#efe6d2"
   map-down: "#6f6a60"
-  map-grid: "rgba(239, 230, 210, 0.16)"
+  map-grid: "rgba(239, 230, 210, 0.25)"
+  map-border: "#7f9a86"
   map-label-ground: "rgba(18, 36, 27, 0.88)"
   page-light: "#b98f5c"
   wood-light: "#dcbc8c"
@@ -44,7 +45,8 @@ colors:
   token-monster-light: "#9a4a1c"
   token-rim-light: "#fbf3e2"
   map-down-light: "#8d887d"
-  map-grid-light: "rgba(34, 52, 30, 0.26)"
+  map-grid-light: "rgba(34, 52, 30, 0.41)"
+  map-border-light: "#3f5537"
   map-label-ground-light: "rgba(226, 234, 218, 0.92)"
 typography:
   display:
@@ -187,7 +189,8 @@ Une palette de matières (bois, feutre, encre) avec deux pigments de sens, décl
 - **Ivoire / Encre brune** (`ink`, `ink-muted`) : texte principal et secondaire.
 - **Feutre vert bouteille / Feutre sauge** (`felt`, `felt-deep`, `felt-rim`) : la table et la piste. `felt-deep` est aussi le sol de la carte (`--map-ground`).
 - **Gris à terre** (`map-down`) : jeton et pastille d'une créature à 0 PV.
-- **Grille** (`map-grid`) et **fond d'étiquette** (`map-label-ground`) : traits de la grille et pavé sous les noms sur la carte.
+- **Grille** (`map-grid`) et **fond d'étiquette** (`map-label-ground`) : traits de la grille (2:1 sur le sol, assumé sous le seuil WCAG pour ne pas couvrir les jetons) et pavé sous les noms sur la carte.
+- **Lisière** (`map-border`) : le bord de la carte, un feutre surpiqué au-dessus de 3:1 contre la table, pour voir où l'on peut poser.
 
 ### Named Rules
 **The Brass Is Alive Rule.** Le laiton ne marque que ce qui est vivant à cet instant : un mode, une créature armée, une sélection, une cible, une attaque visée. Un état d'interface (tiroir ouvert, onglet actif) n'est pas un état vivant et reste en bois et encre.
@@ -268,7 +271,7 @@ Du bois en creux, francs et discrets.
 - **Focus:** le contour laiton commun. Radios et cases suivent `accent-color: brass`.
 
 ### Tableau « Sur la carte »
-Un tableau des départs : en-têtes collants en petites capitales, lattes alternées (`wood-sunken` une ligne sur deux), ligne sélectionnée en `wood-raised` avec le nom en gras. Chaque ligne porte la pastille de camp, le nom, le camp, la jauge de PV (4.5rem, `hp`, `hp-low` sous le seuil), les chiffres tabulaires et l'état. Une créature à terre : pastille grise, nom barré en `ink-muted`, étiquette « À terre » en rubrique.
+Un tableau des départs : en-têtes collants en petites capitales, lattes alternées (`wood-sunken` une ligne sur deux), ligne sélectionnée en `wood-raised` avec le nom en gras et la pastille cerclée de laiton, comme le jeton sur la carte. Chaque ligne porte la pastille de camp, le nom, le camp, la jauge de PV (4.5rem, `hp`, `hp-low` sous le seuil), les chiffres tabulaires et l'état. Une créature à terre : pastille grise, nom barré en `ink-muted`, étiquette « À terre » en rubrique.
 
 ### Bloc de statistiques (Feuille, Cible)
 Nom en rubrique (headline), type en italique `ink-muted`, filet effilé, lignes libellé gras puis chiffre en rubrique (1.15rem). Intertitres en petites capitales rubrique soulignés d'un filet rubrique. Une attaque visée : la ligne se cercle de laiton sur `wood-raised`, son bouton passe en laiton plein.
@@ -280,7 +283,7 @@ Une cuvette de feutre `felt-deep` (8px) dans un cadre de bois, sous la carte. Le
 Une entrée par action : titre en gras, issue en rubrique gras, détail des jets replié sous un résumé en petites capitales.
 
 ### Carte (canvas)
-Sol `felt-deep`, grille `map-grid` de 1px, bord `map-border`. Jetons pleins en couleur de camp, cerclés de 2px `token-rim`, initiales en Alegreya Sans 700 ; noms sur un pavé `map-label-ground`. Sélection : contour laiton de 3.5px. Cible survolée : anneau laiton de 3px à 1.35 fois le rayon. Allonge et portée normale : cercle laiton plein de 2px ; portée longue : cercle en tirets (8/6) et bande hachurée laiton (traits obliques à 45% d'opacité) entre les deux portées. Hors de portée : jeton à 40% d'opacité. Au survol en ciblage, une bulle au-dessus du jeton donne la distance et ce qu'elle permet (« portée longue : désavantage », « hors d'allonge »…), cerclée de laiton si la cible est permise, et son nom sous le jeton s'allonge de sa CA et de ses PV ; le tableau répète ce verdict dans sa colonne État. Indicatif : le serveur tranche. À terre : jeton gris (`map-down`) barré d'une croix dessinée de 3px, sans initiales. Case occupée : anneau `--danger`.
+Sol `felt-deep`, grille `map-grid` de 1px, bord `map-border`. Jetons pleins en couleur de camp, cerclés de 2px `token-rim`, initiales en Alegreya Sans 700 ; noms sur un pavé `map-label-ground`. Sélection : contour laiton de 3.5px. Cible survolée : anneau laiton de 3px à 1.35 fois le rayon. Allonge et portée normale : cercle laiton plein de 2px ; portée longue : cercle en tirets (8/6) et bande hachurée laiton (traits obliques à 45% d'opacité) entre les deux portées. Hors de portée : jeton à 40% d'opacité. Au survol en ciblage, une bulle au-dessus du jeton donne la distance et ce qu'elle permet (« portée longue : désavantage », « hors d'allonge »…), cerclée de laiton si la cible est permise, et son nom sous le jeton s'allonge de sa CA et de ses PV ; le tableau répète ce verdict dans sa colonne État. Le curseur dit l'issue du clic : viseur sur une cible permise, interdit hors de portée et sur l'attaquant, flèche ailleurs. Indicatif : le serveur tranche. À terre : jeton gris (`map-down`) barré d'une croix dessinée de 3px, sans initiales. Case occupée : anneau `--danger`.
 
 ## Do's and Don'ts
 

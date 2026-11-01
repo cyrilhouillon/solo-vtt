@@ -23,8 +23,8 @@
   --hp-low: #e0a35a;
 
   --map-ground: #183025;
-  --map-grid: rgba(239, 230, 210, 0.16);
-  --map-border: #0e1d15;
+  --map-grid: rgba(239, 230, 210, 0.25);
+  --map-border: #7f9a86;
   --map-label: #efe6d2;
   --map-label-ground: rgba(18, 36, 27, 0.88);
   --map-live: #dcb35c;
@@ -55,8 +55,8 @@
   --hp-low: #9a5a12;
 
   --map-ground: #b4c6a7;
-  --map-grid: rgba(34, 52, 30, 0.26);
-  --map-border: #6f8a64;
+  --map-grid: rgba(34, 52, 30, 0.41);
+  --map-border: #3f5537;
   --map-label: #1f160d;
   --map-label-ground: rgba(226, 234, 218, 0.92);
   --map-live: #7d520c;
