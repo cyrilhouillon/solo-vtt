@@ -31,14 +31,14 @@ flowchart TD
 - `pom.xml` (racine) : agrégateur Maven `solovtt:solo-vtt`, qui porte les versions communes.
 - `vtt-engine/` : le moteur générique (`solovtt.engine` : `Engine`, `Pipeline`, `Listener`, `RuleBook`, `Event`, `Decision`, `Dice`) et la scène (`solovtt.scene` : `Scene`, `Token`, `Position`, `DistanceUnit`). Il ne contient aucune règle ni aucun type de jeu.
 - `dnd-engine/` : les règles D&D 2024, qui dépendent de `vtt-engine`.
-  - `state/` : l'état du jeu (`GameState`, `Creature`, armes, conditions, types de dégâts).
+  - `state/` : l'état du jeu (`GameState`, `Creature`, `Weapon`, `Attack` avec allonge et portée, conditions, types de dégâts).
   - `events/` : `GameEvent` (sealed, `extends Event<GameState>`), tout ce qui arrive et comment ça modifie l'état.
   - `attack/` : l'action « attaque », c'est-à-dire ses phases, son contexte, `AttackRule` et les règles de base 2024.
-  - `rules/` : les règles optionnelles et `StandardRules`, qui assemble le `RuleBook`.
+  - `rules/` : les règles optionnelles (`RangeRules` pour la portée longue…) et `StandardRules`, qui assemble le `RuleBook`.
   - `catalog/` : `SrdCatalog`, les créatures prêtes à l'emploi du SRD 5.2.1.
   - `demo/` : démonstration console.
-- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `creatures/{id}`).
-- `vtt-web/` : client Vue 3 + TypeScript. `src/api.ts` appelle le serveur, `src/map/SceneCanvas.ts` dessine la carte avec Konva, `src/components/` porte les panneaux.
+- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `creatures/{id}`, `attacks`, `journal`).
+- `vtt-web/` : client Vue 3 + TypeScript. `src/api.ts` appelle le serveur, `src/map/SceneCanvas.ts` dessine la carte avec Konva, `src/components/` porte les panneaux (catalogue, journal, liste des jetons, feuille avec ses attaques).
 
 ## Points d'entrée
 
