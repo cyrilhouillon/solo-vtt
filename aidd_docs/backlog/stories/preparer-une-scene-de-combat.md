@@ -2,6 +2,8 @@
 type: story
 status: ready
 parent: aidd_docs/backlog/epics/jouer-un-combat-dnd-2024-en-local.md
+depends_on:
+  - aidd_docs/backlog/tasks/separer-le-moteur-generique-des-regles-dnd.md
 order: 1
 ---
 
