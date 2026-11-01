@@ -2,9 +2,10 @@ package dnd.engine.rules;
 
 import dnd.engine.attack.AttackContext;
 import dnd.engine.attack.AttackPhase;
+import dnd.engine.attack.CoreAttackRules.AttackRule;
 import dnd.engine.core.Decision;
 import dnd.engine.core.Engine;
-import dnd.engine.core.Listener;
+import dnd.engine.events.GameEvent;
 import dnd.engine.events.GameEvent.ArmorClassBonusApplied;
 import dnd.engine.events.GameEvent.ReactionUsed;
 import dnd.engine.events.GameEvent.RuleApplied;
@@ -25,7 +26,7 @@ import java.util.Optional;
  * <p>Pour ne pas spammer le joueur, on ne propose le sort que s'il change le résultat.
  * Un vrai jeu pourrait laisser le choix au joueur via une option.</p>
  */
-public final class ShieldReaction implements Listener<AttackPhase, AttackContext> {
+public final class ShieldReaction implements AttackRule {
 
     public static final String SPELL = "shield";
     public static final int BONUS = 5;
@@ -44,7 +45,7 @@ public final class ShieldReaction implements Listener<AttackPhase, AttackContext
                 && ctx.total() < target.armorClass() + BONUS;
     }
 
-    public Optional<Decision> handle(AttackContext ctx, Engine e) {
+    public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
         Creature target = e.state().get(ctx.targetId());
         String targetId = target.id();
         int slot = target.lowestAvailableSlot().getAsInt();
@@ -52,15 +53,15 @@ public final class ShieldReaction implements Listener<AttackPhase, AttackContext
         String prompt = "%s est touchée (%d contre CA %d). Lancer Bouclier (réaction, emplacement de niveau %d) ?"
                 .formatted(target.name(), ctx.total(), target.armorClass(), slot);
 
-        return Optional.of(e.ask(targetId, prompt, List.of(CAST, DECLINE), (choice, engine) -> {
+        return Optional.of(e.ask(targetId, prompt, List.of(CAST, DECLINE), choice -> {
             if (CAST.equals(choice)) {
-                engine.emit(new ReactionUsed(targetId, "Bouclier"));
-                engine.emit(new SpellSlotExpended(targetId, slot));
-                engine.emit(new ArmorClassBonusApplied(targetId, "Bouclier", BONUS));
+                e.emit(new ReactionUsed(targetId, "Bouclier"));
+                e.emit(new SpellSlotExpended(targetId, slot));
+                e.emit(new ArmorClassBonusApplied(targetId, "Bouclier", BONUS));
                 // TODO : retirer le bonus au début du prochain tour de la cible.
                 // Il faut pour ça une structure de tour (événement TurnStarted + effets à durée).
             } else {
-                engine.emit(new RuleApplied(engine.state().get(targetId).name(), "renonce à Bouclier"));
+                e.emit(new RuleApplied(e.state().get(targetId).name(), "renonce à Bouclier"));
             }
         }));
     }

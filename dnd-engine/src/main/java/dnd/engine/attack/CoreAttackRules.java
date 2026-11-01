@@ -3,6 +3,7 @@ package dnd.engine.attack;
 import dnd.engine.core.Decision;
 import dnd.engine.core.Engine;
 import dnd.engine.core.Listener;
+import dnd.engine.events.GameEvent;
 import dnd.engine.events.GameEvent.AttackDeclared;
 import dnd.engine.events.GameEvent.AttackResolved;
 import dnd.engine.events.GameEvent.D20Rolled;
@@ -24,7 +25,7 @@ public final class CoreAttackRules {
     private CoreAttackRules() {
     }
 
-    public static List<Listener<AttackPhase, AttackContext>> all() {
+    public static List<AttackRule> all() {
         return List.of(
                 new Declare(),
                 new RollAttack(),
@@ -37,10 +38,11 @@ public final class CoreAttackRules {
     }
 
     /** Petite base pour éviter de répéter la signature générique partout. */
-    interface AttackRule extends Listener<AttackPhase, AttackContext> {
+    /** Une règle du pipeline d'attaque D&D. */
+    public interface AttackRule extends Listener<GameState, GameEvent, AttackPhase, AttackContext> {
     }
 
-    static List<Integer> rollMany(Engine engine, int count, int sides) {
+    static List<Integer> rollMany(Engine<GameState, GameEvent> engine, int count, int sides) {
         List<Integer> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) values.add(engine.roll(sides));
         return values;
@@ -55,7 +57,7 @@ public final class CoreAttackRules {
     static final class Declare implements AttackRule {
         public AttackPhase phase() { return AttackPhase.DECLARE; }
 
-        public Optional<Decision> handle(AttackContext ctx, Engine e) {
+        public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
             e.emit(new AttackDeclared(ctx.attackerId(), ctx.targetId(), ctx.weapon().name()));
             return Optional.empty();
         }
@@ -68,7 +70,7 @@ public final class CoreAttackRules {
     static final class RollAttack implements AttackRule {
         public AttackPhase phase() { return AttackPhase.ROLL; }
 
-        public Optional<Decision> handle(AttackContext ctx, Engine e) {
+        public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
             boolean adv = !ctx.advantageSources().isEmpty();
             boolean dis = !ctx.disadvantageSources().isEmpty();
 
@@ -104,7 +106,7 @@ public final class CoreAttackRules {
     static final class DetermineHit implements AttackRule {
         public AttackPhase phase() { return AttackPhase.DETERMINE_HIT; }
 
-        public Optional<Decision> handle(AttackContext ctx, Engine e) {
+        public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
             int ac = e.state().get(ctx.targetId()).armorClass();
             boolean critical = ctx.natural() == 20;
             boolean hit = critical || (ctx.natural() != 1 && ctx.total() >= ac);
@@ -122,7 +124,7 @@ public final class CoreAttackRules {
     static final class ConfirmHit implements AttackRule {
         public AttackPhase phase() { return AttackPhase.CONFIRM_HIT; }
 
-        public Optional<Decision> handle(AttackContext ctx, Engine e) {
+        public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
             int ac = e.state().get(ctx.targetId()).armorClass();
             if (ctx.hit() && !ctx.critical() && ctx.total() < ac) {
                 ctx.setHit(false);
@@ -137,7 +139,7 @@ public final class CoreAttackRules {
 
         public boolean appliesTo(AttackContext ctx, GameState s) { return ctx.hit(); }
 
-        public Optional<Decision> handle(AttackContext ctx, Engine e) {
+        public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
             var weapon = ctx.weapon();
             int count = weapon.diceCount() * (ctx.critical() ? 2 : 1);
             List<Integer> values = rollMany(e, count, weapon.dieSides());
@@ -157,7 +159,7 @@ public final class CoreAttackRules {
             return ctx.hit() && s.get(ctx.targetId()).isResistantTo(ctx.weapon().damageType());
         }
 
-        public Optional<Decision> handle(AttackContext ctx, Engine e) {
+        public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
             int before = ctx.damage();
             ctx.setDamage(before / 2);
             e.emit(new RuleApplied("Résistance", "%d ÷ 2 = %d (arrondi inférieur)".formatted(before, ctx.damage())));
@@ -172,7 +174,7 @@ public final class CoreAttackRules {
             return ctx.hit() && s.get(ctx.targetId()).isVulnerableTo(ctx.weapon().damageType());
         }
 
-        public Optional<Decision> handle(AttackContext ctx, Engine e) {
+        public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
             int before = ctx.damage();
             ctx.setDamage(before * 2);
             e.emit(new RuleApplied("Vulnérabilité", "%d × 2 = %d".formatted(before, ctx.damage())));
@@ -185,7 +187,7 @@ public final class CoreAttackRules {
 
         public boolean appliesTo(AttackContext ctx, GameState s) { return ctx.hit(); }
 
-        public Optional<Decision> handle(AttackContext ctx, Engine e) {
+        public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
             e.emit(new DamageDealt(ctx.targetId(), ctx.damage(), ctx.weapon().damageType()));
             return Optional.empty();
         }

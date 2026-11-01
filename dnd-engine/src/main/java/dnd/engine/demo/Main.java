@@ -83,10 +83,10 @@ public final class Main {
     /** Boucle de pilotage : soumettre, puis répondre aux décisions jusqu'à ce que tout soit résolu. */
     static void play(GameState initial, Dice dice, String attackerId, String targetId, Controller controller) {
         GameState snapshot = initial.copy();
-        Engine engine = new Engine(initial, StandardRules.create(), dice);
+        Engine<GameState, GameEvent> engine = new Engine<>(initial, StandardRules.create(), dice);
         engine.subscribe(event -> print(engine, event));
 
-        Resolution attack = AttackAction.of(attackerId, targetId, engine.state());
+        Resolution<GameState, GameEvent> attack = AttackAction.of(attackerId, targetId, engine.state());
         StepResult result = engine.submit(attack);
 
         while (result instanceof StepResult.AwaitingDecision(Decision decision)) {
@@ -104,7 +104,7 @@ public final class Main {
                 + (identical ? "état identique ✔" : "DIFFÉRENT ✘"));
     }
 
-    static void print(Engine engine, GameEvent event) {
+    static void print(Engine<GameState, GameEvent> engine, GameEvent event) {
         String indent = event instanceof GameEvent.RuleApplied ? "      " : "    ";
         System.out.println(indent + event.describe(engine.state()));
     }
