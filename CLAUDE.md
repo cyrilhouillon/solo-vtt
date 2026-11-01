@@ -10,6 +10,7 @@
 
 ## Communication
 
+- **Always answer in French.**
 - **Minimize the reader's effort:** reason and prioritize before writing.
 - **Use as few words as possible** without changing meaning: "Less is more".
 - **Maximize precision per word**: no filler, repetition, or redundant paraphrasing.
