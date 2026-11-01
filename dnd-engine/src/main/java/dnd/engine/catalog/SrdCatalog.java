@@ -22,32 +22,32 @@ public final class SrdCatalog {
 
     private static final List<CatalogEntry> ENTRIES = List.of(
             // Niveau 1 : For 17, Con 14 ; cotte de mailles + bouclier ; Épée longue (For +3, maîtrise +2).
-            new CatalogEntry("guerriere", "Guerrière", Kind.CHARACTER, id ->
-                    Creature.builder(id, "Guerrière")
+            new CatalogEntry("guerriere", "Guerrière", Kind.CHARACTER, (id, name) ->
+                    Creature.builder(id, name)
                             .armorClass(18).hitPoints(12).speed(9)
                             .weapon(new Weapon("Épée longue", 1, 8, DamageType.SLASHING, 5, 3, true))
                             .feature(DuelingStyle.FEATURE)
                             .build()),
             // Niveau 1 : Int 17, Dex 14, Con 13 ; sans armure ; Dague (Dex +2, maîtrise +2).
-            new CatalogEntry("magicienne", "Magicienne", Kind.CHARACTER, id ->
-                    Creature.builder(id, "Magicienne")
+            new CatalogEntry("magicienne", "Magicienne", Kind.CHARACTER, (id, name) ->
+                    Creature.builder(id, name)
                             .armorClass(12).hitPoints(7).speed(9)
                             .weapon(new Weapon("Dague", 1, 4, DamageType.PIERCING, 4, 2, true))
                             .knows(ShieldReaction.SPELL).spellSlots(1, 2)
                             .build()),
-            new CatalogEntry("gobelin", "Gobelin guerrier", Kind.MONSTER, id ->
-                    Creature.builder(id, "Gobelin guerrier")
+            new CatalogEntry("gobelin", "Gobelin guerrier", Kind.MONSTER, (id, name) ->
+                    Creature.builder(id, name)
                             .armorClass(15).hitPoints(10).speed(9)
                             .weapon(new Weapon("Cimeterre", 1, 6, DamageType.SLASHING, 4, 2, true))
                             .build()),
-            new CatalogEntry("squelette", "Squelette", Kind.MONSTER, id ->
-                    Creature.builder(id, "Squelette")
+            new CatalogEntry("squelette", "Squelette", Kind.MONSTER, (id, name) ->
+                    Creature.builder(id, name)
                             .armorClass(13).hitPoints(13).speed(9)
                             .weapon(new Weapon("Épée courte", 1, 6, DamageType.PIERCING, 4, 2, true))
                             .vulnerability(DamageType.BLUDGEONING)
                             .build()),
-            new CatalogEntry("loup", "Loup", Kind.MONSTER, id ->
-                    Creature.builder(id, "Loup")
+            new CatalogEntry("loup", "Loup", Kind.MONSTER, (id, name) ->
+                    Creature.builder(id, name)
                             .armorClass(13).hitPoints(11).speed(12)
                             .weapon(new Weapon("Morsure", 2, 4, DamageType.PIERCING, 4, 2, false))
                             .build())

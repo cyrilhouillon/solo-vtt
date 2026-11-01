@@ -2,10 +2,10 @@ package dnd.engine.catalog;
 
 import dnd.engine.state.Creature;
 
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
-/** Une créature prête à l'emploi. {@code factory} reçoit l'id de l'instance à créer. */
-public record CatalogEntry(String id, String name, Kind kind, Function<String, Creature> factory) {
+/** Une créature prête à l'emploi. {@code factory} reçoit l'id et le nom de l'instance à créer. */
+public record CatalogEntry(String id, String name, Kind kind, BiFunction<String, String, Creature> factory) {
 
     public enum Kind {
         CHARACTER("Personnage"),
@@ -23,6 +23,10 @@ public record CatalogEntry(String id, String name, Kind kind, Function<String, C
     }
 
     public Creature create(String instanceId) {
-        return factory.apply(instanceId);
+        return create(instanceId, name);
+    }
+
+    public Creature create(String instanceId, String instanceName) {
+        return factory.apply(instanceId, instanceName);
     }
 }

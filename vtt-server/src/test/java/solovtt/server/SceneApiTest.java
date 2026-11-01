@@ -46,7 +46,7 @@ class SceneApiTest {
     @Test
     void poserDeuxFoisLeMemeMonstreDonneDeuxCreaturesDistinctes() {
         poser("gobelin", 3, 4).statusCode(201).body("id", equalTo("gobelin-1")).body("name", equalTo("Gobelin guerrier"));
-        poser("gobelin", 6, 8).statusCode(201).body("id", equalTo("gobelin-2"));
+        poser("gobelin", 6, 8).statusCode(201).body("id", equalTo("gobelin-2")).body("name", equalTo("Gobelin guerrier 2"));
 
         given().get("/api/scene").then().statusCode(200)
                 .body("tokens.id", hasItems("gobelin-1", "gobelin-2"))

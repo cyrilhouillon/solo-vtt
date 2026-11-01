@@ -41,7 +41,10 @@ public class SceneSession {
         return Optional.ofNullable(scene);
     }
 
-    /** Crée une créature depuis le catalogue et pose son jeton ; le jeton porte l'id de la créature. */
+    /**
+     * Crée une créature depuis le catalogue et pose son jeton ; le jeton porte l'id de la créature.
+     * À partir de la deuxième instance d'une entrée, le nom est numéroté (« Loup 2 ») pour rester distinct.
+     */
     public synchronized Token place(CatalogEntry entry, double x, double y) {
         if (scene == null) throw new IllegalStateException("aucune carte");
         int n = instanceCounters.getOrDefault(entry.id(), 0) + 1;
@@ -49,7 +52,7 @@ public class SceneSession {
         Token token = new Token(id, id, new Position(x, y));
         scene.place(token);
         instanceCounters.put(entry.id(), n);
-        state.add(entry.create(id));
+        state.add(entry.create(id, n == 1 ? entry.name() : entry.name() + " " + n));
         kinds.put(id, entry.kind());
         return token;
     }
