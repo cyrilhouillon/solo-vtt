@@ -1,6 +1,6 @@
 ---
 objective: "Depuis la feuille d'une créature (personnage ou adversaire), le joueur lance une attaque, choisit sa cible sur la carte, et le moteur la résout selon les règles D&D 2024 : allonge, portée normale et longue, lancer. Le jet, le résultat et les dégâts apparaissent dans le journal, et les PV de la cible baissent."
-status: pending
+status: implemented
 ---
 
 # Plan: attaquer depuis la feuille en ciblant sur la carte
