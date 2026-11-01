@@ -391,7 +391,9 @@ export class SceneCanvas {
       group.add(initials)
     }
     // Le nom complet à la demande : sélection ou survol. Les initiales suffisent au repos.
-    const full = this.nameLabel(token.name, radius)
+    // En ciblage, la cible envisagée porte aussi sa CA et ses PV : tout ce qui décide du coup est sous le curseur.
+    const stats = hint && token.armorClass !== undefined ? ` · CA ${token.armorClass} · ${token.hitPoints}/${token.maxHitPoints} PV` : ''
+    const full = this.nameLabel(token.name + stats, radius)
     full.visible(isSelected)
     full.move({ x, y })
     names.add(full)
