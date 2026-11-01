@@ -41,6 +41,15 @@ class SrdCatalogTest {
     }
 
     @Test
+    void chaqueCreaturePorteSonModificateurDInitiativeDuSrd() {
+        assertEquals(2, SrdCatalog.create("guerriere", "g").initiative());
+        assertEquals(2, SrdCatalog.create("magicienne", "m").initiative());
+        assertEquals(2, SrdCatalog.create("gobelin", "go").initiative());
+        assertEquals(3, SrdCatalog.create("squelette", "s").initiative());
+        assertEquals(2, SrdCatalog.create("loup", "l").initiative());
+    }
+
+    @Test
     void leSqueletteSuitLeSrd() {
         var squelette = SrdCatalog.create("squelette", "s");
         assertEquals(14, squelette.armorClass());
