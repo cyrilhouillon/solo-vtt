@@ -58,7 +58,7 @@ public final class CoreAttackRules {
         public AttackPhase phase() { return AttackPhase.DECLARE; }
 
         public Optional<Decision> handle(AttackContext ctx, Engine<GameState, GameEvent> e) {
-            e.emit(new AttackDeclared(ctx.attackerId(), ctx.targetId(), ctx.weapon().name()));
+            e.emit(new AttackDeclared(ctx.attackerId(), ctx.targetId(), ctx.attack().label()));
             return Optional.empty();
         }
     }

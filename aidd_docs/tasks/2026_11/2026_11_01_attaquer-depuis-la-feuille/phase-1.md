@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: portées D&D dans `dnd-engine` (allonge, portée, lancer)

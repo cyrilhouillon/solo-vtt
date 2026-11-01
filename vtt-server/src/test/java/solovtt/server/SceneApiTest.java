@@ -60,13 +60,13 @@ class SceneApiTest {
 
         given().get("/api/creatures/squelette-1").then().statusCode(200)
                 .body("name", equalTo("Squelette"))
-                .body("armorClass", equalTo(13))
+                .body("armorClass", equalTo(14))
                 .body("hitPoints", equalTo(13))
                 .body("maxHitPoints", equalTo(13))
                 .body("speed.value", equalTo(9.0f))
                 .body("speed.unitSymbol", equalTo("m"))
                 .body("weapon.name", equalTo("Épée courte"))
-                .body("weapon.damage", equalTo("1d6+2"))
+                .body("weapon.damage", equalTo("1d6+3"))
                 .body("vulnerabilities", hasItems("contondants"));
     }
 

@@ -15,6 +15,7 @@ public final class StandardRules {
         return new RuleBook<GameState, GameEvent>()
                 .registerAll(CoreAttackRules.all())
                 .registerAll(ConditionRules.all())
+                .registerAll(RangeRules.all())
                 .register(new Bless())
                 .register(new DuelingStyle())
                 .register(new ShieldReaction());

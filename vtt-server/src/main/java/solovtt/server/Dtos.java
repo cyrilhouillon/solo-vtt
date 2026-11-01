@@ -55,7 +55,7 @@ final class Dtos {
         /** La vitesse, en mètres dans le moteur, est donnée dans l'unité de la carte. */
         static CreatureSheetDto of(Creature c, CatalogEntry.Kind kind, DistanceUnit unit) {
             double speed = DistanceUnit.METRE.convert(c.speed(), unit);
-            var w = c.weapon();
+            var w = c.weapons().isEmpty() ? null : c.weapons().getFirst();
             WeaponDto weapon = w == null ? null : new WeaponDto(w.name(), w.attackBonus(),
                     w.diceNotation() + (w.damageBonus() == 0 ? "" : "%+d".formatted(w.damageBonus())),
                     w.damageType().label());

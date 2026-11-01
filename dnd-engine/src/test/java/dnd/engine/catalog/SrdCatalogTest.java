@@ -3,16 +3,21 @@ package dnd.engine.catalog;
 import dnd.engine.attack.AttackAction;
 import dnd.engine.events.GameEvent;
 import dnd.engine.rules.StandardRules;
+import dnd.engine.state.Attack;
 import dnd.engine.state.DamageType;
 import dnd.engine.state.GameState;
+import dnd.engine.state.Weapon;
 import org.junit.jupiter.api.Test;
 import solovtt.engine.Dice;
 import solovtt.engine.Engine;
 import solovtt.engine.StepResult;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,7 +43,7 @@ class SrdCatalogTest {
     @Test
     void leSqueletteSuitLeSrd() {
         var squelette = SrdCatalog.create("squelette", "s");
-        assertEquals(13, squelette.armorClass());
+        assertEquals(14, squelette.armorClass());
         assertEquals(13, squelette.maxHitPoints());
         assertEquals(9, squelette.speed());
         assertTrue(squelette.isVulnerableTo(DamageType.BLUDGEONING));
@@ -46,7 +51,31 @@ class SrdCatalogTest {
 
     @Test
     void leLoupCourtDouzeMetres() {
-        assertEquals(12, SrdCatalog.create("loup", "l").speed());
+        var loup = SrdCatalog.create("loup", "l");
+        assertEquals(12, loup.speed());
+        assertEquals(12, loup.armorClass());
+        assertEquals("1d6", loup.weapons().getFirst().diceNotation());
+    }
+
+    @Test
+    void lesAttaquesSuiventLeSrd() {
+        assertEquals(List.of("Dague", "Dague (lancer)"), labels("magicienne"));
+        assertEquals(List.of("Cimeterre", "Arc court"), labels("gobelin"));
+        assertEquals(List.of("Épée courte", "Arc court"), labels("squelette"));
+        assertEquals(List.of("Épée longue"), labels("guerriere"));
+        assertEquals(List.of("Morsure"), labels("loup"));
+
+        var dague = SrdCatalog.create("magicienne", "m").weapons().getFirst();
+        assertEquals(1.5, dague.reach());
+        assertEquals(new Weapon.Range(6, 18), dague.range());
+        var arc = SrdCatalog.create("squelette", "s").weapons().get(1);
+        assertNull(arc.reach());
+        assertEquals(new Weapon.Range(24, 96), arc.range());
+        assertEquals(5, arc.attackBonus());
+    }
+
+    private static List<String> labels(String entryId) {
+        return SrdCatalog.create(entryId, "x").attacks().stream().map(Attack::label).toList();
     }
 
     @Test
@@ -55,7 +84,7 @@ class SrdCatalogTest {
             var state = new GameState()
                     .add(entry.create("attaquant"))
                     .add(SrdCatalog.create("squelette", "cible"));
-            assertNotNull(state.get("attaquant").weapon(), entry.id());
+            assertFalse(state.get("attaquant").attacks().isEmpty(), entry.id());
             var engine = new Engine<GameState, GameEvent>(state, StandardRules.create(), Dice.scripted(15, 1, 1, 1, 1));
 
             var result = engine.submit(AttackAction.of("attaquant", "cible", state));

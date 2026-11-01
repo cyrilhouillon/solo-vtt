@@ -13,10 +13,12 @@ import java.util.List;
  * Créatures prêtes à l'emploi, tirées du System Reference Document 5.2.1 de Wizards of the Coast,
  * sous licence CC-BY-4.0 (https://creativecommons.org/licenses/by/4.0/legalcode).
  *
- * <p>Seul ce que le moteur sait jouer est repris : CA, PV, vitesse, attaque principale,
- * résistances et vulnérabilités. Les immunités (poison du Squelette), les effets annexes
- * (Gobelin : +1d4 avec avantage ; Loup : À terre, Tactique de meute) et les attaques secondaires
- * ne sont pas encore modélisés. Vitesses converties à 1,5 m pour 5 ft.</p>
+ * <p>Seul ce que le moteur sait jouer est repris : CA, PV, vitesse, attaques (allonge, portée,
+ * lancer), résistances et vulnérabilités. Les immunités (poison du Squelette) et les effets annexes
+ * (Gobelin : +1d4 avec avantage ; Loup : À terre, Tactique de meute) ne sont pas encore modélisés.
+ * Longueurs converties à 1,5 m pour 5 ft : allonge 5 ft = 1,5 m, 20/60 ft = 6/18 m, 80/320 ft = 24/96 m.</p>
+ *
+ * <p>Référence : https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf</p>
  */
 public final class SrdCatalog {
 
@@ -32,24 +34,26 @@ public final class SrdCatalog {
             new CatalogEntry("magicienne", "Magicienne", Kind.CHARACTER, (id, name) ->
                     Creature.builder(id, name)
                             .armorClass(12).hitPoints(7).speed(9)
-                            .weapon(new Weapon("Dague", 1, 4, DamageType.PIERCING, 4, 2, true))
+                            .weapon(new Weapon("Dague", 1, 4, DamageType.PIERCING, 4, 2, true).thrown(6, 18))
                             .knows(ShieldReaction.SPELL).spellSlots(1, 2)
                             .build()),
             new CatalogEntry("gobelin", "Gobelin guerrier", Kind.MONSTER, (id, name) ->
                     Creature.builder(id, name)
                             .armorClass(15).hitPoints(10).speed(9)
                             .weapon(new Weapon("Cimeterre", 1, 6, DamageType.SLASHING, 4, 2, true))
+                            .weapon(Weapon.ranged("Arc court", 1, 6, DamageType.PIERCING, 4, 2, 24, 96))
                             .build()),
             new CatalogEntry("squelette", "Squelette", Kind.MONSTER, (id, name) ->
                     Creature.builder(id, name)
-                            .armorClass(13).hitPoints(13).speed(9)
-                            .weapon(new Weapon("Épée courte", 1, 6, DamageType.PIERCING, 4, 2, true))
+                            .armorClass(14).hitPoints(13).speed(9)
+                            .weapon(new Weapon("Épée courte", 1, 6, DamageType.PIERCING, 5, 3, true))
+                            .weapon(Weapon.ranged("Arc court", 1, 6, DamageType.PIERCING, 5, 3, 24, 96))
                             .vulnerability(DamageType.BLUDGEONING)
                             .build()),
             new CatalogEntry("loup", "Loup", Kind.MONSTER, (id, name) ->
                     Creature.builder(id, name)
-                            .armorClass(13).hitPoints(11).speed(12)
-                            .weapon(new Weapon("Morsure", 2, 4, DamageType.PIERCING, 4, 2, false))
+                            .armorClass(12).hitPoints(11).speed(12)
+                            .weapon(new Weapon("Morsure", 1, 6, DamageType.PIERCING, 4, 2, false))
                             .build())
     );
 
