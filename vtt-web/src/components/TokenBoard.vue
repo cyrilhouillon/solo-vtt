@@ -168,14 +168,13 @@ function focusFirstTarget() {
 defineExpose({ focusFirstTarget, requestRemoval, cancelRemoval })
 
 /**
- * En combat hors ciblage, le tableau se resserre en bande d'initiative (la carte garde la place) ;
- * la ligne de la créature qui joue reste en vue.
+ * En combat, la bande d'initiative garde la créature qui joue en vue : à chaque tour, et au retour d'un ciblage.
+ * Pendant le ciblage, le focus de la cible tient la bande : la ramener à l'attaquant la ferait sortir.
  */
-const compact = computed(() => props.combat !== null && !aiming.value)
 watch(
-  () => [props.combat?.activeId, compact.value] as const,
-  async ([activeId]) => {
-    if (!activeId) return
+  () => [props.combat?.activeId, aiming.value] as const,
+  async ([activeId, isAiming]) => {
+    if (!activeId || isAiming) return
     await nextTick()
     const token = rows.value.find((t) => t.creatureId === activeId)
     if (token) entries.get(token.id)?.closest('tr')?.scrollIntoView({ block: 'nearest' })
@@ -308,22 +307,35 @@ function health(token: TokenView): number {
   padding: 0.75rem 1rem;
   color: var(--ink-muted);
 }
-/* Cinq lignes visibles ; au-delà, le tableau défile sans pousser la carte. */
+/*
+ * Cinq lignes visibles ; au-delà, le tableau défile sans pousser la carte. Hauteurs d'en-tête et de ligne fixes :
+ * la fenêtre tombe pile sur une ligne entière, et une ligne ne change pas de hauteur quand la confirmation de
+ * retrait remplace le ×. Le défilement (focus, ligne qui joue) s'arrête sous l'en-tête collant, pas dessous.
+ */
 .scroll {
-  max-height: 14rem;
+  --head: 2rem;
+  --row: 2.2rem;
+  max-height: calc(var(--head) + 5 * var(--row));
   overflow-y: auto;
+  scroll-padding-top: var(--head);
 }
 /*
  * En combat : trois lignes, la créature qui joue et les suivantes, ciblage compris. La bande garde sa hauteur
  * quand on vise : la carte ne bouge pas sous le pointeur ; les autres cibles défilent dans la bande.
  */
 .compact .scroll {
-  max-height: 8.25rem;
+  max-height: calc(var(--head) + 3 * var(--row));
 }
 table {
   width: 100%;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
+}
+thead tr {
+  height: var(--head);
+}
+tbody tr {
+  height: var(--row);
 }
 th {
   position: sticky;

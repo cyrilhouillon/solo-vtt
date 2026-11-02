@@ -462,7 +462,7 @@ function startAttack(attack: Attack) {
   targeting.value = { attackerId: attacker.id, attackerName: attacker.name, attack }
   attackOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : null
   announcement.value = `Ciblage : ${attack.label} de ${attacker.name}. Choisir la cible dans le tableau ; Échap annule.`
-  // Le tableau s'ouvre en entier pendant le ciblage : le focus attend son rendu.
+  // Le focus attend le rendu des verdicts de portée, qui disent quelles lignes sont des cibles permises.
   void nextTick(() => board.value?.focusFirstTarget())
 }
 
