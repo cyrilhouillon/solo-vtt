@@ -22,6 +22,12 @@ class SceneWithoutMapTest {
     }
 
     @Test
+    void sansCarte_terminerLeCombatRend409() {
+        var e = assertThrows(ClientErrorException.class, () -> new CombatResource(session).end());
+        assertEquals(409, e.getResponse().getStatus());
+    }
+
+    @Test
     void sansCarte_leJournalEstVide() {
         assertTrue(new JournalResource(session).journal().isEmpty());
     }

@@ -3,6 +3,7 @@ package solovtt.server;
 import dnd.engine.attack.AttackAction;
 import dnd.engine.catalog.CatalogEntry;
 import dnd.engine.catalog.SrdCatalog;
+import dnd.engine.combat.EndCombat;
 import dnd.engine.combat.EndTurn;
 import dnd.engine.combat.JoinCombat;
 import dnd.engine.combat.LeaveCombat;
@@ -41,10 +42,10 @@ import java.util.OptionalDouble;
  * au moment où il arrive, pour garder les PV de cet instant.</p>
  *
  * <p>Quand une règle pose une décision (réaction Bouclier, « Qui joue ? »), l'action reste suspendue : attaque,
- * pose, retrait, lancement du combat et fin de tour sont refusés jusqu'à la réponse ({@link DecisionPendingException}).
+ * pose, retrait, lancement du combat, fin de tour et fin du combat sont refusés jusqu'à la réponse ({@link DecisionPendingException}).
  * Une nouvelle carte reste permise : elle jette le moteur, sa décision et le combat.</p>
  *
- * <p>Le combat passe par le moteur : lancement, fin de tour, et en combat l'entrée d'une créature posée (elle tire
+ * <p>Le combat passe par le moteur : lancement, fin de tour, fin du combat, et en combat l'entrée d'une créature posée (elle tire
  * son initiative) ou la sortie d'une créature retirée. La créature elle-même est créée et supprimée hors journal,
  * comme pendant la préparation. Un refus d'état (combat déjà lancé, pas de combat…) lève
  * {@link ActionRefusedException}.</p>
@@ -146,6 +147,13 @@ public class SceneSession {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
         return run(refusable(() -> EndTurn.of(state)), null);
+    }
+
+    /** Met fin au combat : plus de tours ; les créatures restent sur la carte avec leurs PV. */
+    public synchronized ActionOutcome endCombat() {
+        if (scene == null) throw new IllegalStateException("aucune carte");
+        requireNoDecision();
+        return run(refusable(() -> EndCombat.of(state)), null);
     }
 
     /**

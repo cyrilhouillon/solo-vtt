@@ -70,4 +70,7 @@ export const api = {
   startCombat: () => request<ActionResult>('/api/combat', { method: 'POST' }),
 
   endTurn: () => request<ActionResult>('/api/combat/end-turn', { method: 'POST' }),
+
+  /** Termine le combat : plus de tours ; les créatures restent avec leurs PV. */
+  endCombat: () => request<ActionResult>('/api/combat/end', { method: 'POST' }),
 }
