@@ -62,6 +62,25 @@ public class SceneResource {
         return Dtos.TokenDto.of(token, entry, session.creature(token.entityId()).orElseThrow());
     }
 
+    /**
+     * Déplace un jeton. En combat, la créature active est limitée par sa vitesse restante et son déplacement entre au
+     * journal ; les autres se repositionnent librement.
+     */
+    @POST
+    @Path("/tokens/{id}/move")
+    @APIResponse(responseCode = "200", description = "Les entrées ajoutées au journal (aucune pour un déplacement libre) et le combat",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ActionResultDto.class)))
+    @APIResponse(responseCode = "400", description = "Position absente ou hors de la carte, ou déplacement refusé par les règles (vitesse restante, vitesse de 0)")
+    @APIResponse(responseCode = "404", description = "Jeton inconnu")
+    @APIResponse(responseCode = "409", description = "Aucune carte, ou une décision attend une réponse")
+    public Dtos.ActionResultDto move(@PathParam("id") String id, Dtos.MoveTokenRequest request) {
+        if (!requireScene().contains(id)) throw new NotFoundException("Jeton inconnu : " + id);
+        if (request == null || request.x() == null || request.y() == null) {
+            throw new IllegalArgumentException("Indiquer la position d'arrivée");
+        }
+        return Dtos.ActionResultDto.of(session.move(id, request.x(), request.y()), session);
+    }
+
     /** Retire un jeton et sa créature. */
     @DELETE
     @Path("/tokens/{id}")

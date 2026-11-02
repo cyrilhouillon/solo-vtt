@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Serveur : ressource de déplacement et vitesse restante

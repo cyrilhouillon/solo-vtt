@@ -32,6 +32,9 @@ final class Dtos {
 
     record PlaceTokenRequest(String catalogId, double x, double y) {}
 
+    /** La position d'arrivée, dans l'unité de la carte ; {@code null} si absente de la requête. */
+    record MoveTokenRequest(Double x, Double y) {}
+
     /**
      * `catalogId` : l'entrée du catalogue d'où vient la créature, pour la reposer à l'identique.
      * CA et PV permettent de lire l'état de chaque créature sans ouvrir sa feuille.
@@ -93,16 +96,20 @@ final class Dtos {
 
     /**
      * Le combat en cours : le round, la créature qui joue ({@code null} tant que « Qui joue ? » attend),
-     * les candidats du tour, et l'ordre de jeu du plus haut au plus bas.
+     * les candidats du tour, l'ordre de jeu du plus haut au plus bas, et la vitesse restante de la créature active
+     * dans l'unité de la carte ({@code movementLeft}, {@code null} quand rien ne limite le déplacement, jamais 0 pour
+     * dire « illimité »).
      */
-    record CombatDto(int round, String activeId, List<String> candidates, List<InitiativeGroupDto> groups) {
+    record CombatDto(int round, String activeId, List<String> candidates, List<InitiativeGroupDto> groups, Double movementLeft) {
         static CombatDto of(Combat c, SceneSession session) {
             var groups = c.groups().stream().map(g -> new InitiativeGroupDto(g.initiative(), g.members().stream()
                             .map(id -> new TurnMemberDto(id, session.creature(id).map(Creature::name).orElse(id), c.hasPlayed(id)))
                             .toList()))
                     .toList();
+            var left = session.movementLeft();
             return new CombatDto(c.round(), c.activeId().orElse(null),
-                    c.turn().map(t -> t.candidates()).orElse(List.of()), groups);
+                    c.turn().map(t -> t.candidates()).orElse(List.of()), groups,
+                    left.isPresent() ? left.getAsDouble() : null);
         }
     }
 
