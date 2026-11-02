@@ -116,12 +116,12 @@ public class SceneSession {
     private static final System.Logger LOG = System.getLogger(SceneSession.class.getName());
 
     /** Une session qui ne garde pas sa partie. */
-    @Inject
     public SceneSession(Dice dice) {
         this(dice, GameStore.none());
     }
 
     /** Une session qui reprend la partie gardée par {@code store}, puis l'y sauve après chaque commande réussie. */
+    @Inject
     public SceneSession(Dice dice, GameStore store) {
         this.dice = dice;
         this.source = dice;
