@@ -2,8 +2,6 @@ package dnd.engine.state;
 
 import solovtt.scene.DistanceUnit;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -51,11 +49,6 @@ public record Attack(Weapon weapon, Mode mode) {
         double limit = mode == Mode.MELEE ? weapon.reach() : weapon.range().longRange();
         if (distanceMetres <= limit + EPSILON) return Optional.empty();
         String what = mode == Mode.MELEE ? "hors d'allonge" : "au-delà de la portée longue";
-        return Optional.of("%s : cible à %s, %s (%s)".formatted(label(), length(distanceMetres, unit), what, length(limit, unit)));
-    }
-
-    private static String length(double metres, DistanceUnit unit) {
-        var format = new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.FRANCE));
-        return format.format(DistanceUnit.METRE.convert(metres, unit)) + " " + unit.symbol();
+        return Optional.of("%s : cible à %s, %s (%s)".formatted(label(), Length.of(distanceMetres, unit), what, Length.of(limit, unit)));
     }
 }

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Moteur : déplacer un jeton, dépenser la vitesse de la créature active

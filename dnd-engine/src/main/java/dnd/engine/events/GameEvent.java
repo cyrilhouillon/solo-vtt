@@ -5,7 +5,9 @@ import dnd.engine.state.Combat;
 import dnd.engine.state.DamageType;
 import dnd.engine.state.GameState;
 import dnd.engine.state.InitiativeGroup;
+import dnd.engine.state.Length;
 import solovtt.engine.TurnOrder;
+import solovtt.scene.DistanceUnit;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -204,6 +206,21 @@ public sealed interface GameEvent extends Event<GameState> {
 
         public String describe(GameState s) {
             return "Fin du tour de " + name(s, creatureId);
+        }
+    }
+
+    /**
+     * La créature active se déplace de {@code metres} et les dépense de sa vitesse ; {@code unit} est celle de la carte,
+     * pour décrire le déplacement dans l'unité du joueur.
+     */
+    record CreatureMoved(String creatureId, double metres, DistanceUnit unit) implements GameEvent {
+        public void apply(GameState s) {
+            combat(s).spendMovement(metres);
+        }
+
+        public String describe(GameState s) {
+            double left = Math.max(0, s.get(creatureId).speed() - combat(s).movementUsed());
+            return "%s se déplace de %s (reste %s)".formatted(name(s, creatureId), Length.of(metres, unit), Length.of(left, unit));
         }
     }
 
