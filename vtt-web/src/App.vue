@@ -585,11 +585,18 @@ function startCombat() {
 
 /**
  * À chaque changement de tour, la sélection et la feuille passent à la créature qui joue ;
- * pendant « Qui joue ? », au premier candidat.
+ * pendant « Qui joue ? », au premier candidat. Choisir ce candidat change le tour sans changer de créature : la clé
+ * les distingue, sinon sa feuille garderait les attaques refusées pendant la question.
  */
 watch(
-  () => (combat.value ? (combat.value.activeId ?? combat.value.candidates[0] ?? null) : null),
-  (creatureId) => {
+  () => {
+    const c = combat.value
+    if (!c) return null
+    return c.activeId ? `joue:${c.activeId}` : `choix:${c.candidates[0] ?? ''}`
+  },
+  () => {
+    const c = combat.value
+    const creatureId = c ? (c.activeId ?? c.candidates[0] ?? null) : null
     const token = creatureId ? scene.value?.tokens.find((t) => t.creatureId === creatureId) : undefined
     if (!token || token.pending) return
     selected.value = [token.id]
