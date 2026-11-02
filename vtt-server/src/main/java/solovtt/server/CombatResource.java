@@ -48,6 +48,16 @@ public class CombatResource {
         return Dtos.ActionResultDto.of(session.endTurn(), session);
     }
 
+    /** Met fin au combat : plus de tours ; les créatures restent sur la carte avec leurs PV. */
+    @POST
+    @Path("/end")
+    @APIResponse(responseCode = "200", description = "L'entrée « Le combat se termine » du journal ; plus de combat")
+    @APIResponse(responseCode = "409", description = "Aucune carte, aucun combat, ou une décision attend une réponse")
+    public Dtos.ActionResultDto end() {
+        requireScene();
+        return Dtos.ActionResultDto.of(session.endCombat(), session);
+    }
+
     private void requireScene() {
         if (session.scene().isEmpty()) {
             throw new ClientErrorException("Aucune carte : créer d'abord une carte", Response.Status.CONFLICT);

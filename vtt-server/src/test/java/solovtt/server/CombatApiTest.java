@@ -158,9 +158,38 @@ class CombatApiTest {
                 .body("text[-1]", equalTo("Tour de Loup"));
     }
 
+    private static ValidatableResponse terminer() {
+        return when().post("/api/combat/end").then();
+    }
+
+    @Test
+    void terminerLeCombat_plusDeCombat_lesCreaturesRestentAvecLeursPv() {
+        dice.script(10, 15, 4, /* attaque du Gobelin */ 18, 3);
+        lancer().statusCode(200);
+        given().contentType(ContentType.JSON)
+                .body("{\"attackerId\":\"gobelin-1\",\"attackId\":\"melee:Cimeterre\",\"targetId\":\"guerriere-1\"}")
+                .post("/api/attacks").then().statusCode(200);
+        int hitPoints = when().get("/api/creatures/guerriere-1").then().extract().path("hitPoints");
+
+        terminer().statusCode(200)
+                .body("combat", nullValue())
+                .body("decision", nullValue())
+                .body("entries.text", equalTo(List.of("Le combat se termine")));
+
+        when().get("/api/combat").then().statusCode(204);
+        when().get("/api/scene").then()
+                .body("tokens.size()", equalTo(3))
+                .body("tokens.find { it.id == 'guerriere-1' }.hitPoints", equalTo(hitPoints))
+                .body("tokens.find { it.id == 'guerriere-1' }.x", equalTo(1.5f));
+        when().get("/api/journal").then().body("text", hasItem("Le combat se termine"));
+        dice.script(3, 2, 18);
+        lancer().statusCode(200).body("combat.activeId", equalTo("squelette-1"));
+    }
+
     @Test
     void refus_sansCreature_dejaLance_horsCombat() {
         finDuTour().statusCode(409).body("message", equalTo("Aucun combat en cours"));
+        terminer().statusCode(409).body("message", equalTo("Aucun combat en cours"));
         dice.script(10, 15, 4);
         lancer().statusCode(200);
         lancer().statusCode(409).body("message", equalTo("Le combat est déjà lancé"));
@@ -176,6 +205,7 @@ class CombatApiTest {
 
         lancer().statusCode(409).body("message", containsString("Une décision attend une réponse"));
         finDuTour().statusCode(409).body("message", containsString("Une décision attend une réponse"));
+        terminer().statusCode(409).body("message", containsString("Une décision attend une réponse"));
         poser("loup", 20, 3).statusCode(409);
         when().delete("/api/scene/tokens/squelette-1").then().statusCode(409);
     }
