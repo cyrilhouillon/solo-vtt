@@ -44,6 +44,10 @@ export const api = {
   placeToken: (catalogId: string, x: number, y: number) =>
     request<TokenView>('/api/scene/tokens', { method: 'POST', body: JSON.stringify({ catalogId, x, y }) }),
 
+  /** Déplace un jeton ; en combat, celui de la créature active entre au journal. */
+  moveToken: (tokenId: string, x: number, y: number) =>
+    request<ActionResult>(`/api/scene/tokens/${encodeURIComponent(tokenId)}/move`, { method: 'POST', body: JSON.stringify({ x, y }) }),
+
   removeToken: (tokenId: string) =>
     request<void>(`/api/scene/tokens/${encodeURIComponent(tokenId)}`, { method: 'DELETE' }),
 

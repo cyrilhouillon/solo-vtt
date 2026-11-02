@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Client : glisser ou déplacer au clavier, distance parcourue et restante

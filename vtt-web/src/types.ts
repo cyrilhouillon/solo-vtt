@@ -90,6 +90,11 @@ export interface Combat {
   activeId: string | null
   candidates: string[]
   groups: InitiativeGroup[]
+  /**
+   * Ce qui reste à parcourir à la créature active, dans l'unité de la carte ; `null` veut dire illimité
+   * (aucune créature active, ou système qui ne limite pas le déplacement). Le client n'y ajoute aucune règle.
+   */
+  movementLeft: number | null
 }
 
 /** Ce qu'une action (attaque, combat) ou sa reprise a produit. */
