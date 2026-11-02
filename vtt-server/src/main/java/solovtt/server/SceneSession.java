@@ -3,8 +3,13 @@ package solovtt.server;
 import dnd.engine.attack.AttackAction;
 import dnd.engine.catalog.CatalogEntry;
 import dnd.engine.catalog.SrdCatalog;
+import dnd.engine.combat.EndTurn;
+import dnd.engine.combat.JoinCombat;
+import dnd.engine.combat.LeaveCombat;
+import dnd.engine.combat.StartCombat;
 import dnd.engine.events.GameEvent;
 import dnd.engine.rules.StandardRules;
+import dnd.engine.state.Combat;
 import dnd.engine.state.Creature;
 import dnd.engine.state.GameState;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -12,6 +17,7 @@ import jakarta.inject.Inject;
 import solovtt.engine.Decision;
 import solovtt.engine.Dice;
 import solovtt.engine.Engine;
+import solovtt.engine.Resolution;
 import solovtt.engine.StepResult;
 import solovtt.scene.DistanceUnit;
 import solovtt.scene.Position;
@@ -32,9 +38,14 @@ import java.util.Optional;
  * Les actions (attaques) passent par le moteur, et chaque événement émis est décrit dans le journal
  * au moment où il arrive, pour garder les PV de cet instant.</p>
  *
- * <p>Quand une règle pose une décision (réaction Bouclier), l'action reste suspendue : attaque, pose et retrait
- * sont refusés jusqu'à la réponse ({@link DecisionPendingException}). Une nouvelle carte reste permise :
- * elle jette le moteur et sa décision.</p>
+ * <p>Quand une règle pose une décision (réaction Bouclier, « Qui joue ? »), l'action reste suspendue : attaque,
+ * pose, retrait, lancement du combat et fin de tour sont refusés jusqu'à la réponse ({@link DecisionPendingException}).
+ * Une nouvelle carte reste permise : elle jette le moteur, sa décision et le combat.</p>
+ *
+ * <p>Le combat passe par le moteur : lancement, fin de tour, et en combat l'entrée d'une créature posée (elle tire
+ * son initiative) ou la sortie d'une créature retirée. La créature elle-même est créée et supprimée hors journal,
+ * comme pendant la préparation. Un refus d'état (combat déjà lancé, pas de combat…) lève
+ * {@link ActionRefusedException}.</p>
  */
 @ApplicationScoped
 public class SceneSession {
@@ -49,13 +60,28 @@ public class SceneSession {
     private final List<JournalEntry> journal = new ArrayList<>();
     /** Numéro de l'action en cours, qui groupe ses entrées dans le journal. */
     private int action;
-    /** La cible de la dernière action, pour rendre ses PV quand l'action reprend après une décision. */
+    /** La cible de la dernière action (aucune pour le combat), pour rendre ses PV quand l'action reprend après une décision. */
     private String actionTargetId;
 
-    /** Une ligne du journal : la description d'un événement, et l'action à laquelle il appartient. */
-    public record JournalEntry(int action, String text) {}
+    /**
+     * Une ligne du journal : la description d'un événement, l'action à laquelle il appartient, si elle ouvre un round,
+     * et ce que la piste à dés en retient ({@code null} pour un détail ou ce qui n'est pas une attaque).
+     */
+    public record JournalEntry(int action, String text, boolean round, Highlight highlight) {}
 
-    /** Ce qu'une action (ou sa reprise) a ajouté au journal, sa cible, et la décision qui l'arrête, s'il y en a une. */
+    /** Ce que la piste retient d'une attaque : son issue, les dégâts, une réaction qui l'a changée. */
+    public enum Highlight { OUTCOME, DAMAGE, REACTION }
+
+    private static Highlight highlight(GameEvent event) {
+        return switch (event) {
+            case GameEvent.AttackResolved ignored -> Highlight.OUTCOME;
+            case GameEvent.DamageDealt ignored -> Highlight.DAMAGE;
+            case GameEvent.ReactionUsed ignored -> Highlight.REACTION;
+            default -> null;
+        };
+    }
+
+    /** Ce qu'une action (ou sa reprise) a ajouté au journal, sa cible ({@code null} sans cible), et la décision qui l'arrête, s'il y en a une. */
     public record ActionOutcome(List<JournalEntry> entries, String targetId, Optional<Decision> decision) {}
 
     @Inject
@@ -68,7 +94,8 @@ public class SceneSession {
         scene = created;
         state = new GameState();
         engine = new Engine<>(state, StandardRules.create(), dice);
-        engine.subscribe(event -> journal.add(new JournalEntry(action, event.describe(state))));
+        engine.subscribe(event -> journal.add(
+                new JournalEntry(action, event.describe(state), event instanceof GameEvent.RoundStarted, highlight(event))));
         journal.clear();
         action = 0;
         actionTargetId = null;
@@ -89,10 +116,42 @@ public class SceneSession {
         // Le jeton porte l'id de sa créature (voir place).
         double distance = scene.distance(attackerId, targetId);
         var resolution = AttackAction.of(attackerId, attackId, targetId, distance, scene.unit(), state);
+        return run(resolution, targetId);
+    }
+
+    /** Lance le combat : chaque créature tire son initiative. */
+    public synchronized ActionOutcome startCombat() {
+        if (scene == null) throw new IllegalStateException("aucune carte");
+        requireNoDecision();
+        return run(refusable(() -> StartCombat.of(state)), null);
+    }
+
+    /** Termine le tour de la créature active et ouvre le suivant. */
+    public synchronized ActionOutcome endTurn() {
+        if (scene == null) throw new IllegalStateException("aucune carte");
+        requireNoDecision();
+        return run(refusable(() -> EndTurn.of(state)), null);
+    }
+
+    public synchronized Optional<Combat> combat() {
+        return state == null ? Optional.empty() : state.combat();
+    }
+
+    /** Une nouvelle action : ses entrées du journal partagent un numéro. */
+    private ActionOutcome run(Resolution<GameState, GameEvent> resolution, String targetId) {
         int from = journal.size();
         action++;
         actionTargetId = targetId;
         return outcome(from, engine.submit(resolution));
+    }
+
+    /** Les refus d'état des règles (combat déjà lancé, aucun combat…) deviennent des refus d'action, rendus en 409. */
+    private static <R> R refusable(java.util.function.Supplier<R> rule) {
+        try {
+            return rule.get();
+        } catch (IllegalStateException e) {
+            throw new ActionRefusedException(e.getMessage());
+        }
     }
 
     /**
@@ -121,6 +180,11 @@ public class SceneSession {
         if (pending.isPresent()) throw new DecisionPendingException(pending.get());
     }
 
+    /** Pourquoi la créature ne peut pas attaquer en ce moment (à terre, pas son tour), selon les règles D&D. */
+    public synchronized Optional<String> attackRefusal(String creatureId) {
+        return AttackAction.refusal(creatureId, state);
+    }
+
     public synchronized List<JournalEntry> journal() {
         return List.copyOf(journal);
     }
@@ -132,6 +196,7 @@ public class SceneSession {
     /**
      * Crée une créature depuis le catalogue et pose son jeton ; le jeton porte l'id de la créature.
      * À partir de la deuxième instance d'une entrée, le nom est numéroté (« Loup 2 ») pour rester distinct.
+     * En combat, la créature y entre : elle tire son initiative.
      */
     public synchronized Token place(CatalogEntry entry, double x, double y) {
         if (scene == null) throw new IllegalStateException("aucune carte");
@@ -143,13 +208,19 @@ public class SceneSession {
         instanceCounters.put(entry.id(), n);
         state.add(entry.create(id, n == 1 ? entry.name() : entry.name() + " " + n));
         entries.put(id, entry);
+        if (state.combat().isPresent()) run(JoinCombat.of(state, id), null);
         return token;
     }
 
-    /** Retire le jeton et la créature qu'il porte ; la numérotation des suivantes ne recule pas. */
+    /**
+     * Retire le jeton et la créature qu'il porte ; la numérotation des suivantes ne recule pas.
+     * En combat, la créature le quitte d'abord : si elle jouait, le tour suivant s'ouvre (et peut demander « Qui joue ? »).
+     */
     public synchronized void remove(String tokenId) {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
+        String creatureId = scene.token(tokenId).entityId();
+        if (state.combat().filter(c -> c.includes(creatureId)).isPresent()) run(LeaveCombat.of(state, creatureId), null);
         Token token = scene.remove(tokenId);
         state.remove(token.entityId());
         entries.remove(token.entityId());

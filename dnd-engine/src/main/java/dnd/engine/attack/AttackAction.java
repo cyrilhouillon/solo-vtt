@@ -7,6 +7,8 @@ import dnd.engine.state.GameState;
 import solovtt.engine.Pipeline;
 import solovtt.scene.DistanceUnit;
 
+import java.util.Optional;
+
 public final class AttackAction {
 
     private AttackAction() {
@@ -14,8 +16,8 @@ public final class AttackAction {
 
     /**
      * Une attaque choisie parmi celles de l'attaquant, contre une cible à {@code distance},
-     * exprimée dans {@code unit}. Ce que les règles interdisent (soi-même, hors d'allonge, au-delà
-     * de la portée longue) est refusé ici, avant toute émission : rien ne s'est passé dans la partie.
+     * exprimée dans {@code unit}. Ce que les règles interdisent (attaquant qui ne peut pas attaquer, soi-même, hors
+     * d'allonge, au-delà de la portée longue) est refusé ici, avant toute émission : rien ne s'est passé dans la partie.
      *
      * @throws IllegalArgumentException avec la raison du refus, les longueurs données dans {@code unit}
      */
@@ -23,6 +25,9 @@ public final class AttackAction {
             String attackerId, String attackId, String targetId, double distance, DistanceUnit unit, GameState state) {
         Creature attacker = state.get(attackerId);
         state.get(targetId);
+        refusal(attackerId, state).ifPresent(reason -> {
+            throw new IllegalArgumentException(reason);
+        });
         if (attackerId.equals(targetId)) {
             throw new IllegalArgumentException("Une créature ne peut pas s'attaquer elle-même");
         }
@@ -33,6 +38,19 @@ public final class AttackAction {
             throw new IllegalArgumentException(reason);
         });
         return new Pipeline<>("Attaque", AttackPhase.class, new AttackContext(attackerId, targetId, attack, metres));
+    }
+
+    /**
+     * Pourquoi la créature ne peut attaquer personne en ce moment, quelle que soit la cible : à 0 PV, elle est
+     * inconsciente (SRD 5.2.1, Incapacitated : aucune action) ; en combat, seule la créature active agit.
+     */
+    public static Optional<String> refusal(String attackerId, GameState state) {
+        Creature attacker = state.get(attackerId);
+        if (attacker.hitPoints() == 0) {
+            return Optional.of(attacker.name() + " est à terre : à 0 PV, une créature ne peut pas attaquer");
+        }
+        boolean outOfTurn = state.combat().map(combat -> !combat.activeId().filter(attackerId::equals).isPresent()).orElse(false);
+        return outOfTurn ? Optional.of("Ce n'est pas le tour de " + attacker.name()) : Optional.empty();
     }
 
     /** La première attaque de l'attaquant, au contact : pour les scénarios sans carte (démo, tests). */

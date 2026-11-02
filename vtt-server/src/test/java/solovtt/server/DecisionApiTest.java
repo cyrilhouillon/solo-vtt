@@ -109,6 +109,8 @@ class DecisionApiTest {
                 .body("entries.text", hasItem("Magicienne utilise sa réaction : Bouclier"))
                 .body("entries.text", hasItem("CA de Magicienne : +5 (Bouclier) → 17"))
                 .body("entries.text", not(hasItem(containsString("subit"))))
+                .body("entries.find { it.text.endsWith('Bouclier') }.highlight", equalTo("REACTION"))
+                .body("entries.find { it.text.startsWith('Attaque de') }.highlight", equalTo("OUTCOME"))
                 .body("entries.action", everyItem(equalTo(1)))
                 .body("decision", nullValue())
                 .body("targetHitPoints", equalTo(7))

@@ -31,16 +31,16 @@ public class DecisionResource {
                 .orElseGet(() -> Response.noContent().build());
     }
 
-    /** Répond à la décision ; l'action reprend et rend la suite, comme une attaque. */
+    /** Répond à la décision ; l'action reprend (attaque, ou tour du combat) et rend la suite. */
     @POST
     @Path("/{id}")
     @APIResponse(responseCode = "200", description = "La suite de l'action, et la décision suivante s'il y en a une")
     @APIResponse(responseCode = "400", description = "Option absente de la requête ou hors des options proposées")
     @APIResponse(responseCode = "404", description = "Aucune décision en attente avec cet id")
-    public Dtos.AttackResultDto answer(@PathParam("id") String id, Dtos.AnswerRequest request) {
+    public Dtos.ActionResultDto answer(@PathParam("id") String id, Dtos.AnswerRequest request) {
         if (request == null || request.option() == null) throw new IllegalArgumentException("Choisir une option");
         var outcome = session.answer(id, request.option())
                 .orElseThrow(() -> new NotFoundException("Aucune décision en attente avec l'id " + id));
-        return Dtos.AttackResultDto.of(outcome, session);
+        return Dtos.ActionResultDto.of(outcome, session);
     }
 }

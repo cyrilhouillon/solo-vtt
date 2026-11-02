@@ -19,6 +19,8 @@ export interface SceneCanvasState {
   cursor: Point | null
   /** Ciblage en cours, ou `null`. */
   targeting: Targeting | null
+  /** La créature dont c'est le tour en combat, ou `null`. */
+  activeId: string | null
 }
 
 /**
@@ -161,7 +163,7 @@ export class SceneCanvas {
     const ordered = [...scene.tokens].sort((a, b) => Number(selected.includes(a.id)) - Number(selected.includes(b.id)))
     const verdictOf = this.verdicts(scene, this.state.targeting)
     for (const token of ordered) {
-      this.drawToken(scene, token, selected.includes(token.id), placing === null, names, verdictOf(token))
+      this.drawToken(scene, token, selected.includes(token.id), token.creatureId === this.state.activeId, placing === null, names, verdictOf(token))
     }
     this.layer.add(names)
     if (measure) this.layer.add(measure)
@@ -349,6 +351,7 @@ export class SceneCanvas {
     scene: SceneView,
     token: TokenView,
     isSelected: boolean,
+    isActive: boolean,
     clickable: boolean,
     names: Konva.Group,
     hint: TargetHint | null,
@@ -362,6 +365,10 @@ export class SceneCanvas {
     // Un jeton en attente du serveur est estompé et ne réagit pas encore ; hors de portée aussi, estompé.
     const opacity = token.pending ? 0.55 : reachable ? 1 : 0.4
     const group = new Konva.Group({ x, y, listening: clickable && !token.pending, opacity })
+    // À son tour : un anneau laiton en tirets, plus large que l'anneau de cible et distinct du contour de sélection.
+    if (isActive) {
+      group.add(new Konva.Circle({ radius: radius * 1.55, stroke: this.colors.live, strokeWidth: 3, dash: [7, 5], listening: false }))
+    }
     group.add(
       this.tokenShape(token.kind, radius, {
         stroke: isSelected ? this.colors.live : this.colors.rim,
@@ -390,11 +397,11 @@ export class SceneCanvas {
       initials.offset({ x: initials.width() / 2, y: initials.height() / 2 })
       group.add(initials)
     }
-    // Le nom complet à la demande : sélection ou survol. Les initiales suffisent au repos.
+    // Le nom complet à la demande : sélection, survol, ou la créature qui joue. Les initiales suffisent au repos.
     // En ciblage, la cible envisagée porte aussi sa CA et ses PV : tout ce qui décide du coup est sous le curseur.
     const stats = hint && token.armorClass !== undefined ? ` · CA ${token.armorClass} · ${token.hitPoints}/${token.maxHitPoints} PV` : ''
     const full = this.nameLabel(token.name + stats, radius)
-    full.visible(isSelected)
+    full.visible(isSelected || isActive)
     full.move({ x, y })
     names.add(full)
     // En ciblage, la cible envisagée est cerclée de laiton, et sa distance dit ce qu'elle permet.
@@ -423,7 +430,7 @@ export class SceneCanvas {
     })
     group.on('mouseleave', () => {
       this.stage.container().style.cursor = ''
-      full.visible(isSelected)
+      full.visible(isSelected || isActive)
       ring.visible(false)
       rangeLabel?.visible(false)
       this.layer.batchDraw()

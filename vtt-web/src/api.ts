@@ -1,4 +1,4 @@
-import type { AttackResult, CatalogEntry, CreatureSheet, Decision, DistanceUnit, JournalEntry, SceneView, TokenView } from './types'
+import type { ActionResult, CatalogEntry, Combat, CreatureSheet, Decision, DistanceUnit, JournalEntry, SceneView, TokenView } from './types'
 
 /** Erreur rendue par le serveur, avec son message lisible. */
 export class ApiError extends Error {
@@ -50,7 +50,7 @@ export const api = {
   sheet: (creatureId: string) => request<CreatureSheet>(`/api/creatures/${encodeURIComponent(creatureId)}`),
 
   attack: (attackerId: string, attackId: string, targetId: string) =>
-    request<AttackResult>('/api/attacks', { method: 'POST', body: JSON.stringify({ attackerId, attackId, targetId }) }),
+    request<ActionResult>('/api/attacks', { method: 'POST', body: JSON.stringify({ attackerId, attackId, targetId }) }),
 
   journal: () => request<JournalEntry[]>('/api/journal'),
 
@@ -58,5 +58,12 @@ export const api = {
   pendingDecision: async () => (await request<Decision | undefined>('/api/decisions/pending')) ?? null,
 
   answer: (decisionId: string, option: string) =>
-    request<AttackResult>(`/api/decisions/${encodeURIComponent(decisionId)}`, { method: 'POST', body: JSON.stringify({ option }) }),
+    request<ActionResult>(`/api/decisions/${encodeURIComponent(decisionId)}`, { method: 'POST', body: JSON.stringify({ option }) }),
+
+  /** Le combat en cours, ou `null` (204). */
+  combat: async () => (await request<Combat | undefined>('/api/combat')) ?? null,
+
+  startCombat: () => request<ActionResult>('/api/combat', { method: 'POST' }),
+
+  endTurn: () => request<ActionResult>('/api/combat/end-turn', { method: 'POST' }),
 }

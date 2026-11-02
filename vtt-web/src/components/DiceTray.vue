@@ -1,12 +1,16 @@
 <script setup lang="ts">
 /**
- * La piste à dés, sous la carte : ce que le moteur vient de trancher. Les dés eux-mêmes viendront
- * avec les jets structurés (story « voir les dés rouler ») ; d'ici là, la piste porte le verdict.
- * Muette pour les lecteurs d'écran : la barre d'état annonce déjà le résultat.
+ * La piste à dés, sous la carte : la dernière attaque tranchée par le moteur. Les tours de combat ne l'effacent pas
+ * (la barre dit qui joue). Les dés eux-mêmes viendront avec les jets structurés (story « voir les dés rouler »).
+ * Muette pour les lecteurs d'écran : l'issue leur est annoncée à part.
  */
 export interface TrayResult {
+  /** L'annonce de l'attaque (qui, avec quoi, sur qui). */
   title: string
+  /** L'issue (« … contre CA 17 → RATÉ »), absente tant que l'attaque attend une décision. */
   outcome: string | null
+  /** Ce qui a changé le coup ou en découle : réaction, dégâts. */
+  details: string[]
   /** Absent quand le résultat est relu du journal (rechargement) : la piste n'a alors que le texte. */
   target?: { name: string; hitPoints: number; maxHitPoints: number }
 }
@@ -20,6 +24,7 @@ defineProps<{ result: TrayResult | null }>()
       <template v-if="result">
         <p :key="result.outcome ?? result.title" class="verdict">{{ result.outcome ?? result.title }}</p>
         <p v-if="result.outcome" class="title">{{ result.title }}</p>
+        <p v-if="result.details.length" class="details">{{ result.details.join(' · ') }}</p>
         <p v-if="result.target" class="target">
           <span class="who">{{ result.target.name }}</span>
           <span class="gauge"><i :style="{ width: `${Math.max(0, result.target.hitPoints / result.target.maxHitPoints) * 100}%` }" /></span>
@@ -42,7 +47,7 @@ defineProps<{ result: TrayResult | null }>()
   min-height: 5.25rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   align-items: center;
   column-gap: 1.5rem;
   padding: 0.6rem 1.25rem;
@@ -61,6 +66,14 @@ p {
   grid-column: 1;
   font-size: 0.95rem;
   opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.details {
+  grid-column: 1;
+  font-size: 0.95rem;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -89,7 +102,7 @@ p {
 }
 .target {
   grid-column: 2;
-  grid-row: 1 / 3;
+  grid-row: 1 / -1;
   display: flex;
   align-items: center;
   gap: 0.6rem;

@@ -20,6 +20,12 @@ public class ErrorMapper {
         return RestResponse.status(Response.Status.CONFLICT, new Dtos.ErrorDto(e.getMessage()));
     }
 
+    /** Une action que l'état de la partie ne permet pas. */
+    @ServerExceptionMapper
+    public RestResponse<Dtos.ErrorDto> refused(ActionRefusedException e) {
+        return RestResponse.status(Response.Status.CONFLICT, new Dtos.ErrorDto(e.getMessage()));
+    }
+
     @ServerExceptionMapper
     public RestResponse<Dtos.ErrorDto> http(WebApplicationException e) {
         return RestResponse.status(Response.Status.fromStatusCode(e.getResponse().getStatus()), new Dtos.ErrorDto(e.getMessage()));

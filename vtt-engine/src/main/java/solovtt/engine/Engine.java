@@ -81,7 +81,7 @@ public final class Engine<S, E extends Event<S>> {
         return dice.roll(sides);
     }
 
-    /** Crée une décision à retourner depuis {@link Listener#handle}. */
+    /** Crée une décision à retourner depuis {@link Listener#handle} ; {@code chooserId} {@code null} : aucun participant ne choisit. */
     public Decision ask(String chooserId, String prompt, List<String> options, Decision.DecisionHandler handler) {
         return new Decision("d" + nextDecisionId++, chooserId, prompt, options, handler);
     }

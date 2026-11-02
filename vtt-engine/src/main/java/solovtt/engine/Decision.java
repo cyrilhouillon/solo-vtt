@@ -6,6 +6,9 @@ import java.util.List;
  * Une question posée à un joueur (ou à une IA) au milieu d'une résolution.
  * Le moteur s'arrête tant qu'elle n'a pas reçu de réponse via {@link Engine#answer}.
  *
+ * <p>{@code chooserId} est l'id du participant qui choisit, ou {@code null} quand la question
+ * ne revient à aucun participant (« Qui joue ? » en combat).</p>
+ *
  * <p>Le handler capture ce dont il a besoin (le moteur compris) au moment où la
  * décision est créée.</p>
  *

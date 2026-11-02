@@ -2,6 +2,7 @@ package solovtt.server;
 
 import dnd.engine.catalog.CatalogEntry;
 import dnd.engine.state.Attack;
+import dnd.engine.state.Combat;
 import dnd.engine.state.Creature;
 import dnd.engine.state.DamageType;
 import solovtt.engine.Decision;
@@ -11,6 +12,7 @@ import solovtt.scene.Token;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /** Formes JSON échangées avec le client. */
 final class Dtos {
@@ -60,13 +62,20 @@ final class Dtos {
 
     record AttackRequest(String attackerId, String attackId, String targetId) {}
 
-    record JournalEntryDto(int action, String text) {
+    /**
+     * {@code round} : l'entrée ouvre un round, le journal la montre en séparateur. {@code highlight} : ce que la piste
+     * à dés retient d'une attaque (issue, dégâts, réaction), ou {@code null}.
+     */
+    record JournalEntryDto(int action, String text, boolean round, SceneSession.Highlight highlight) {
         static JournalEntryDto of(SceneSession.JournalEntry e) {
-            return new JournalEntryDto(e.action(), e.text());
+            return new JournalEntryDto(e.action(), e.text(), e.round(), e.highlight());
         }
     }
 
-    /** Une question du moteur ; le joueur y répond pour toute créature (jeu solo). */
+    /**
+     * Une question du moteur ; le joueur y répond pour toute créature (jeu solo). {@code chooserId} et
+     * {@code chooserName} sont {@code null} quand aucune créature ne choisit (« Qui joue ? »).
+     */
     record DecisionDto(String id, String chooserId, String chooserName, String prompt, List<String> options) {
         static DecisionDto of(Decision d, SceneSession session) {
             String name = session.creature(d.chooserId()).map(Creature::name).orElse(d.chooserId());
@@ -76,17 +85,42 @@ final class Dtos {
 
     record AnswerRequest(String option) {}
 
+    /** Un membre d'un groupe d'initiative ; {@code played} s'il a déjà joué ce round. */
+    record TurnMemberDto(String creatureId, String name, boolean played) {}
+
+    /** Les créatures qui partagent un rang d'initiative ; chacune joue une fois par round. */
+    record InitiativeGroupDto(int initiative, List<TurnMemberDto> members) {}
+
     /**
-     * Les entrées ajoutées au journal par l'attaque (ou sa reprise), les PV de la cible après coup,
-     * et la décision qui suspend l'attaque ({@code null} si elle est finie).
+     * Le combat en cours : le round, la créature qui joue ({@code null} tant que « Qui joue ? » attend),
+     * les candidats du tour, et l'ordre de jeu du plus haut au plus bas.
      */
-    record AttackResultDto(List<JournalEntryDto> entries, String targetId, int targetHitPoints, int targetMaxHitPoints,
-                           DecisionDto decision) {
-        static AttackResultDto of(SceneSession.ActionOutcome outcome, SceneSession session) {
-            var target = session.creature(outcome.targetId()).orElseThrow();
-            return new AttackResultDto(outcome.entries().stream().map(JournalEntryDto::of).toList(),
-                    target.id(), target.hitPoints(), target.maxHitPoints(),
-                    outcome.decision().map(d -> DecisionDto.of(d, session)).orElse(null));
+    record CombatDto(int round, String activeId, List<String> candidates, List<InitiativeGroupDto> groups) {
+        static CombatDto of(Combat c, SceneSession session) {
+            var groups = c.groups().stream().map(g -> new InitiativeGroupDto(g.initiative(), g.members().stream()
+                            .map(id -> new TurnMemberDto(id, session.creature(id).map(Creature::name).orElse(id), c.hasPlayed(id)))
+                            .toList()))
+                    .toList();
+            return new CombatDto(c.round(), c.activeId().orElse(null),
+                    c.turn().map(t -> t.candidates()).orElse(List.of()), groups);
+        }
+    }
+
+    /**
+     * Ce qu'une action (attaque, combat) ou sa reprise a produit : les entrées ajoutées au journal, la cible et ses PV
+     * après coup ({@code null} sans cible), la décision qui suspend l'action ({@code null} si elle est finie),
+     * et le combat ({@code null} hors combat).
+     */
+    record ActionResultDto(List<JournalEntryDto> entries, String targetId, Integer targetHitPoints, Integer targetMaxHitPoints,
+                           DecisionDto decision, CombatDto combat) {
+        static ActionResultDto of(SceneSession.ActionOutcome outcome, SceneSession session) {
+            var target = Optional.ofNullable(outcome.targetId()).flatMap(session::creature);
+            return new ActionResultDto(outcome.entries().stream().map(JournalEntryDto::of).toList(),
+                    target.map(Creature::id).orElse(null),
+                    target.map(Creature::hitPoints).orElse(null),
+                    target.map(Creature::maxHitPoints).orElse(null),
+                    outcome.decision().map(d -> DecisionDto.of(d, session)).orElse(null),
+                    session.combat().map(c -> CombatDto.of(c, session)).orElse(null));
         }
     }
 
@@ -106,18 +140,19 @@ final class Dtos {
         }
     }
 
+    /** {@code attackRefusal} : pourquoi la créature ne peut pas attaquer en ce moment, ou {@code null}. */
     record CreatureSheetDto(String id, String name, CatalogEntry.Kind kind, int armorClass,
                             int hitPoints, int maxHitPoints, Measure speed, List<AttackDto> attacks,
-                            List<String> resistances, List<String> vulnerabilities) {
+                            List<String> resistances, List<String> vulnerabilities, String attackRefusal) {
 
         /** Vitesse, allonges et portées, en mètres dans le moteur, sont données dans l'unité de la carte. */
-        static CreatureSheetDto of(Creature c, CatalogEntry.Kind kind, DistanceUnit unit) {
+        static CreatureSheetDto of(Creature c, CatalogEntry.Kind kind, DistanceUnit unit, String attackRefusal) {
             double speed = inUnit(c.speed(), unit);
             List<AttackDto> attacks = c.attacks().stream().map(a -> AttackDto.of(a, unit)).toList();
             List<String> resistances = Arrays.stream(DamageType.values()).filter(c::isResistantTo).map(DamageType::label).toList();
             List<String> vulnerabilities = Arrays.stream(DamageType.values()).filter(c::isVulnerableTo).map(DamageType::label).toList();
             return new CreatureSheetDto(c.id(), c.name(), kind, c.armorClass(), c.hitPoints(), c.maxHitPoints(),
-                    new Measure(speed, unit.symbol()), attacks, resistances, vulnerabilities);
+                    new Measure(speed, unit.symbol()), attacks, resistances, vulnerabilities, attackRefusal);
         }
     }
 }

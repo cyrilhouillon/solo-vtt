@@ -9,6 +9,8 @@ const props = defineProps<{
   selected: string[]
   placing: CreatureKind | null
   targeting: Targeting | null
+  /** La créature dont c'est le tour en combat, ou `null`. */
+  activeId: string | null
   /** Thème courant : la carte relit ses couleurs quand il change. */
   theme: string
 }>()
@@ -38,6 +40,7 @@ function render() {
     placing: props.placing,
     cursor: cursor.value,
     targeting: props.targeting,
+    activeId: props.activeId,
   })
 }
 
@@ -54,7 +57,7 @@ onMounted(() => {
   observer.observe(el)
 })
 
-watch(() => [props.scene, props.selected, props.placing, props.targeting, props.theme, cursor.value], render, { deep: true })
+watch(() => [props.scene, props.selected, props.placing, props.targeting, props.activeId, props.theme, cursor.value], render, { deep: true })
 watch(
   () => props.placing,
   (placing) => {

@@ -22,6 +22,7 @@ public final class Creature {
     private final int baseArmorClass;
     private final int maxHitPoints;
     private final double speed;             // en mètres
+    private final int initiative;           // modificateur d'initiative
     private final List<Weapon> weapons;
     private final Set<DamageType> resistances;
     private final Set<DamageType> vulnerabilities;
@@ -42,6 +43,7 @@ public final class Creature {
         this.maxHitPoints = b.hitPoints;
         this.hitPoints = b.hitPoints;
         this.speed = b.speed;
+        this.initiative = b.initiative;
         this.weapons = List.copyOf(b.weapons);
         this.resistances = Set.copyOf(b.resistances);
         this.vulnerabilities = Set.copyOf(b.vulnerabilities);
@@ -61,6 +63,7 @@ public final class Creature {
         this.maxHitPoints = o.maxHitPoints;
         this.hitPoints = o.hitPoints;
         this.speed = o.speed;
+        this.initiative = o.initiative;
         this.weapons = o.weapons;
         this.resistances = o.resistances;
         this.vulnerabilities = o.vulnerabilities;
@@ -89,6 +92,8 @@ public final class Creature {
     public int maxHitPoints() { return maxHitPoints; }
     /** Vitesse de déplacement, en mètres par tour. */
     public double speed() { return speed; }
+    /** Modificateur d'initiative (Dextérité, sauf capacité), ajouté au d20 d'initiative. */
+    public int initiative() { return initiative; }
     public List<Weapon> weapons() { return weapons; }
 
     /** Les attaques possibles : celles de corps à corps, puis celles à distance (lancer compris). */
@@ -136,6 +141,10 @@ public final class Creature {
         reactionAvailable = false;
     }
 
+    public void regainReaction() {
+        reactionAvailable = true;
+    }
+
     public void expendSpellSlot(int level) {
         if (spellSlots[level] <= 0) throw new IllegalStateException(name + " n'a plus d'emplacement de niveau " + level);
         spellSlots[level]--;
@@ -157,6 +166,7 @@ public final class Creature {
         private int armorClass = 10;
         private int hitPoints = 1;
         private double speed = 9;
+        private int initiative = 0;
         private final List<Weapon> weapons = new ArrayList<>();
         private final Set<DamageType> resistances = new HashSet<>();
         private final Set<DamageType> vulnerabilities = new HashSet<>();
@@ -174,6 +184,7 @@ public final class Creature {
         public Builder armorClass(int ac) { this.armorClass = ac; return this; }
         public Builder hitPoints(int hp) { this.hitPoints = hp; return this; }
         public Builder speed(double metres) { this.speed = metres; return this; }
+        public Builder initiative(int modifier) { this.initiative = modifier; return this; }
         /** Ajoute une arme ; une créature peut en avoir plusieurs. */
         public Builder weapon(Weapon w) { weapons.add(w); return this; }
         public Builder resistance(DamageType t) { resistances.add(t); return this; }

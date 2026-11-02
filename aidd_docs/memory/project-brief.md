@@ -38,3 +38,4 @@ Le code, les commentaires et les messages sont en français ; les identifiants s
 - Préparation de scène dans le navigateur : carte vide en mètres ou en pieds, créatures du catalogue SRD posées au clic, distance entre deux créatures, feuille de chaque créature.
 - Attaque depuis la feuille : ciblage sur la carte, allonge, portée normale et longue, lancer ; résultat dans le journal et PV mis à jour.
 - Décision du moteur dans le navigateur : la réaction Bouclier arrête l'attaque, le joueur choisit dans un dialogue, puis l'attaque reprend.
+- Combat au tour par tour : lancer le combat tire l'initiative, l'ordre de jeu et la créature active s'affichent, « Fin du tour » passe à la suivante et ouvre un nouveau round après la dernière ; les ex æquo font choisir qui joue. Seule la créature active attaque ; une créature posée ou retirée en combat entre dans l'ordre ou en sort.

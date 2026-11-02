@@ -54,8 +54,9 @@ function signed(value: number): string {
       <p v-if="sheet.vulnerabilities.length"><strong class="key">Vulnérabilités</strong> {{ sheet.vulnerabilities.join(', ') }}</p>
     </template>
     <h4>Attaques</h4>
+    <p v-if="actions && sheet.attackRefusal && sheet.attacks.length" :id="`refusal-${sheet.id}`" class="refusal">{{ sheet.attackRefusal }}.</p>
     <ul v-if="sheet.attacks.length" class="attacks">
-      <li v-for="attack in sheet.attacks" :key="attack.id" :class="{ aiming: aiming === attack.id }">
+      <li v-for="(attack, index) in sheet.attacks" :key="attack.id" :class="{ aiming: aiming === attack.id }">
         <p>
           <em class="label">{{ attack.label }}.</em>{{ ' ' }}<span class="key">{{ signed(attack.attackBonus) }}</span> au
           toucher, {{ distance(attack) }}.
@@ -65,6 +66,10 @@ function signed(value: number): string {
           v-if="actions"
           type="button"
           :class="{ aiming: aiming === attack.id }"
+          :disabled="sheet.attackRefusal !== null && aiming !== attack.id"
+          :aria-describedby="sheet.attackRefusal ? `refusal-${sheet.id}` : undefined"
+          :aria-keyshortcuts="index < 9 ? String(index + 1) : undefined"
+          :title="index < 9 ? `Touche ${index + 1}` : undefined"
           :aria-label="aiming === attack.id ? `Annuler l'attaque ${attack.label}` : `Attaquer avec ${attack.label}`"
           @click="emit('attack', attack)"
         >
@@ -170,6 +175,12 @@ h4 {
   color: var(--on-brass);
 }
 .muted {
+  color: var(--ink-muted);
+}
+/* Le moteur dit pourquoi les attaques sont fermées : une phrase, pas une alerte. */
+.refusal {
+  margin-bottom: 0.4rem;
+  font-style: italic;
   color: var(--ink-muted);
 }
 </style>
