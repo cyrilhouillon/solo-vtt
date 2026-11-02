@@ -25,7 +25,7 @@ export interface TrayResult {
   /** L'attaque vient d'être tranchée : ses dés roulent. Faux quand elle est relue du journal (rechargement). */
   live: boolean
   /** Absent quand le résultat est relu du journal (rechargement) : la piste n'a alors pas la jauge. */
-  target?: { name: string; hitPoints: number; maxHitPoints: number }
+  target?: { id: string; name: string; hitPoints: number; maxHitPoints: number }
 }
 
 const props = defineProps<{ result: TrayResult | null }>()

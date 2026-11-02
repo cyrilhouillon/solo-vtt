@@ -48,6 +48,12 @@ export interface Targeting {
 type TargetHint = RangeVerdict & { distance: number }
 
 const MARGIN = 16
+/** Jauge de PV : écart sous le jeton et épaisseur, en pixels. */
+const HEALTH_GAP = 3
+const HEALTH_HEIGHT = 4
+/** La bulle d'issue reste lisible avant de s'effacer. */
+const IMPACT_HOLD_MS = 1200
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)')
 const FONT = "'Alegreya Sans', system-ui, sans-serif"
 
 /** Initiales d'un nom, numéro compris : « Gobelin guerrier 2 » donne « GG2 ». */
@@ -71,6 +77,8 @@ export class SceneCanvas {
   private readonly layer = new Konva.Layer()
   /** Aperçu du placement sous le curseur, redessiné sans toucher au reste. */
   private readonly preview = new Konva.Layer({ listening: false })
+  /** Bulles d'issue posées sur la cible : sans écoute, et que le redessin ne vide pas ; elles s'effacent seules. */
+  private readonly effects = new Konva.Layer({ listening: false })
   private readonly events: SceneCanvasEvents
   private readonly container: HTMLDivElement
   /** Couleurs du thème, relues à chaque dessin : le joueur peut changer de thème en cours de partie. */
@@ -92,7 +100,7 @@ export class SceneCanvas {
     this.events = events
     this.container = container
     this.stage = new Konva.Stage({ container, width: container.clientWidth, height: container.clientHeight })
-    this.stage.add(this.layer, this.preview)
+    this.stage.add(this.layer, this.preview, this.effects)
     this.stage.on('mousemove', (e) => {
       this.pointerInside = true
       this.drawPointerPreview(!e.evt.shiftKey)
@@ -151,6 +159,8 @@ export class SceneCanvas {
       label: token('--map-label'),
       labelGround: token('--map-label-ground'),
       danger: token('--danger'),
+      hp: token('--hp'),
+      hpLow: token('--hp-low'),
     }
   }
 
@@ -403,6 +413,7 @@ export class SceneCanvas {
         group.add(new Konva.Line({ points, stroke: this.colors.rim, strokeWidth: 3, lineCap: 'round', listening: false }))
       }
     } else {
+      this.drawHealth(group, token, radius)
       const initials = new Konva.Text({
         text: initialsOf(token.name),
         fontSize: Math.round(Math.max(10, radius * 0.75)),
@@ -556,6 +567,45 @@ export class SceneCanvas {
     return label
   }
 
+  /** Jauge de PV sous le jeton, de sa largeur ; ambre à la moitié ou moins, comme le tableau. Rien tant que les PV sont inconnus. */
+  private drawHealth(group: Konva.Group, token: TokenView, radius: number): void {
+    if (token.hitPoints === undefined || !token.maxHitPoints) return
+    const health = Math.max(0, Math.min(1, token.hitPoints / token.maxHitPoints))
+    const bar = { x: -radius, y: radius + HEALTH_GAP, height: HEALTH_HEIGHT, cornerRadius: 2, listening: false }
+    group.add(new Konva.Rect({ ...bar, width: 2 * radius, fill: 'rgba(0, 0, 0, 0.45)' }))
+    group.add(new Konva.Rect({ ...bar, width: 2 * radius * health, fill: health <= 0.5 ? this.colors.hpLow : this.colors.hp }))
+  }
+
+  /**
+   * L'issue d'une attaque au-dessus de sa cible (« −11 », « Raté ») : la bulle s'élève et s'efface seule, sans capter le
+   * pointeur ; sans s'élever si le joueur demande moins d'animations.
+   */
+  showImpact(tokenId: string, text: string): void {
+    const token = this.state?.scene.tokens.find((t) => t.id === tokenId)
+    if (!token) return
+    const radius = this.tokenRadius(this.state!.scene)
+    const x = this.toPixelsX(token.x)
+    const y = this.toPixelsY(token.y) - radius - 6
+    const label = new Konva.Label({ x, y })
+    label.add(
+      new Konva.Tag({ fill: this.colors.labelGround, cornerRadius: 4, pointerDirection: 'down', pointerWidth: 10, pointerHeight: 5 }),
+      new Konva.Text({ text, fontSize: 20, fontStyle: '700', fontFamily: FONT, fill: this.colors.label, padding: 5, wrap: 'none' }),
+    )
+    this.effects.add(label)
+    this.effects.batchDraw()
+    const still = REDUCED_MOTION.matches
+    window.setTimeout(() => {
+      new Konva.Tween({
+        node: label,
+        duration: 0.6,
+        opacity: 0,
+        ...(still ? {} : { y: y - 18 }),
+        easing: Konva.Easings.EaseIn,
+        onFinish: () => label.destroy(),
+      }).play()
+    }, IMPACT_HOLD_MS)
+  }
+
   /** Étiquette du nom complet, sous le jeton. */
   private nameLabel(name: string, radius: number): Konva.Label {
     const text = new Konva.Text({
@@ -567,7 +617,8 @@ export class SceneCanvas {
       padding: 3,
       wrap: 'none',
     })
-    const label = new Konva.Label({ y: radius + 4, listening: false })
+    // Sous la jauge de PV.
+    const label = new Konva.Label({ y: radius + HEALTH_GAP + HEALTH_HEIGHT + 3, listening: false })
     label.add(new Konva.Tag({ fill: this.colors.labelGround, cornerRadius: 3 }), text)
     label.offsetX(label.width() / 2)
     return label

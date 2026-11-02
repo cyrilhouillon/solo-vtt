@@ -156,7 +156,12 @@ function onKeydown(e: KeyboardEvent) {
 function focus() {
   container.value?.focus()
 }
-defineExpose({ focus })
+/** L'issue d'une attaque, brièvement au-dessus de sa cible. */
+function showImpact(tokenId: string, text: string) {
+  canvas?.showImpact(tokenId, text)
+}
+
+defineExpose({ focus, showImpact })
 
 onBeforeUnmount(() => {
   observer?.disconnect()

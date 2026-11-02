@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Carte : jauge de PV sur chaque jeton et issue sur la cible

@@ -512,6 +512,7 @@ async function settleAction(result: ActionResult) {
   const target = scene.value?.tokens.find((token) => token.id === result.targetId)
   if (target) target.hitPoints = result.targetHitPoints
   const tray = trayFromJournal({
+    id: result.targetId,
     name: target?.name ?? result.targetId,
     hitPoints: result.targetHitPoints,
     maxHitPoints: result.targetMaxHitPoints,
@@ -525,6 +526,14 @@ async function settleAction(result: ActionResult) {
   const fresh = await api.sheet(result.targetId)
   targetSheet.value = fresh
   if (target) target.armorClass = fresh.armorClass
+}
+
+/** Les dés se sont arrêtés : la cible porte l'issue (« −11 », « Raté »), là où le regard se pose après le clic. */
+function showImpact(result: TrayResult) {
+  const targetId = result.target?.id
+  if (!targetId) return
+  const total = result.damage.reduce((sum, d) => sum + d.amount, 0)
+  mapView.value?.showImpact(targetId, result.roll.outcome === 'MISS' ? 'Raté' : `−${total}`)
 }
 
 function endMoving() {
@@ -897,7 +906,7 @@ onBeforeUnmount(() => {
             distance ; Suppr retire de la carte les créatures sélectionnées.
           </template>
         </p>
-        <DiceTray :result="lastResult" />
+        <DiceTray :result="lastResult" @landed="showImpact" />
       </template>
       <p v-else class="empty">Aucune carte. La créer depuis « Nouvelle carte », dans le rail à gauche.</p>
       <p class="sr-only" aria-live="polite">{{ announcement }}</p>
