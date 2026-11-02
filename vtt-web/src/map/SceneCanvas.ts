@@ -397,11 +397,11 @@ export class SceneCanvas {
       initials.offset({ x: initials.width() / 2, y: initials.height() / 2 })
       group.add(initials)
     }
-    // Le nom complet à la demande : sélection ou survol. Les initiales suffisent au repos.
+    // Le nom complet à la demande : sélection, survol, ou la créature qui joue. Les initiales suffisent au repos.
     // En ciblage, la cible envisagée porte aussi sa CA et ses PV : tout ce qui décide du coup est sous le curseur.
     const stats = hint && token.armorClass !== undefined ? ` · CA ${token.armorClass} · ${token.hitPoints}/${token.maxHitPoints} PV` : ''
     const full = this.nameLabel(token.name + stats, radius)
-    full.visible(isSelected)
+    full.visible(isSelected || isActive)
     full.move({ x, y })
     names.add(full)
     // En ciblage, la cible envisagée est cerclée de laiton, et sa distance dit ce qu'elle permet.
@@ -430,7 +430,7 @@ export class SceneCanvas {
     })
     group.on('mouseleave', () => {
       this.stage.container().style.cursor = ''
-      full.visible(isSelected)
+      full.visible(isSelected || isActive)
       ring.visible(false)
       rangeLabel?.visible(false)
       this.layer.batchDraw()

@@ -33,7 +33,15 @@ const activeName = computed(() => {
         Round {{ combat.round }} ·
         <strong>{{ activeName ? `Tour de ${activeName}` : 'Qui joue ?' }}</strong>
       </p>
-      <button type="button" :disabled="blocked || !combat.activeId" @click="emit('endTurn')">Fin du tour</button>
+      <button
+        type="button"
+        :disabled="blocked || !combat.activeId"
+        aria-keyshortcuts="F"
+        title="Touche F"
+        @click="emit('endTurn')"
+      >
+        Fin du tour
+      </button>
     </template>
     <button
       v-else

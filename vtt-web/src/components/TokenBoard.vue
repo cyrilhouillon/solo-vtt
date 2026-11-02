@@ -72,11 +72,30 @@ watch(
   },
 )
 
-/** En ciblage, le focus vient sur le tableau : c'est là que le clavier choisit la cible. */
-function focusTitle() {
-  title.value?.focus()
+/**
+ * En ciblage, le focus vient sur le tableau, où le clavier choisit la cible : sur la première créature permise,
+ * sinon sur le titre (aucune à portée).
+ */
+function focusFirstTarget() {
+  const index = rows.value.findIndex((token) => token.id !== props.attacker && props.ranges[token.id]?.allowed)
+  ;(index >= 0 ? entries.value[index] : title.value)?.focus()
 }
-defineExpose({ focusTitle })
+defineExpose({ focusFirstTarget })
+
+/**
+ * En combat hors ciblage, le tableau se resserre en bande d'initiative (la carte garde la place) ;
+ * la ligne de la créature qui joue reste en vue.
+ */
+const compact = computed(() => props.combat !== null && !aiming.value)
+watch(
+  () => [props.combat?.activeId, compact.value] as const,
+  async ([activeId]) => {
+    if (!activeId) return
+    await nextTick()
+    const index = rows.value.findIndex((token) => token.creatureId === activeId)
+    entries.value[index]?.closest('tr')?.scrollIntoView({ block: 'nearest' })
+  },
+)
 
 /** En ciblage, la ligne vise : son nom dit ce que la distance permet, et elle n'est plus un interrupteur. */
 function entryLabel(token: TokenView): string | undefined {
@@ -97,7 +116,7 @@ function health(token: TokenView): number {
 </script>
 
 <template>
-  <section class="board" aria-labelledby="board-title">
+  <section class="board" :class="{ compact }" aria-labelledby="board-title">
 
     <p v-if="!tokens.length" class="empty">Aucune créature posée : choisir une créature du catalogue, puis une case.</p>
     <div v-else class="scroll">
@@ -189,6 +208,10 @@ function health(token: TokenView): number {
 .scroll {
   max-height: 14rem;
   overflow-y: auto;
+}
+/* En combat : trois lignes, la créature qui joue et les suivantes ; le ciblage rouvre le tableau entier. */
+.compact .scroll {
+  max-height: 8.25rem;
 }
 table {
   width: 100%;

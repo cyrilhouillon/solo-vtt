@@ -57,6 +57,8 @@ export interface JournalEntry {
   text: string
   /** L'entrée ouvre un round : le journal la montre en séparateur. */
   round: boolean
+  /** Ce que la piste à dés retient d'une attaque : son issue, les dégâts, une réaction ; `null` sinon. */
+  highlight: 'OUTCOME' | 'DAMAGE' | 'REACTION' | null
 }
 
 /** Une question du moteur au milieu d'une action ; le joueur y répond pour toute créature. */
@@ -114,6 +116,8 @@ export interface CreatureSheet {
   attacks: Attack[]
   resistances: string[]
   vulnerabilities: string[]
+  /** Pourquoi la créature ne peut pas attaquer en ce moment (à terre, pas son tour) ; les règles en décident. */
+  attackRefusal: string | null
 }
 
 export const KIND_LABELS: Record<CreatureKind, string> = {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, ApiError } from './api'
 import AppIcon from './components/AppIcon.vue'
 import CatalogPanel from './components/CatalogPanel.vue'
@@ -59,15 +59,20 @@ function toggleTheme() {
   saveTheme(theme.value)
 }
 
-/** Ce que la piste montre d'une action : son annonce, et son issue (dernière ligne). */
-function trayFrom(entries: JournalEntry[]): TrayResult {
-  return { title: entries[0]?.text ?? '', outcome: entries.length > 1 ? (entries.at(-1)?.text ?? null) : null }
-}
-
-/** Après un rechargement, la piste reprend la dernière action du journal. */
-function trayFromJournal(): TrayResult | null {
-  const last = journal.value.at(-1)
-  return last ? trayFrom(journal.value.filter((e) => e.action === last.action)) : null
+/**
+ * Ce que la piste montre : la dernière attaque tranchée du journal (son annonce, son issue, la réaction et les dégâts).
+ * Un tour de combat ne l'efface pas ; la jauge de la cible n'est connue qu'au retour de l'attaque.
+ */
+function trayFromJournal(target?: TrayResult['target']): TrayResult | null {
+  const outcome = [...journal.value].reverse().find((e) => e.highlight === 'OUTCOME')
+  if (!outcome) return null
+  const entries = journal.value.filter((e) => e.action === outcome.action)
+  return {
+    title: entries[0]?.text ?? '',
+    outcome: outcome.text,
+    details: entries.filter((e) => e.highlight === 'REACTION' || e.highlight === 'DAMAGE').map((e) => e.text),
+    target,
+  }
 }
 
 /** Le catalogue s'ouvre tant que la carte est vide ; ensuite, c'est le joueur qui le replie. */
@@ -123,6 +128,12 @@ const rangeVerdicts = computed<Record<string, RangeVerdict>>(() => {
 const notice = ref('')
 /** Ce que lit le lecteur d'écran : la dernière action, ou la distance mesurée. */
 const announcement = ref('')
+
+/**
+ * La sélection vient du joueur (clic, tableau), ou du combat qui sélectionne la créature qui joue.
+ * Suppr ne retire que ce que le joueur a choisi : une touche perdue ne sort pas la créature active du combat.
+ */
+const chosenByPlayer = ref(false)
 
 /** Une étape annulable par Ctrl+Z : une pose, ou un retrait (de quoi reposer les créatures). */
 type Step = { type: 'place'; tokenId: string } | { type: 'remove'; tokens: TokenView[] }
@@ -351,7 +362,9 @@ function removeTokens(ids: string[]) {
     const removed = await deleteTokens(targets)
     if (!removed.length) return
     history.push({ type: 'remove', tokens: removed })
-    tell(`${names(removed)} ${removed.length > 1 ? 'retirés' : 'retiré'}. Ctrl+Z pour annuler.`)
+    // En combat, un retrait ne s'annule pas (voir undo) : ne pas le promettre.
+    const undoHint = combat.value ? '' : ' Ctrl+Z pour annuler.'
+    tell(`${names(removed)} ${removed.length > 1 ? 'retirés' : 'retiré'}.${undoHint}`)
   })
 }
 
@@ -361,11 +374,18 @@ function removeTokens(ids: string[]) {
  * plus anciennes suivent.
  */
 function undo() {
-  const step = history.pop()
+  const step = history.at(-1)
   if (!step) {
     tell('Rien à annuler.')
     return
   }
+  // Reposée en combat, la créature tirerait une nouvelle initiative : ce ne serait pas annuler son retrait.
+  if (step.type === 'remove' && combat.value) {
+    const plural = step.tokens.length > 1
+    tell(`Impossible de reposer ${names(step.tokens)} en plein combat : ${plural ? 'les créatures tireraient' : 'la créature tirerait'} une nouvelle initiative.`)
+    return
+  }
+  history.pop()
   attempt(async () => {
     if (step.type === 'place') {
       const removed = await deleteTokens([step.tokenId])
@@ -416,7 +436,8 @@ function startAttack(attack: Attack) {
   targeting.value = { attackerId: attacker.id, attackerName: attacker.name, attack }
   attackOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : null
   announcement.value = `Ciblage : ${attack.label} de ${attacker.name}. Choisir la cible dans le tableau ; Échap annule.`
-  board.value?.focusTitle()
+  // Le tableau s'ouvre en entier pendant le ciblage : le focus attend son rendu.
+  void nextTick(() => board.value?.focusFirstTarget())
 }
 
 /** Un clic sur une créature : la cible en ciblage, la sélection sinon. */
@@ -450,24 +471,24 @@ async function settleAction(result: ActionResult) {
   journal.value.push(...result.entries)
   decision.value = result.decision
   combat.value = result.combat
-  // Une attaque suspendue garde l'annonce précédente ; un tour suspendu dit qui peut jouer.
-  if (result.decision && result.targetId === null) tell(result.entries.at(-1)?.text ?? result.decision.prompt)
-  if (result.decision) return
-  const last = result.entries.at(-1)
-  tell(last?.text ?? 'Action résolue.')
-  const actionEntries = last ? journal.value.filter((e) => e.action === last.action) : result.entries
-  // Comme après un rechargement, la piste montre la dernière action, tour de combat compris.
-  lastResult.value = trayFrom(actionEntries)
-  if (result.targetId === null || result.targetHitPoints === null || result.targetMaxHitPoints === null) return
+  notice.value = ''
+  // La barre annonce le tour (aria-live) et le dialogue la décision : seule l'issue d'une attaque reste à dire.
+  if (result.decision || result.targetId === null) return
+  if (result.targetHitPoints === null || result.targetMaxHitPoints === null) return
   const target = scene.value?.tokens.find((token) => token.id === result.targetId)
   if (target) target.hitPoints = result.targetHitPoints
-  lastResult.value = {
-    ...trayFrom(actionEntries),
-    target: { name: target?.name ?? result.targetId, hitPoints: result.targetHitPoints, maxHitPoints: result.targetMaxHitPoints },
-  }
-  // Une réaction peut changer la feuille de la cible comme de l'attaquant (emplacement, CA).
+  const tray = trayFromJournal({
+    name: target?.name ?? result.targetId,
+    hitPoints: result.targetHitPoints,
+    maxHitPoints: result.targetMaxHitPoints,
+  })
+  lastResult.value = tray
+  announcement.value = tray ? [tray.outcome, ...tray.details].join('. ') : 'Attaque résolue.'
+  // Une réaction peut changer la feuille de la cible comme de l'attaquant (emplacement, CA), et la CA du tableau.
   if (sheet.value) showSheet(sheet.value.id)
-  targetSheet.value = await api.sheet(result.targetId)
+  const fresh = await api.sheet(result.targetId)
+  targetSheet.value = fresh
+  if (target) target.armorClass = fresh.armorClass
 }
 
 /** Lance le combat ou termine le tour ; un second clic avant la réponse n'envoie rien. */
@@ -497,6 +518,7 @@ watch(
     const token = creatureId ? scene.value?.tokens.find((t) => t.creatureId === creatureId) : undefined
     if (!token || token.pending) return
     selected.value = [token.id]
+    chosenByPlayer.value = false
     tab.value = 'sheet'
     showSheet(token.id)
   },
@@ -518,6 +540,12 @@ function toggleSelection(tokenId: string) {
   if (scene.value?.tokens.find((t) => t.id === tokenId)?.pending) return
   notice.value = ''
   const current = selected.value
+  // Un clic sur la créature que le combat a sélectionnée la choisit, sans la désélectionner.
+  if (!chosenByPlayer.value && current.length === 1 && current[0] === tokenId) {
+    chosenByPlayer.value = true
+    return
+  }
+  chosenByPlayer.value = true
   selected.value = current.includes(tokenId)
     ? current.filter((id) => id !== tokenId)
     : [...current, tokenId].slice(-2)
@@ -528,6 +556,7 @@ function toggleSelection(tokenId: string) {
 
 function clearSelection() {
   selected.value = []
+  chosenByPlayer.value = false
   sheet.value = null
 }
 
@@ -601,10 +630,24 @@ function onKey(e: KeyboardEvent) {
   if (isTyping(e.target) || !scene.value) return
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault()
-    removeTokens(selected.value)
+    if (chosenByPlayer.value) removeTokens(selected.value)
+    else if (selected.value.length) tell('Cliquer sur la créature pour la choisir, puis Suppr pour la retirer.')
   } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault()
     undo()
+  } else if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) {
+    return
+  } else if (e.key.toLowerCase() === 'f' && combat.value?.activeId && !combatBusy.value) {
+    e.preventDefault()
+    combatAction(api.endTurn)
+  } else if (/^[1-9]$/.test(e.key) && !(e.target instanceof HTMLElement && e.target.closest('[role="tablist"]'))) {
+    // L'attaque n de la feuille affichée, comme son bouton : fermée si les règles la refusent.
+    const attacker = sheet.value
+    const attack = attacker?.attacks[Number(e.key) - 1]
+    if (!attacker || !attack || tab.value !== 'sheet') return
+    e.preventDefault()
+    if (attacker.attackRefusal && targeting.value?.attack.id !== attack.id) tell(`${attacker.attackRefusal}.`)
+    else startAttack(attack)
   }
 }
 
@@ -722,6 +765,9 @@ onBeforeUnmount(() => {
           <template v-else-if="measure">
             Distance {{ measure.from }} – {{ measure.to }} :
             <strong>{{ formatLength(measure.value, scene.unitSymbol) }}</strong> ({{ cellsLabel(measure.cells) }})
+          </template>
+          <template v-else-if="!notice && combat">
+            1 à 9 : attaques de la feuille ; F : fin du tour. Sélectionner deux créatures pour mesurer leur distance.
           </template>
           <template v-else-if="!notice">
             Sélectionner deux créatures pour mesurer leur distance ; Suppr retire de la carte les créatures sélectionnées.
