@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 
@@ -92,6 +93,16 @@ public final class Creature {
     public int maxHitPoints() { return maxHitPoints; }
     /** Vitesse de déplacement, en mètres par tour. */
     public double speed() { return speed; }
+
+    /** La vitesse effective, en mètres : 0 à 0 PV (inconsciente) ou entravée (SRD 5.2.1, p. 187 et 191). */
+    public double currentSpeed() { return speedZeroReason().isPresent() ? 0 : speed; }
+
+    /** Pourquoi la vitesse est de 0, ou vide si la créature peut se déplacer. */
+    public Optional<String> speedZeroReason() {
+        if (hitPoints == 0) return Optional.of(name + " est à terre : à 0 PV, sa vitesse est de 0");
+        if (has(Condition.RESTRAINED)) return Optional.of(name + " a l'état « " + Condition.RESTRAINED.label() + " » : sa vitesse est de 0");
+        return Optional.empty();
+    }
     /** Modificateur d'initiative (Dextérité, sauf capacité), ajouté au d20 d'initiative. */
     public int initiative() { return initiative; }
     public List<Weapon> weapons() { return weapons; }

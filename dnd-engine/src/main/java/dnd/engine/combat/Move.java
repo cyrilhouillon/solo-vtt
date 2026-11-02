@@ -3,7 +3,6 @@ package dnd.engine.combat;
 import dnd.engine.events.GameEvent;
 import dnd.engine.events.GameEvent.CreatureMoved;
 import dnd.engine.state.Combat;
-import dnd.engine.state.Condition;
 import dnd.engine.state.Creature;
 import dnd.engine.state.GameState;
 import dnd.engine.state.Length;
@@ -43,7 +42,7 @@ public final class Move extends CombatStep {
     /** La vitesse restante de la créature active, en mètres ; vide sans créature active. */
     public static OptionalDouble remaining(GameState state) {
         return state.combat()
-                .flatMap(c -> c.activeId().map(id -> Math.max(0, speed(state.get(id)) - c.movementUsed())))
+                .flatMap(c -> c.activeId().map(id -> c.movementLeft(state.get(id))))
                 .map(OptionalDouble::of)
                 .orElseGet(OptionalDouble::empty);
     }
@@ -57,7 +56,7 @@ public final class Move extends CombatStep {
     public static Move of(String creatureId, double distance, DistanceUnit unit, GameState state) {
         Creature creature = state.get(creatureId);
         if (!limits(creatureId, state)) throw new IllegalStateException("Ce n'est pas le tour de " + creature.name());
-        speedZeroReason(creature).ifPresent(reason -> {
+        creature.speedZeroReason().ifPresent(reason -> {
             throw new IllegalArgumentException(reason);
         });
         double metres = unit.convert(distance, DistanceUnit.METRE);
@@ -67,17 +66,6 @@ public final class Move extends CombatStep {
                     .formatted(creature.name(), Length.of(left, unit), Length.of(metres, unit)));
         }
         return new Move(creatureId, metres, unit);
-    }
-
-    /** La vitesse effective : 0 à 0 PV (inconsciente) ou entravée (SRD 5.2.1, p. 187 et 191). */
-    private static double speed(Creature creature) {
-        return speedZeroReason(creature).isPresent() ? 0 : creature.speed();
-    }
-
-    private static Optional<String> speedZeroReason(Creature creature) {
-        if (creature.hitPoints() == 0) return Optional.of(creature.name() + " est à terre : à 0 PV, sa vitesse est de 0");
-        if (creature.has(Condition.RESTRAINED)) return Optional.of(creature.name() + " a l'état « " + Condition.RESTRAINED.label() + " » : sa vitesse est de 0");
-        return Optional.empty();
     }
 
     @Override

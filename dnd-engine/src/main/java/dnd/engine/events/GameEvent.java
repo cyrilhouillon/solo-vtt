@@ -219,7 +219,7 @@ public sealed interface GameEvent extends Event<GameState> {
         }
 
         public String describe(GameState s) {
-            double left = Math.max(0, s.get(creatureId).speed() - combat(s).movementUsed());
+            double left = combat(s).movementLeft(s.get(creatureId));
             return "%s se déplace de %s (reste %s)".formatted(name(s, creatureId), Length.of(metres, unit), Length.of(left, unit));
         }
     }

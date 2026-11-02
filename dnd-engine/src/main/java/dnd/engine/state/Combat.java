@@ -63,6 +63,11 @@ public final class Combat {
         return movementUsed;
     }
 
+    /** Ce qui reste à parcourir ce tour-ci à la créature active, en mètres. */
+    public double movementLeft(Creature active) {
+        return Math.max(0, active.currentSpeed() - movementUsed);
+    }
+
     public boolean hasPlayed(String creatureId) {
         return played.contains(creatureId);
     }
