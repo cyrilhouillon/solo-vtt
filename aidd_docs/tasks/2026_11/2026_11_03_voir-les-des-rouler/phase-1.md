@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Serveur : les dés tirés en faits structurés dans le journal

@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
@@ -73,6 +74,9 @@ class AttackApiTest {
                 .body("entries.find { it.highlight == 'OUTCOME' }.roll.armorClass", equalTo(14))
                 .body("entries.find { it.highlight == 'DAMAGE' }.damage.amount", equalTo(11))
                 .body("entries.find { it.highlight == 'DAMAGE' }.damage.type", equalTo("tranchants"))
+                .body("entries.findAll { it.dice != null }.dice.sides", equalTo(List.of(20, 8)))
+                .body("entries.findAll { it.dice != null }.dice.values", equalTo(List.of(List.of(15), List.of(6))))
+                .body("entries.findAll { it.dice != null }.dice.kept", equalTo(Arrays.asList(15, null)))
                 .body("targetId", equalTo("squelette-1"))
                 .body("targetHitPoints", equalTo(2));
 
@@ -87,6 +91,30 @@ class AttackApiTest {
         attaquer("gobelin-1", "ranged:Arc court", "guerriere-1").statusCode(200)
                 .body("entries.text", hasItem("d20 : 19"))
                 .body("entries.text", hasItem("Guerrière subit 6 dégâts perforants (PV 6/12)"));
+    }
+
+    @Test
+    void enPorteeLongue_leD20GardeLePireDesDeux() {
+        dice.script(17, 5);
+
+        // Gobelin (29 ; 1,5) : 27,5 m de la Guerrière, au-delà de la portée normale de l'Arc court (24 m).
+        given().contentType(ContentType.JSON).body("{\"x\":29,\"y\":1.5}").post("/api/scene/tokens/gobelin-1/move").then().statusCode(200);
+        attaquer("gobelin-1", "ranged:Arc court", "guerriere-1").statusCode(200)
+                .body("entries.findAll { it.dice != null }", hasSize(1))
+                .body("entries.find { it.dice != null }.dice.sides", equalTo(20))
+                .body("entries.find { it.dice != null }.dice.values", equalTo(List.of(17, 5)))
+                .body("entries.find { it.dice != null }.dice.kept", equalTo(5));
+    }
+
+    @Test
+    void unCoupCritique_doubleLesDesDeDegats() {
+        dice.script(20, 6, 2);
+
+        attaquer("guerriere-1", "melee:Épée longue", "squelette-1").statusCode(200)
+                .body("entries.find { it.highlight == 'OUTCOME' }.roll.outcome", equalTo("CRITICAL"))
+                .body("entries.findAll { it.dice != null }.dice.sides", equalTo(List.of(20, 8)))
+                .body("entries.findAll { it.dice != null }[1].dice.values", equalTo(List.of(6, 2)))
+                .body("entries.findAll { it.dice != null }[1].dice.kept", equalTo(null));
     }
 
     @Test
@@ -118,7 +146,8 @@ class AttackApiTest {
         dice.script(1);
         attaquer("gobelin-1", "melee:Cimeterre", "magicienne-1").statusCode(200)
                 .body("entries.find { it.highlight == 'OUTCOME' }.roll.outcome", equalTo("MISS"))
-                .body("entries.findAll { it.damage != null }", empty());
+                .body("entries.findAll { it.damage != null }", empty())
+                .body("entries.findAll { it.dice != null }.dice.sides", equalTo(List.of(20)));
     }
 
     @Test
