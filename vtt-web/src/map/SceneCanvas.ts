@@ -1,6 +1,6 @@
 import Konva from 'konva'
 import { formatLength, type CreatureKind, type SceneView, type TokenView } from '../types'
-import { CELL, occupant, round, snapToCell, type Point } from './grid'
+import { CELL, magnet, occupant, round, snapToCell, type Point } from './grid'
 import { checkMove, moveLabel, type MoveLimit } from './move'
 import { rangeVerdict, type RangeVerdict } from './range'
 
@@ -188,13 +188,13 @@ export class SceneCanvas {
     }
   }
 
-  /** Position visée par le pointeur, calée sur la case sauf si `free`, ou `null` hors de la carte. */
+  /** Position visée par le pointeur, ou `null` hors de la carte : calée sur la case, ou libre et aimantée au contact. */
   private pointerTarget(scene: SceneView, free: boolean): Point | null {
     const pointer = this.stage.getPointerPosition()
     if (!pointer) return null
     const p = this.toUnits(pointer)
     if (p.x < 0 || p.y < 0 || p.x > scene.width || p.y > scene.height) return null
-    return free ? { x: round(p.x), y: round(p.y) } : snapToCell(scene, p)
+    return free ? magnet(scene, { x: round(p.x), y: round(p.y) }) : snapToCell(scene, p)
   }
 
   private drawGround(scene: SceneView): void {
@@ -467,7 +467,11 @@ export class SceneCanvas {
     const target = (pixels: { x: number; y: number }): Point => {
       const p = this.toUnits(pixels)
       const inside = { x: Math.min(scene.width, Math.max(0, p.x)), y: Math.min(scene.height, Math.max(0, p.y)) }
-      return this.shiftHeld ? snapToCell(scene, inside) : { x: round(inside.x), y: round(inside.y) }
+      if (this.shiftHeld) return snapToCell(scene, inside)
+      // Aimanté au contact, sans dépasser ce qui reste à parcourir.
+      const limit = this.state?.movementLimit
+      const left = limit?.tokenId === token.id ? limit.left : Infinity
+      return magnet(scene, { x: round(inside.x), y: round(inside.y) }, token.id, (p) => Math.hypot(p.x - token.x, p.y - token.y) <= left + 1e-6)
     }
     group.draggable(true)
     group.dragDistance(4)
