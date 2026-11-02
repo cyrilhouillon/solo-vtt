@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Client : « Terminer le combat » avec confirmation dans la barre

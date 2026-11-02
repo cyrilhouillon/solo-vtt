@@ -59,6 +59,7 @@ const movingId = ref<string | null>(null)
 /** Un déplacement est envoyé et pas encore revenu. */
 const moveBusy = ref(false)
 const mapView = ref<InstanceType<typeof MapView> | null>(null)
+const combatControl = ref<InstanceType<typeof CombatControl> | null>(null)
 
 /**
  * Le seul jeton limité dans son déplacement : la créature active, quand le serveur donne ce qui lui reste.
@@ -587,6 +588,15 @@ function startCombat() {
   combatAction(api.startCombat)
 }
 
+/** Termine le combat ; la feuille ouverte se recharge, car ses attaques n'attendent plus un tour. */
+function endCombat() {
+  combatAction(async () => {
+    const result = await api.endCombat()
+    if (sheet.value) showSheet(sheet.value.id)
+    return result
+  })
+}
+
 /**
  * À chaque changement de tour, la sélection et la feuille passent à la créature qui joue ;
  * pendant « Qui joue ? », au premier candidat. Choisir ce candidat change le tour sans changer de créature : la clé
@@ -706,7 +716,8 @@ function onKey(e: KeyboardEvent) {
   // Le dialogue modal rend la page inerte, pas l'écouteur de window : rien ne passe tant qu'il attend.
   if (decision.value) return
   if (e.key === 'Escape') {
-    // Un pas à la fois : d'abord un retrait à confirmer, le ciblage ou le placement, puis la sélection.
+    // Un pas à la fois : d'abord une fin de combat ou un retrait à confirmer, le ciblage ou le placement, puis la sélection.
+    if (combatControl.value?.cancelEnd()) return
     if (board.value?.cancelRemoval()) return
     if (targeting.value) endTargeting()
     else if (movingId.value) endMoving()
@@ -766,11 +777,13 @@ onBeforeUnmount(() => {
       <span class="spacer" />
       <CombatControl
         v-if="scene"
+        ref="combatControl"
         :combat="combat"
         :creature-count="scene.tokens.filter((t) => !t.pending).length"
         :blocked="combatBusy"
         @start="startCombat"
         @end-turn="combatAction(api.endTurn)"
+        @end-combat="endCombat"
       />
       <button
         type="button"
