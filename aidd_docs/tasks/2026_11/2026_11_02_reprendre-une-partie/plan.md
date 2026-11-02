@@ -1,6 +1,6 @@
 ---
 objective: "Après arrêt puis relance du serveur, le joueur retrouve la carte, les positions, les PV, l'ordre de jeu, le tour en cours, le journal et la décision en attente tels qu'il les a laissés."
-status: in-progress
+status: implemented
 ---
 
 # Plan: reprendre une partie à l'identique
