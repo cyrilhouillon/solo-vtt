@@ -118,9 +118,9 @@ const targeting = ref<{ attackerId: string; attackerName: string; attack: Attack
 const targetingView = computed<Targeting | null>(() => {
   const t = targeting.value
   if (!t) return null
-  const { reach, range } = t.attack
+  const { reach, reachLimit, range } = t.attack
   const circles = reach
-    ? [{ radius: reach.value, dashed: false }]
+    ? [{ radius: (reachLimit ?? reach).value, dashed: false }]
     : range
       ? [
           { radius: range.normal, dashed: false },

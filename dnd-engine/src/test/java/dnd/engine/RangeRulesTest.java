@@ -104,13 +104,20 @@ class RangeRulesTest {
     }
 
     @Test
-    void voisinEnDiagonale_horsDAllonge_refuseSansEvenement() {
+    void voisinEnDiagonale_ouAuContactHorsGrille_aLAllonge() {
+        assertDoesNotThrow(() -> AttackAction.of("a", MELEE_SWORD, "c", Math.hypot(1.5, 1.5), DistanceUnit.METRE, state(attacker(), target())));
+        assertDoesNotThrow(() -> AttackAction.of("a", MELEE_SWORD, "c", 2.25, DistanceUnit.METRE, state(attacker(), target())));
+    }
+
+    @Test
+    void deuxCasesDEcart_horsDAllonge_refuseSansEvenement() {
         var e = engine(state(attacker(), target()));
 
-        var refused = assertThrows(IllegalArgumentException.class, () -> attack(e, MELEE_SWORD, Math.hypot(1.5, 1.5)));
+        var refused = assertThrows(IllegalArgumentException.class, () -> attack(e, MELEE_SWORD, 2.3));
 
-        assertEquals("Épée longue : cible à 2,1 m, hors d'allonge (1,5 m)", refused.getMessage());
+        assertEquals("Épée longue : cible à 2,3 m, hors d'allonge (1,5 m)", refused.getMessage());
         assertTrue(e.events().isEmpty());
+        assertThrows(IllegalArgumentException.class, () -> attack(e, MELEE_SWORD, 3));
     }
 
     @Test

@@ -48,6 +48,8 @@ export interface Attack {
   damage: string
   damageType: string
   reach: Measure | null
+  /** Corps à corps : distance de centre à centre jusqu'où les règles acceptent la cible (allonge + tolérance de contact). */
+  reachLimit: Measure | null
   range: { normal: number; longRange: number; unitSymbol: string } | null
 }
 

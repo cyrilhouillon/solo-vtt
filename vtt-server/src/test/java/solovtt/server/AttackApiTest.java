@@ -85,6 +85,16 @@ class AttackApiTest {
     }
 
     @Test
+    void enDiagonale_leGobelinFrappeLaMagicienneAuContact() {
+        dice.script(15, 3);
+
+        // Gobelin (12 ; 1,5) et Magicienne (13,5 ; 3) : 2,12 m de centre à centre, dans l'allonge + demi-case.
+        given().contentType(ContentType.JSON).body("{\"x\":13.5,\"y\":3}").post("/api/scene/tokens/magicienne-1/move").then().statusCode(200);
+        attaquer("gobelin-1", "melee:Cimeterre", "magicienne-1").statusCode(200)
+                .body("entries.text", hasItem("Gobelin guerrier attaque Magicienne (Cimeterre)"));
+    }
+
+    @Test
     void uneCibleHorsDAllongeEstRefuseeAvecLaRaison() {
         attaquer("guerriere-1", "melee:Épée longue", "gobelin-1").statusCode(400)
                 .body("message", equalTo("Épée longue : cible à 10,5 m, hors d'allonge (1,5 m)"));
@@ -130,6 +140,7 @@ class AttackApiTest {
                 .body("attacks", hasSize(2))
                 .body("attacks[0].label", equalTo("Dague"))
                 .body("attacks[0].reach.value", equalTo(5.0f))
+                .body("attacks[0].reachLimit.value", equalTo(7.5f))
                 .body("attacks[0].reach.unitSymbol", equalTo("ft"))
                 .body("attacks[1].label", equalTo("Dague (lancer)"))
                 .body("attacks[1].range.normal", equalTo(20.0f))

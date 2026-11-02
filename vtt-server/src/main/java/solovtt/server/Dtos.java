@@ -133,17 +133,21 @@ final class Dtos {
 
     record RangeDto(double normal, double longRange, String unitSymbol) {}
 
-    /** Une attaque de la feuille ; {@code reach} pour le corps à corps, {@code range} pour la distance. */
+    /**
+     * Une attaque de la feuille ; {@code reach} (l'allonge affichée) et {@code reachLimit} (la distance de centre à
+     * centre jusqu'où les règles acceptent la cible) pour le corps à corps, {@code range} pour la distance.
+     */
     record AttackDto(String id, String label, Attack.Mode mode, int attackBonus, String damage, String damageType,
-                     Measure reach, RangeDto range) {
+                     Measure reach, Measure reachLimit, RangeDto range) {
         static AttackDto of(Attack a, DistanceUnit unit) {
             var w = a.weapon();
             String damage = w.diceNotation() + (w.damageBonus() == 0 ? "" : "%+d".formatted(w.damageBonus()));
             Measure reach = a.mode() == Attack.Mode.MELEE ? new Measure(inUnit(w.reach(), unit), unit.symbol()) : null;
+            Measure reachLimit = a.reachLimit().map(m -> new Measure(inUnit(m, unit), unit.symbol())).orElse(null);
             RangeDto range = a.mode() == Attack.Mode.RANGED
                     ? new RangeDto(inUnit(w.range().normal(), unit), inUnit(w.range().longRange(), unit), unit.symbol())
                     : null;
-            return new AttackDto(a.id(), a.label(), a.mode(), w.attackBonus(), damage, w.damageType().label(), reach, range);
+            return new AttackDto(a.id(), a.label(), a.mode(), w.attackBonus(), damage, w.damageType().label(), reach, reachLimit, range);
         }
     }
 
