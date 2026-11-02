@@ -84,13 +84,15 @@ function toggleTheme() {
  * Un tour de combat ne l'efface pas ; la jauge de la cible n'est connue qu'au retour de l'attaque.
  */
 function trayFromJournal(target?: TrayResult['target']): TrayResult | null {
-  const outcome = [...journal.value].reverse().find((e) => e.highlight === 'OUTCOME')
-  if (!outcome) return null
+  const outcome = [...journal.value].reverse().find((e) => e.highlight === 'OUTCOME' && e.roll)
+  if (!outcome?.roll) return null
   const entries = journal.value.filter((e) => e.action === outcome.action)
   return {
+    action: outcome.action,
     title: entries[0]?.text ?? '',
-    outcome: outcome.text,
-    details: entries.filter((e) => e.highlight === 'REACTION' || e.highlight === 'DAMAGE').map((e) => e.text),
+    roll: outcome.roll,
+    damage: entries.flatMap((e) => (e.damage ? [e.damage] : [])),
+    reactions: entries.filter((e) => e.highlight === 'REACTION').map((e) => e.text),
     target,
   }
 }
@@ -507,7 +509,9 @@ async function settleAction(result: ActionResult) {
     maxHitPoints: result.targetMaxHitPoints,
   })
   lastResult.value = tray
-  announcement.value = tray ? [tray.outcome, ...tray.details].join('. ') : 'Attaque résolue.'
+  announcement.value = tray
+    ? journal.value.filter((e) => e.action === tray.action && e.highlight).map((e) => e.text).join('. ')
+    : 'Attaque résolue.'
   // Une réaction peut changer la feuille de la cible comme de l'attaquant (emplacement, CA), et la CA du tableau.
   if (sheet.value) showSheet(sheet.value.id)
   const fresh = await api.sheet(result.targetId)

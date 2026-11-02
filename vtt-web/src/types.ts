@@ -61,6 +61,23 @@ export interface JournalEntry {
   round: boolean
   /** Ce que la piste à dés retient d'une attaque : son issue, les dégâts, une réaction ; `null` sinon. */
   highlight: 'OUTCOME' | 'DAMAGE' | 'REACTION' | null
+  /** Les faits de l'issue d'une attaque (entrée `OUTCOME`), `null` sinon. */
+  roll: AttackRoll | null
+  /** Les dégâts subis (entrée `DAMAGE`), `null` sinon. */
+  damage: Damage | null
+}
+
+/** L'issue d'une attaque et le calcul qui la tranche. */
+export interface AttackRoll {
+  outcome: 'HIT' | 'MISS' | 'CRITICAL'
+  total: number
+  armorClass: number
+}
+
+/** Des dégâts subis ; `type` est le libellé français (« tranchants »). */
+export interface Damage {
+  amount: number
+  type: string
 }
 
 /** Une question du moteur au milieu d'une action ; le joueur y répond pour toute créature. */

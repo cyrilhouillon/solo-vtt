@@ -67,9 +67,18 @@ public class SceneSession {
 
     /**
      * Une ligne du journal : la description d'un événement, l'action à laquelle il appartient, si elle ouvre un round,
-     * et ce que la piste à dés en retient ({@code null} pour un détail ou ce qui n'est pas une attaque).
+     * et ce que la piste à dés en retient ({@code null} pour un détail ou ce qui n'est pas une attaque). {@code roll} et
+     * {@code damage} portent les faits de l'issue et des dégâts : la piste les lit sans relire le texte.
      */
-    public record JournalEntry(int action, String text, boolean round, Highlight highlight) {}
+    public record JournalEntry(int action, String text, boolean round, Highlight highlight, AttackRoll roll, Damage damage) {}
+
+    /** L'issue d'une attaque : touché, raté ou coup critique, et le calcul qui la tranche. */
+    public record AttackRoll(Outcome outcome, int total, int armorClass) {}
+
+    public enum Outcome { HIT, MISS, CRITICAL }
+
+    /** Des dégâts subis, après résistance et vulnérabilité ; {@code type} est le libellé français. */
+    public record Damage(int amount, String type) {}
 
     /** Ce que la piste retient d'une attaque : son issue, les dégâts, une réaction qui l'a changée. */
     public enum Highlight { OUTCOME, DAMAGE, REACTION }
@@ -97,7 +106,11 @@ public class SceneSession {
         state = new GameState();
         engine = new Engine<>(state, StandardRules.create(), dice);
         engine.subscribe(event -> journal.add(
-                new JournalEntry(action, event.describe(state), event instanceof GameEvent.RoundStarted, highlight(event))));
+                new JournalEntry(action, event.describe(state), event instanceof GameEvent.RoundStarted, highlight(event),
+                        event instanceof GameEvent.AttackResolved a
+                                ? new AttackRoll(a.critical() ? Outcome.CRITICAL : a.hit() ? Outcome.HIT : Outcome.MISS, a.total(), a.armorClass())
+                                : null,
+                        event instanceof GameEvent.DamageDealt d ? new Damage(d.amount(), d.type().label()) : null)));
         journal.clear();
         action = 0;
         actionTargetId = null;

@@ -67,11 +67,13 @@ final class Dtos {
 
     /**
      * {@code round} : l'entrée ouvre un round, le journal la montre en séparateur. {@code highlight} : ce que la piste
-     * à dés retient d'une attaque (issue, dégâts, réaction), ou {@code null}.
+     * à dés retient d'une attaque (issue, dégâts, réaction), ou {@code null}. {@code roll} et {@code damage} : les faits
+     * de l'issue et des dégâts, pour que la piste ne relise pas le texte.
      */
-    record JournalEntryDto(int action, String text, boolean round, SceneSession.Highlight highlight) {
+    record JournalEntryDto(int action, String text, boolean round, SceneSession.Highlight highlight,
+                           SceneSession.AttackRoll roll, SceneSession.Damage damage) {
         static JournalEntryDto of(SceneSession.JournalEntry e) {
-            return new JournalEntryDto(e.action(), e.text(), e.round(), e.highlight());
+            return new JournalEntryDto(e.action(), e.text(), e.round(), e.highlight(), e.roll(), e.damage());
         }
     }
 
