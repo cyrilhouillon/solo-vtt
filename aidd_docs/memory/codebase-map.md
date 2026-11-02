@@ -29,17 +29,17 @@ flowchart TD
 ## Zones
 
 - `pom.xml` (racine) : agrégateur Maven `solovtt:solo-vtt`, qui porte les versions communes.
-- `vtt-engine/` : le moteur générique (`solovtt.engine` : `Engine`, `Pipeline`, `Listener`, `RuleBook`, `Event`, `Decision`, `Dice`, `TurnOrder`, `TurnPolicy`) et la scène (`solovtt.scene` : `Scene`, `Token`, `Position`, `DistanceUnit`). Il ne contient aucune règle ni aucun type de jeu.
+- `vtt-engine/` : le moteur générique (`solovtt.engine` : `Engine`, `Pipeline`, `Listener`, `RuleBook`, `Event`, `Decision`, `Dice`, `TurnOrder`, `TurnPolicy`) et la scène (`solovtt.scene` : `Scene` qui pose, déplace et retire les jetons, `Token`, `Position`, `DistanceUnit`). Il ne contient aucune règle ni aucun type de jeu.
 - `dnd-engine/` : les règles D&D 2024, qui dépendent de `vtt-engine`.
   - `state/` : l'état du jeu (`GameState`, `Creature` avec son modificateur d'initiative, `Combat` et ses `InitiativeGroup`, `Weapon`, `Attack` avec allonge et portée, conditions, types de dégâts).
-  - `combat/` : l'enchaînement des tours D&D (`InitiativePolicy`) et ses résolutions `StartCombat`, `EndTurn`, `JoinCombat`, `LeaveCombat`.
+  - `combat/` : l'enchaînement des tours D&D (`InitiativePolicy`), ses résolutions `StartCombat`, `EndTurn`, `JoinCombat`, `LeaveCombat`, et `Move`, le déplacement de la créature active dans sa vitesse restante.
   - `events/` : `GameEvent` (sealed, `extends Event<GameState>`), tout ce qui arrive et comment ça modifie l'état.
   - `attack/` : l'action « attaque », c'est-à-dire ses phases, son contexte, `AttackRule` et les règles de base 2024.
   - `rules/` : les règles optionnelles (`RangeRules` pour la portée longue…), les réactions (`Reaction`, `ReactionWindow`, `AttackHitReactions`, `ShieldReaction`) et `StandardRules`, qui assemble le `RuleBook`.
   - `catalog/` : `SrdCatalog`, les créatures prêtes à l'emploi du SRD 5.2.1.
   - `demo/` : démonstration console.
-- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `creatures/{id}`, `attacks`, `journal`, `decisions`, `combat`). Attaque, combat et réponse à une décision rendent un `ActionResultDto`, dont la cible est facultative.
-- `vtt-web/` : client Vue 3 + TypeScript. `src/api.ts` appelle le serveur, `src/map/SceneCanvas.ts` dessine la carte avec Konva, `src/components/` porte les panneaux (rail et tiroirs catalogue / nouvelle carte, contrôle de combat `CombatControl` dans la barre, tableau « Sur la carte » trié par initiative en combat, piste à dés, onglets Feuille / Cible / Journal, dialogue de décision `DecisionDialog`). L'univers visuel et ses jetons (thèmes sombre et clair, `src/style.css`) sont décrits dans `DESIGN.md`.
+- `vtt-server/` : serveur Quarkus (`solovtt.server`). `SceneSession` tient la scène et l'état ; les ressources REST sont sous `/api` (`catalog`, `scene`, `scene/tokens`, `scene/tokens/{id}/move`, `creatures/{id}`, `attacks`, `journal`, `decisions`, `combat`). Attaque, combat et réponse à une décision rendent un `ActionResultDto`, dont la cible est facultative.
+- `vtt-web/` : client Vue 3 + TypeScript. `src/api.ts` appelle le serveur, `src/map/SceneCanvas.ts` dessine la carte avec Konva (jetons glissables), `src/map/move.ts` vérifie un déplacement envisagé, `src/components/` porte les panneaux (rail et tiroirs catalogue / nouvelle carte, contrôle de combat `CombatControl` dans la barre, tableau « Sur la carte » trié par initiative en combat, piste à dés, onglets Feuille / Cible / Journal, dialogue de décision `DecisionDialog`). L'univers visuel et ses jetons (thèmes sombre et clair, `src/style.css`) sont décrits dans `DESIGN.md`.
 
 ## Points d'entrée
 
