@@ -469,9 +469,8 @@ export class SceneCanvas {
       const inside = { x: Math.min(scene.width, Math.max(0, p.x)), y: Math.min(scene.height, Math.max(0, p.y)) }
       if (this.shiftHeld) return snapToCell(scene, inside)
       // Aimanté au contact, sans dépasser ce qui reste à parcourir.
-      const limit = this.state?.movementLimit
-      const left = limit?.tokenId === token.id ? limit.left : Infinity
-      return magnet(scene, { x: round(inside.x), y: round(inside.y) }, token.id, (p) => Math.hypot(p.x - token.x, p.y - token.y) <= left + 1e-6)
+      const limit = this.state?.movementLimit ?? null
+      return magnet(scene, { x: round(inside.x), y: round(inside.y) }, token.id, (p) => !checkMove(scene, token, p, limit).tooFar)
     }
     group.draggable(true)
     group.dragDistance(4)
