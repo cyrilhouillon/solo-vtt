@@ -32,6 +32,9 @@ final class Dtos {
 
     record PlaceTokenRequest(String catalogId, double x, double y) {}
 
+    /** La position d'arrivée, dans l'unité de la carte ; {@code null} si absente de la requête. */
+    record MoveTokenRequest(Double x, Double y) {}
+
     /**
      * `catalogId` : l'entrée du catalogue d'où vient la créature, pour la reposer à l'identique.
      * CA et PV permettent de lire l'état de chaque créature sans ouvrir sa feuille.
@@ -64,11 +67,13 @@ final class Dtos {
 
     /**
      * {@code round} : l'entrée ouvre un round, le journal la montre en séparateur. {@code highlight} : ce que la piste
-     * à dés retient d'une attaque (issue, dégâts, réaction), ou {@code null}.
+     * à dés retient d'une attaque (issue, dégâts, réaction), ou {@code null}. {@code roll} et {@code damage} : les faits
+     * de l'issue et des dégâts, pour que la piste ne relise pas le texte.
      */
-    record JournalEntryDto(int action, String text, boolean round, SceneSession.Highlight highlight) {
+    record JournalEntryDto(int action, String text, boolean round, SceneSession.Highlight highlight,
+                           SceneSession.AttackRoll roll, SceneSession.Damage damage) {
         static JournalEntryDto of(SceneSession.JournalEntry e) {
-            return new JournalEntryDto(e.action(), e.text(), e.round(), e.highlight());
+            return new JournalEntryDto(e.action(), e.text(), e.round(), e.highlight(), e.roll(), e.damage());
         }
     }
 
@@ -93,16 +98,20 @@ final class Dtos {
 
     /**
      * Le combat en cours : le round, la créature qui joue ({@code null} tant que « Qui joue ? » attend),
-     * les candidats du tour, et l'ordre de jeu du plus haut au plus bas.
+     * les candidats du tour, l'ordre de jeu du plus haut au plus bas, et la vitesse restante de la créature active
+     * dans l'unité de la carte ({@code movementLeft}, {@code null} quand rien ne limite le déplacement, jamais 0 pour
+     * dire « illimité »).
      */
-    record CombatDto(int round, String activeId, List<String> candidates, List<InitiativeGroupDto> groups) {
+    record CombatDto(int round, String activeId, List<String> candidates, List<InitiativeGroupDto> groups, Double movementLeft) {
         static CombatDto of(Combat c, SceneSession session) {
             var groups = c.groups().stream().map(g -> new InitiativeGroupDto(g.initiative(), g.members().stream()
                             .map(id -> new TurnMemberDto(id, session.creature(id).map(Creature::name).orElse(id), c.hasPlayed(id)))
                             .toList()))
                     .toList();
+            var left = session.movementLeft();
             return new CombatDto(c.round(), c.activeId().orElse(null),
-                    c.turn().map(t -> t.candidates()).orElse(List.of()), groups);
+                    c.turn().map(t -> t.candidates()).orElse(List.of()), groups,
+                    left.isPresent() ? left.getAsDouble() : null);
         }
     }
 
@@ -126,17 +135,21 @@ final class Dtos {
 
     record RangeDto(double normal, double longRange, String unitSymbol) {}
 
-    /** Une attaque de la feuille ; {@code reach} pour le corps à corps, {@code range} pour la distance. */
+    /**
+     * Une attaque de la feuille ; {@code reach} (l'allonge affichée) et {@code reachLimit} (la distance de centre à
+     * centre jusqu'où les règles acceptent la cible) pour le corps à corps, {@code range} pour la distance.
+     */
     record AttackDto(String id, String label, Attack.Mode mode, int attackBonus, String damage, String damageType,
-                     Measure reach, RangeDto range) {
+                     Measure reach, Measure reachLimit, RangeDto range) {
         static AttackDto of(Attack a, DistanceUnit unit) {
             var w = a.weapon();
             String damage = w.diceNotation() + (w.damageBonus() == 0 ? "" : "%+d".formatted(w.damageBonus()));
             Measure reach = a.mode() == Attack.Mode.MELEE ? new Measure(inUnit(w.reach(), unit), unit.symbol()) : null;
+            Measure reachLimit = a.reachLimit().map(m -> new Measure(inUnit(m, unit), unit.symbol())).orElse(null);
             RangeDto range = a.mode() == Attack.Mode.RANGED
                     ? new RangeDto(inUnit(w.range().normal(), unit), inUnit(w.range().longRange(), unit), unit.symbol())
                     : null;
-            return new AttackDto(a.id(), a.label(), a.mode(), w.attackBonus(), damage, w.damageType().label(), reach, range);
+            return new AttackDto(a.id(), a.label(), a.mode(), w.attackBonus(), damage, w.damageType().label(), reach, reachLimit, range);
         }
     }
 

@@ -6,6 +6,7 @@ import dnd.engine.catalog.SrdCatalog;
 import dnd.engine.combat.EndTurn;
 import dnd.engine.combat.JoinCombat;
 import dnd.engine.combat.LeaveCombat;
+import dnd.engine.combat.Move;
 import dnd.engine.combat.StartCombat;
 import dnd.engine.events.GameEvent;
 import dnd.engine.rules.StandardRules;
@@ -29,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 
 /**
  * La scène en préparation et l'état D&D qui l'accompagne. Une seule session, en mémoire :
@@ -65,9 +67,18 @@ public class SceneSession {
 
     /**
      * Une ligne du journal : la description d'un événement, l'action à laquelle il appartient, si elle ouvre un round,
-     * et ce que la piste à dés en retient ({@code null} pour un détail ou ce qui n'est pas une attaque).
+     * et ce que la piste à dés en retient ({@code null} pour un détail ou ce qui n'est pas une attaque). {@code roll} et
+     * {@code damage} portent les faits de l'issue et des dégâts : la piste les lit sans relire le texte.
      */
-    public record JournalEntry(int action, String text, boolean round, Highlight highlight) {}
+    public record JournalEntry(int action, String text, boolean round, Highlight highlight, AttackRoll roll, Damage damage) {}
+
+    /** L'issue d'une attaque : touché, raté ou coup critique, et le calcul qui la tranche. */
+    public record AttackRoll(Outcome outcome, int total, int armorClass) {}
+
+    public enum Outcome { HIT, MISS, CRITICAL }
+
+    /** Des dégâts subis, après résistance et vulnérabilité ; {@code type} est le libellé français. */
+    public record Damage(int amount, String type) {}
 
     /** Ce que la piste retient d'une attaque : son issue, les dégâts, une réaction qui l'a changée. */
     public enum Highlight { OUTCOME, DAMAGE, REACTION }
@@ -95,7 +106,11 @@ public class SceneSession {
         state = new GameState();
         engine = new Engine<>(state, StandardRules.create(), dice);
         engine.subscribe(event -> journal.add(
-                new JournalEntry(action, event.describe(state), event instanceof GameEvent.RoundStarted, highlight(event))));
+                new JournalEntry(action, event.describe(state), event instanceof GameEvent.RoundStarted, highlight(event),
+                        event instanceof GameEvent.AttackResolved a
+                                ? new AttackRoll(a.critical() ? Outcome.CRITICAL : a.hit() ? Outcome.HIT : Outcome.MISS, a.total(), a.armorClass())
+                                : null,
+                        event instanceof GameEvent.DamageDealt d ? new Damage(d.amount(), d.type().label()) : null)));
         journal.clear();
         action = 0;
         actionTargetId = null;
@@ -131,6 +146,34 @@ public class SceneSession {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
         return run(refusable(() -> EndTurn.of(state)), null);
+    }
+
+    /**
+     * Déplace un jeton. En combat, la créature active se déplace selon les règles D&D : dans sa vitesse restante
+     * ({@link IllegalArgumentException} avec la raison sinon), et son déplacement entre au journal. Toute autre
+     * créature, et toute créature hors combat, se repositionne librement, hors journal, comme pendant la préparation.
+     * Un refus (règles, position hors de la carte) laisse le jeton et le journal intacts.
+     */
+    public synchronized ActionOutcome move(String tokenId, double x, double y) {
+        if (scene == null) throw new IllegalStateException("aucune carte");
+        requireNoDecision();
+        Token token = scene.token(tokenId);
+        Position to = new Position(x, y);
+        String creatureId = token.entityId();
+        if (!Move.limits(creatureId, state)) {
+            scene.move(tokenId, to);
+            return new ActionOutcome(List.of(), null, Optional.empty());
+        }
+        Move move = Move.of(creatureId, token.position().distanceTo(to), scene.unit(), state);
+        scene.move(tokenId, to);
+        return run(move, null);
+    }
+
+    /** La vitesse restante de la créature active, dans l'unité de la carte ; vide quand rien ne limite le déplacement. */
+    public synchronized OptionalDouble movementLeft() {
+        if (scene == null || state == null) return OptionalDouble.empty();
+        var left = Move.remaining(state);
+        return left.isPresent() ? OptionalDouble.of(DistanceUnit.METRE.convert(left.getAsDouble(), scene.unit())) : left;
     }
 
     public synchronized Optional<Combat> combat() {

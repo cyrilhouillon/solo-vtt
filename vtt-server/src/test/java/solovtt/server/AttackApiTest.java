@@ -68,6 +68,11 @@ class AttackApiTest {
                 .body("entries.text", hasItem("Attaque de Guerrière : 20 contre CA 14 → TOUCHÉ"))
                 .body("entries.text", hasItem("Squelette subit 11 dégâts tranchants (PV 2/13)"))
                 .body("entries.action", everyItem(equalTo(1)))
+                .body("entries.find { it.highlight == 'OUTCOME' }.roll.outcome", equalTo("HIT"))
+                .body("entries.find { it.highlight == 'OUTCOME' }.roll.total", equalTo(20))
+                .body("entries.find { it.highlight == 'OUTCOME' }.roll.armorClass", equalTo(14))
+                .body("entries.find { it.highlight == 'DAMAGE' }.damage.amount", equalTo(11))
+                .body("entries.find { it.highlight == 'DAMAGE' }.damage.type", equalTo("tranchants"))
                 .body("targetId", equalTo("squelette-1"))
                 .body("targetHitPoints", equalTo(2));
 
@@ -82,6 +87,16 @@ class AttackApiTest {
         attaquer("gobelin-1", "ranged:Arc court", "guerriere-1").statusCode(200)
                 .body("entries.text", hasItem("d20 : 19"))
                 .body("entries.text", hasItem("Guerrière subit 6 dégâts perforants (PV 6/12)"));
+    }
+
+    @Test
+    void enDiagonale_leGobelinFrappeLaMagicienneAuContact() {
+        dice.script(15, 3);
+
+        // Gobelin (12 ; 1,5) et Magicienne (13,5 ; 3) : 2,12 m de centre à centre, dans l'allonge + demi-case.
+        given().contentType(ContentType.JSON).body("{\"x\":13.5,\"y\":3}").post("/api/scene/tokens/magicienne-1/move").then().statusCode(200);
+        attaquer("gobelin-1", "melee:Cimeterre", "magicienne-1").statusCode(200)
+                .body("entries.text", hasItem("Gobelin guerrier attaque Magicienne (Cimeterre)"));
     }
 
     @Test
@@ -101,7 +116,9 @@ class AttackApiTest {
 
         // Une nouvelle attaque est acceptée : aucune décision n'est restée en attente.
         dice.script(1);
-        attaquer("gobelin-1", "melee:Cimeterre", "magicienne-1").statusCode(200);
+        attaquer("gobelin-1", "melee:Cimeterre", "magicienne-1").statusCode(200)
+                .body("entries.find { it.highlight == 'OUTCOME' }.roll.outcome", equalTo("MISS"))
+                .body("entries.findAll { it.damage != null }", empty());
     }
 
     @Test
@@ -130,6 +147,7 @@ class AttackApiTest {
                 .body("attacks", hasSize(2))
                 .body("attacks[0].label", equalTo("Dague"))
                 .body("attacks[0].reach.value", equalTo(5.0f))
+                .body("attacks[0].reachLimit.value", equalTo(7.5f))
                 .body("attacks[0].reach.unitSymbol", equalTo("ft"))
                 .body("attacks[1].label", equalTo("Dague (lancer)"))
                 .body("attacks[1].range.normal", equalTo(20.0f))

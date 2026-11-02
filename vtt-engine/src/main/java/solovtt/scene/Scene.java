@@ -48,12 +48,27 @@ public final class Scene {
         if (tokens.containsKey(token.id())) {
             throw new IllegalArgumentException("Un jeton porte déjà l'id " + token.id());
         }
-        Position p = token.position();
+        requireInside(token.position());
+        tokens.put(token.id(), token);
+    }
+
+    /**
+     * Déplace un jeton, sans règle : la distance permise est l'affaire du système de jeu.
+     *
+     * @throws IllegalArgumentException jeton inconnu ou position hors de la carte ; le jeton ne bouge pas
+     */
+    public Token move(String tokenId, Position position) {
+        Token moved = new Token(tokenId, token(tokenId).entityId(), position);
+        requireInside(position);
+        tokens.put(tokenId, moved);
+        return moved;
+    }
+
+    private void requireInside(Position p) {
         if (p.x() < 0 || p.y() < 0 || p.x() > width || p.y() > height) {
             throw new IllegalArgumentException("Position hors de la carte : (%s, %s) pour une carte de %s × %s %s"
                     .formatted(p.x(), p.y(), width, height, unit.symbol()));
         }
-        tokens.put(token.id(), token);
     }
 
     /** Retire un jeton ; un id inconnu est refusé. */

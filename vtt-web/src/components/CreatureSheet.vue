@@ -5,11 +5,16 @@ import { formatLength, KIND_LABELS, type Attack, type CreatureSheet } from '../t
  * Une créature composée comme un bloc de statistiques.
  * `aiming` : l'id de l'attaque de cette feuille en cours de ciblage, ou `null`.
  * `actions` : faux pour une feuille en lecture seule (onglet Cible).
+ * `movementLeft` : ce qui reste à parcourir à la créature ce tour-ci, ou `null` quand rien ne la limite.
  */
-withDefaults(defineProps<{ sheet: CreatureSheet | null; aiming?: string | null; actions?: boolean; empty: string }>(), {
-  aiming: null,
-  actions: true,
-})
+withDefaults(
+  defineProps<{ sheet: CreatureSheet | null; aiming?: string | null; actions?: boolean; empty: string; movementLeft?: number | null }>(),
+  {
+    aiming: null,
+    actions: true,
+    movementLeft: null,
+  },
+)
 const emit = defineEmits<{ attack: [attack: Attack] }>()
 
 const numberFormat = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 })
@@ -45,7 +50,10 @@ function signed(value: number): string {
       </div>
       <div>
         <dt>Vitesse</dt>
-        <dd>{{ formatLength(sheet.speed.value, sheet.speed.unitSymbol) }}</dd>
+        <dd>
+          {{ formatLength(sheet.speed.value, sheet.speed.unitSymbol)
+          }}<template v-if="movementLeft !== null"> · reste {{ formatLength(movementLeft, sheet.speed.unitSymbol) }}</template>
+        </dd>
       </div>
     </dl>
     <template v-if="sheet.resistances.length || sheet.vulnerabilities.length">

@@ -11,7 +11,8 @@ import java.util.stream.Collectors;
 
 /**
  * Un combat en cours : les groupes d'initiative du plus haut au plus bas, les créatures qui ont déjà joué
- * ce round, et le tour en cours. Les mutations sont réservées à {@code GameEvent.apply}.
+ * ce round, le tour en cours et le déplacement que la créature active y a dépensé.
+ * Les mutations sont réservées à {@code GameEvent.apply}.
  */
 public final class Combat {
 
@@ -19,20 +20,23 @@ public final class Combat {
     private final Set<String> played;
     private int round;
     private TurnOrder turn;
+    /** Mètres parcourus par la créature active depuis le début de son tour. */
+    private double movementUsed;
 
     public Combat(List<InitiativeGroup> groups) {
-        this(new ArrayList<>(groups), new LinkedHashSet<>(), 1, null);
+        this(new ArrayList<>(groups), new LinkedHashSet<>(), 1, null, 0);
     }
 
-    private Combat(List<InitiativeGroup> groups, Set<String> played, int round, TurnOrder turn) {
+    private Combat(List<InitiativeGroup> groups, Set<String> played, int round, TurnOrder turn, double movementUsed) {
         this.groups = groups;
         this.played = played;
         this.round = round;
         this.turn = turn;
+        this.movementUsed = movementUsed;
     }
 
     public Combat copy() {
-        return new Combat(new ArrayList<>(groups), new LinkedHashSet<>(played), round, turn);
+        return new Combat(new ArrayList<>(groups), new LinkedHashSet<>(played), round, turn, movementUsed);
     }
 
     // --- Lecture -------------------------------------------------------------
@@ -54,6 +58,16 @@ public final class Combat {
         return turn().flatMap(TurnOrder::activeId);
     }
 
+    /** Mètres déjà parcourus par la créature active pendant son tour. */
+    public double movementUsed() {
+        return movementUsed;
+    }
+
+    /** Ce qui reste à parcourir ce tour-ci à la créature active, en mètres. */
+    public double movementLeft(Creature active) {
+        return Math.max(0, active.currentSpeed() - movementUsed);
+    }
+
     public boolean hasPlayed(String creatureId) {
         return played.contains(creatureId);
     }
@@ -70,7 +84,7 @@ public final class Combat {
         String order = groups.stream()
                 .map(g -> g.initiative() + "/" + g.modifier() + g.members())
                 .collect(Collectors.joining(","));
-        return "combat[round=%d, ordre=%s, joué=%s, tour=%s]".formatted(round, order, played, turn);
+        return "combat[round=%d, ordre=%s, joué=%s, tour=%s, déplacement=%s]".formatted(round, order, played, turn, movementUsed);
     }
 
     // --- Mutations (réservées à GameEvent.apply) -------------------------------
@@ -94,6 +108,11 @@ public final class Combat {
     public void startTurn(String creatureId) {
         turn = turn == null ? TurnOrder.offer(round, List.of(creatureId)) : turn.choose(creatureId);
         played.add(creatureId);
+        movementUsed = 0;
+    }
+
+    public void spendMovement(double metres) {
+        movementUsed += metres;
     }
 
     public void endTurn() {

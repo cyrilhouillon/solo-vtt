@@ -65,4 +65,23 @@ class SceneTest {
     void uneCarteDeDimensionNulleEstRefusee() {
         assertThrows(IllegalArgumentException.class, () -> new Scene(0, 10, DistanceUnit.METRE));
     }
+
+    @Test
+    void deplacerUnJetonChangeSaPosition_etGardeSonEntite() {
+        var scene = carte();
+        scene.place(new Token("a", "x", new Position(1, 1)));
+        scene.move("a", new Position(10, 5));
+        assertEquals(new Position(10, 5), scene.token("a").position());
+        assertEquals("x", scene.token("a").entityId());
+    }
+
+    @Test
+    void deplacerHorsDeLaCarte_ouUnJetonInconnu_estRefuseSansBouger() {
+        var scene = carte();
+        scene.place(new Token("a", "x", new Position(1, 1)));
+        var e = assertThrows(IllegalArgumentException.class, () -> scene.move("a", new Position(31, 5)));
+        assertTrue(e.getMessage().contains("hors de la carte"));
+        assertEquals(new Position(1, 1), scene.token("a").position());
+        assertThrows(IllegalArgumentException.class, () -> scene.move("fantome", new Position(2, 2)));
+    }
 }

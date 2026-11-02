@@ -12,6 +12,7 @@ import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
 import TokenBoard from './components/TokenBoard.vue'
 import { CELL, occupant } from './map/grid'
+import { checkMove, type MoveLimit } from './map/move'
 import { rangeVerdict, type RangeVerdict } from './map/range'
 import type { Targeting } from './map/SceneCanvas'
 import { initialTheme, saveTheme, type Theme } from './theme'
@@ -53,6 +54,25 @@ const answering = ref(false)
 const combat = ref<Combat | null>(null)
 /** Lancement ou fin de tour envoyés et pas encore revenus. */
 const combatBusy = ref(false)
+/** Le jeton déplacé au clavier (touche D), ou `null`. */
+const movingId = ref<string | null>(null)
+/** Un déplacement est envoyé et pas encore revenu. */
+const moveBusy = ref(false)
+const mapView = ref<InstanceType<typeof MapView> | null>(null)
+
+/**
+ * Le seul jeton limité dans son déplacement : la créature active, quand le serveur donne ce qui lui reste.
+ * `movementLeft` à `null` veut dire illimité : le client ne suppose aucune règle.
+ */
+const movementLimit = computed<MoveLimit | null>(() => {
+  const c = combat.value
+  if (!c?.activeId || c.movementLeft === null) return null
+  const token = scene.value?.tokens.find((t) => t.creatureId === c.activeId)
+  return token ? { tokenId: token.id, left: c.movementLeft } : null
+})
+/** Les jetons se glissent hors pose, ciblage, décision et déplacement en vol. */
+const movable = computed(() => !armed.value && !targeting.value && !decision.value && !moveBusy.value)
+const movingToken = computed(() => scene.value?.tokens.find((t) => t.id === movingId.value) ?? null)
 
 function toggleTheme() {
   theme.value = theme.value === 'dark' ? 'light' : 'dark'
@@ -64,13 +84,15 @@ function toggleTheme() {
  * Un tour de combat ne l'efface pas ; la jauge de la cible n'est connue qu'au retour de l'attaque.
  */
 function trayFromJournal(target?: TrayResult['target']): TrayResult | null {
-  const outcome = [...journal.value].reverse().find((e) => e.highlight === 'OUTCOME')
-  if (!outcome) return null
+  const outcome = [...journal.value].reverse().find((e) => e.highlight === 'OUTCOME' && e.roll)
+  if (!outcome?.roll) return null
   const entries = journal.value.filter((e) => e.action === outcome.action)
   return {
+    action: outcome.action,
     title: entries[0]?.text ?? '',
-    outcome: outcome.text,
-    details: entries.filter((e) => e.highlight === 'REACTION' || e.highlight === 'DAMAGE').map((e) => e.text),
+    roll: outcome.roll,
+    damage: entries.flatMap((e) => (e.damage ? [e.damage] : [])),
+    reactions: entries.filter((e) => e.highlight === 'REACTION').map((e) => e.text),
     target,
   }
 }
@@ -98,9 +120,9 @@ const targeting = ref<{ attackerId: string; attackerName: string; attack: Attack
 const targetingView = computed<Targeting | null>(() => {
   const t = targeting.value
   if (!t) return null
-  const { reach, range } = t.attack
+  const { reach, reachLimit, range } = t.attack
   const circles = reach
-    ? [{ radius: reach.value, dashed: false }]
+    ? [{ radius: (reachLimit ?? reach).value, dashed: false }]
     : range
       ? [
           { radius: range.normal, dashed: false },
@@ -202,6 +224,7 @@ async function resync(): Promise<string> {
     return "Le serveur n'a plus de carte (redémarrage ?). En créer une nouvelle."
   }
   targeting.value = null
+  movingId.value = null
   journal.value = await api.journal()
   decision.value = await api.pendingDecision()
   combat.value = await api.combat()
@@ -249,6 +272,7 @@ function createScene(width: number, height: number, unit: DistanceUnit) {
     scene.value = created
     armed.value = null
     targeting.value = null
+    movingId.value = null
     journal.value = []
     lastResult.value = null
     decision.value = null
@@ -299,6 +323,7 @@ async function deleteTokens(ids: string[]): Promise<TokenView[]> {
   const gone = ids.filter((id) => !kept.includes(id))
   selected.value = selected.value.filter((id) => !gone.includes(id))
   if (targeting.value && gone.includes(targeting.value.attackerId)) targeting.value = null
+  if (movingId.value && gone.includes(movingId.value)) movingId.value = null
   if (sheet.value && gone.includes(sheet.value.id)) showSheet(selected.value.at(-1) ?? null)
   if (targetSheet.value && gone.includes(targetSheet.value.id)) targetSheet.value = null
   return removed
@@ -308,16 +333,16 @@ function names(tokens: TokenView[]): string {
   return tokens.map((t) => t.name).join(' et ')
 }
 
-function onBackgroundClick(x: number, y: number, free: boolean) {
+function onBackgroundClick(x: number, y: number) {
   // En ciblage, un clic à côté ne vise rien et garde la feuille de l'attaquant.
   if (targeting.value) return
   if (!armed.value) {
     clearSelection()
     return
   }
-  const taken = free || !scene.value ? undefined : occupant(scene.value, { x, y })
+  const taken = scene.value ? occupant(scene.value, { x, y }) : undefined
   if (taken) {
-    error.value = `Case occupée par ${taken.name}. Choisir une autre case, ou Maj + clic pour poser hors grille.`
+    error.value = `Trop près de ${taken.name}. Choisir une autre position.`
     return
   }
   const entry = armedEntry.value
@@ -405,6 +430,7 @@ function undo() {
 // Un nouveau contexte (créature à poser, sélection) rend le message précédent caduc.
 function arm(entryId: string | null) {
   armed.value = entryId
+  movingId.value = null
   if (entryId) targeting.value = null
   notice.value = ''
 }
@@ -436,7 +462,7 @@ function startAttack(attack: Attack) {
   targeting.value = { attackerId: attacker.id, attackerName: attacker.name, attack }
   attackOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : null
   announcement.value = `Ciblage : ${attack.label} de ${attacker.name}. Choisir la cible dans le tableau ; Échap annule.`
-  // Le tableau s'ouvre en entier pendant le ciblage : le focus attend son rendu.
+  // Le focus attend le rendu des verdicts de portée, qui disent quelles lignes sont des cibles permises.
   void nextTick(() => board.value?.focusFirstTarget())
 }
 
@@ -483,12 +509,65 @@ async function settleAction(result: ActionResult) {
     maxHitPoints: result.targetMaxHitPoints,
   })
   lastResult.value = tray
-  announcement.value = tray ? [tray.outcome, ...tray.details].join('. ') : 'Attaque résolue.'
+  announcement.value = tray
+    ? journal.value.filter((e) => e.action === tray.action && e.highlight).map((e) => e.text).join('. ')
+    : 'Attaque résolue.'
   // Une réaction peut changer la feuille de la cible comme de l'attaquant (emplacement, CA), et la CA du tableau.
   if (sheet.value) showSheet(sheet.value.id)
   const fresh = await api.sheet(result.targetId)
   targetSheet.value = fresh
   if (target) target.armorClass = fresh.armorClass
+}
+
+function endMoving() {
+  movingId.value = null
+}
+
+/**
+ * Un jeton glissé, ou déplacé au clavier, arrive en (x, y). Le client refuse ce qui est évident (trop près d'une
+ * créature, au-delà de ce qui reste) ; le serveur tranche le reste et rend l'entrée du journal en combat.
+ */
+function moveToken(tokenId: string, x: number, y: number) {
+  const view = scene.value
+  const token = view?.tokens.find((t) => t.id === tokenId)
+  if (!view || !token || token.pending || moveBusy.value) return
+  const limit = movementLimit.value
+  const check = checkMove(view, token, { x, y }, limit)
+  if (check.blocker) {
+    error.value = `Trop près de ${check.blocker.name}. Choisir une autre position.`
+    return
+  }
+  if (check.tooFar && limit) {
+    error.value = `${token.name} ne peut plus parcourir que ${formatLength(limit.left, view.unitSymbol)} ce tour-ci.`
+    return
+  }
+  moveBusy.value = true
+  void attempt(async () => {
+    const result = await api.moveToken(tokenId, x, y)
+    token.x = x
+    token.y = y
+    endMoving()
+    await settleAction(result)
+    tell(result.entries.at(-1)?.text ?? `${token.name} déplacé.`)
+  }).finally(() => {
+    moveBusy.value = false
+  })
+}
+
+/** D : déplace au clavier la créature sélectionnée ; un second D annule. */
+function startMoving() {
+  const id = selected.value.length === 1 ? selected.value[0] : null
+  if (!id || scene.value?.tokens.find((t) => t.id === id)?.pending) {
+    tell('Sélectionner une seule créature, puis D pour la déplacer.')
+    return
+  }
+  if (movingId.value === id) {
+    endMoving()
+    return
+  }
+  movingId.value = id
+  error.value = null
+  void nextTick(() => mapView.value?.focus())
 }
 
 /** Lance le combat ou termine le tour ; un second clic avant la réponse n'envoie rien. */
@@ -510,11 +589,18 @@ function startCombat() {
 
 /**
  * À chaque changement de tour, la sélection et la feuille passent à la créature qui joue ;
- * pendant « Qui joue ? », au premier candidat.
+ * pendant « Qui joue ? », au premier candidat. Choisir ce candidat change le tour sans changer de créature : la clé
+ * les distingue, sinon sa feuille garderait les attaques refusées pendant la question.
  */
 watch(
-  () => (combat.value ? (combat.value.activeId ?? combat.value.candidates[0] ?? null) : null),
-  (creatureId) => {
+  () => {
+    const c = combat.value
+    if (!c) return null
+    return c.activeId ? `joue:${c.activeId}` : `choix:${c.candidates[0] ?? ''}`
+  },
+  () => {
+    const c = combat.value
+    const creatureId = c ? (c.activeId ?? c.candidates[0] ?? null) : null
     const token = creatureId ? scene.value?.tokens.find((t) => t.creatureId === creatureId) : undefined
     if (!token || token.pending) return
     selected.value = [token.id]
@@ -563,6 +649,7 @@ function clearSelection() {
 /** Mode en cours, rappelé en laiton dans la barre. */
 const mode = computed(() => {
   if (targeting.value) return `Ciblage · ${targeting.value.attack.label}`
+  if (movingToken.value) return `Déplacement · ${movingToken.value.name}`
   if (armedEntry.value) return `Pose · ${armedEntry.value.name}`
   if (measure.value) return 'Mesure'
   return null
@@ -619,8 +706,10 @@ function onKey(e: KeyboardEvent) {
   // Le dialogue modal rend la page inerte, pas l'écouteur de window : rien ne passe tant qu'il attend.
   if (decision.value) return
   if (e.key === 'Escape') {
-    // Un pas à la fois : d'abord le ciblage ou le placement, puis la sélection.
+    // Un pas à la fois : d'abord un retrait à confirmer, le ciblage ou le placement, puis la sélection.
+    if (board.value?.cancelRemoval()) return
     if (targeting.value) endTargeting()
+    else if (movingId.value) endMoving()
     else if (armed.value) arm(null)
     else clearSelection()
     notice.value = ''
@@ -630,7 +719,8 @@ function onKey(e: KeyboardEvent) {
   if (isTyping(e.target) || !scene.value) return
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault()
-    if (chosenByPlayer.value) removeTokens(selected.value)
+    // Le tableau retire, ou en combat demande confirmation sur la ligne.
+    if (chosenByPlayer.value) board.value?.requestRemoval(selected.value)
     else if (selected.value.length) tell('Cliquer sur la créature pour la choisir, puis Suppr pour la retirer.')
   } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault()
@@ -640,6 +730,9 @@ function onKey(e: KeyboardEvent) {
   } else if (e.key.toLowerCase() === 'f' && combat.value?.activeId && !combatBusy.value) {
     e.preventDefault()
     combatAction(api.endTurn)
+  } else if (e.key.toLowerCase() === 'd' && !armed.value && !targeting.value) {
+    e.preventDefault()
+    startMoving()
   } else if (/^[1-9]$/.test(e.key) && !(e.target instanceof HTMLElement && e.target.closest('[role="tablist"]'))) {
     // L'attaque n de la feuille affichée, comme son bouton : fermée si les règles la refusent.
     const attacker = sheet.value
@@ -669,6 +762,7 @@ onBeforeUnmount(() => {
         Carte {{ formatLength(scene.width, scene.unitSymbol) }} × {{ formatLength(scene.height, scene.unitSymbol) }} ·
         {{ scene.tokens.length }} {{ scene.tokens.length > 1 ? 'créatures' : 'créature' }}
       </p>
+      <strong v-if="mode" class="mode">{{ mode }}</strong>
       <span class="spacer" />
       <CombatControl
         v-if="scene"
@@ -678,7 +772,6 @@ onBeforeUnmount(() => {
         @start="startCombat"
         @end-turn="combatAction(api.endTurn)"
       />
-      <strong v-if="mode" class="mode">{{ mode }}</strong>
       <button
         type="button"
         class="icon-button"
@@ -737,18 +830,23 @@ onBeforeUnmount(() => {
           :ranges="rangeVerdicts"
           :combat="combat"
           @select="onTokenChosen"
-          @remove="removeTokens([$event])"
+          @remove="removeTokens"
         />
         <div class="map-frame" :style="{ '--map-ratio': `${scene.width} / ${scene.height}` }">
           <MapView
+            ref="mapView"
             :scene="scene"
             :selected="selected"
             :placing="armedEntry?.kind ?? null"
             :targeting="targetingView"
             :active-id="combat?.activeId ?? null"
             :theme="theme"
+            :movable="movable"
+            :movement-limit="movementLimit"
+            :moving="movingId"
             @background-click="onBackgroundClick"
             @token-click="onTokenChosen"
+            @token-move="moveToken"
           />
         </div>
         <p class="status">
@@ -758,8 +856,12 @@ onBeforeUnmount(() => {
             cible ou la choisir dans le tableau ; Échap annule.<template v-if="targetingView?.measuredBy === 'range'">
               Hachures : portée longue, avec désavantage.</template>
           </template>
+          <template v-else-if="movingToken">
+            Déplacement : <strong>{{ movingToken.name }}</strong>. Flèches pour choisir la case, Entrée pour déplacer ;
+            Échap annule.
+          </template>
           <template v-else-if="armedEntry">
-            Pose : <strong>{{ armedEntry.name }}</strong>. Cliquer sur une case ; Maj + clic pose hors grille, Échap
+            Pose : <strong>{{ armedEntry.name }}</strong>. Cliquer pour poser ; Maj + clic cale sur la case, Échap
             arrête.
           </template>
           <template v-else-if="measure">
@@ -767,10 +869,12 @@ onBeforeUnmount(() => {
             <strong>{{ formatLength(measure.value, scene.unitSymbol) }}</strong> ({{ cellsLabel(measure.cells) }})
           </template>
           <template v-else-if="!notice && combat">
-            1 à 9 : attaques de la feuille ; F : fin du tour. Sélectionner deux créatures pour mesurer leur distance.
+            Glisser une créature pour la déplacer (Maj cale sur la case) ; D : déplacer au clavier, 1 à 9 : attaques de la
+            feuille, F : fin du tour.
           </template>
           <template v-else-if="!notice">
-            Sélectionner deux créatures pour mesurer leur distance ; Suppr retire de la carte les créatures sélectionnées.
+            Glisser une créature pour la déplacer (Maj cale sur la case). Sélectionner deux créatures pour mesurer leur
+            distance ; Suppr retire de la carte les créatures sélectionnées.
           </template>
         </p>
         <DiceTray :result="lastResult" />
@@ -809,6 +913,7 @@ onBeforeUnmount(() => {
           v-if="tab === 'sheet'"
           :sheet="sheet"
           :aiming="targeting && targeting.attackerId === sheet?.id ? targeting.attack.id : null"
+          :movement-left="combat && combat.activeId === sheet?.id ? combat.movementLeft : null"
           empty="Sélectionner une créature sur la carte ou dans le tableau pour voir sa feuille."
           @attack="startAttack"
         />
@@ -866,8 +971,15 @@ onBeforeUnmount(() => {
 .spacer {
   flex: 1;
 }
-/* Le mode en cours : l'état vivant, en laiton. */
+/*
+ * Le mode en cours : l'état vivant, en laiton. Il suit les infos de carte, avant l'espace libre : il apparaît et
+ * disparaît sans déplacer le combat ni le thème, ancrés à droite.
+ */
 .mode {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 0.25rem 0.85rem;
   border-radius: 999px;
   background: var(--brass);
@@ -937,8 +1049,14 @@ onBeforeUnmount(() => {
   border-top: 0;
   border-bottom: 0;
 }
+/*
+ * Deux lignes réservées : la consigne de ciblage d'une attaque à distance passe à la ligne sous 1500 px environ,
+ * et la carte au-dessus ne doit pas rétrécir au moment de viser.
+ */
 .status {
   margin: 0;
+  min-height: calc(2lh + 0.9rem + 1px);
+  align-content: center;
   padding: 0.45rem 1rem;
   background: var(--wood);
   border-top: 1px solid var(--rule);

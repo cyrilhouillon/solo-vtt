@@ -49,17 +49,103 @@ const rows = computed(() => {
   return [...props.tokens].sort((a, b) => (rank.get(a.creatureId) ?? Infinity) - (rank.get(b.creatureId) ?? Infinity))
 })
 const aiming = computed(() => props.attacker !== null)
-const emit = defineEmits<{ select: [tokenId: string]; remove: [tokenId: string] }>()
+const emit = defineEmits<{ select: [tokenId: string]; remove: [tokenIds: string[]] }>()
 
 const title = ref<HTMLHeadingElement | null>(null)
-const entries = ref<HTMLButtonElement[]>([])
+/**
+ * Le bouton de chaque ligne, par id de jeton. Un tableau de refs de `v-for` ne suit pas l'ordre des lignes
+ * (il garde l'ordre de montage) : le tri d'initiative le décalerait.
+ */
+const entries = new Map<string, HTMLButtonElement>()
+function entryRef(tokenId: string) {
+  return (el: unknown) => {
+    if (el instanceof HTMLButtonElement) entries.set(tokenId, el)
+    else entries.delete(tokenId)
+  }
+}
+function focusRow(token: TokenView | undefined) {
+  ;(token ? entries.get(token.id) : title.value)?.focus()
+}
+
 /** Rang de la ligne retirée : le focus y reste, sur la créature suivante, une fois le retrait fait. */
 let focusAfterRemoval: number | null = null
 
-function remove(tokenId: string, index: number) {
-  focusAfterRemoval = index
-  emit('remove', tokenId)
+/**
+ * En combat, un retrait ne se reprend pas (Ctrl+Z reposerait une créature avec une nouvelle initiative) :
+ * il se fait en deux temps. `confirming` : les jetons dont le retrait attend sa confirmation, sur la ligne
+ * du premier ; `returnFocus` : où le focus revient si le joueur annule.
+ */
+const confirming = ref<string[] | null>(null)
+let returnFocus: HTMLElement | null = null
+/** Ref de fonction : un `ref` nommé dans un `v-for` deviendrait un tableau. */
+let confirmButton: HTMLButtonElement | null = null
+function confirmRef(el: unknown) {
+  confirmButton = el instanceof HTMLButtonElement ? el : null
 }
+const confirmRow = computed(() => {
+  const ids = confirming.value
+  return ids ? (rows.value.find((token) => ids.includes(token.id))?.id ?? null) : null
+})
+const confirmLabel = computed(() => {
+  const ids = confirming.value ?? []
+  return props.tokens.filter((t) => ids.includes(t.id)).map((t) => t.name).join(' et ')
+})
+
+function sameIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id) => b.includes(id))
+}
+
+/**
+ * Retirer : hors combat tout de suite (Ctrl+Z annule) ; en combat, la première demande ouvre la confirmation
+ * sur la ligne, la seconde (mêmes créatures) retire.
+ */
+function requestRemoval(tokenIds: string[]) {
+  const ids = tokenIds.filter((id) => props.tokens.some((t) => t.id === id && !t.pending))
+  if (!ids.length) return
+  if (!props.combat || (confirming.value && sameIds(confirming.value, ids))) {
+    confirmRemoval(ids)
+    return
+  }
+  returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  confirming.value = ids
+  void nextTick(() => confirmButton?.focus())
+}
+
+function confirmRemoval(ids = confirming.value) {
+  if (!ids) return
+  focusAfterRemoval = rows.value.findIndex((token) => ids.includes(token.id))
+  confirming.value = null
+  returnFocus = null
+  emit('remove', ids)
+}
+
+/** Annule une confirmation ouverte ; rend vrai s'il y en avait une (Échap s'arrête là). */
+function cancelRemoval(): boolean {
+  if (!confirming.value) return false
+  const row = confirmRow.value
+  confirming.value = null
+  // Le × qui a ouvert la confirmation a été remplacé par elle : le focus revient au × redessiné de la ligne.
+  const back = returnFocus?.isConnected ? returnFocus : null
+  returnFocus = null
+  void nextTick(() => {
+    const rowRemove = row ? entries.get(row)?.closest('tr')?.querySelector<HTMLButtonElement>('.remove') : null
+    ;(back ?? rowRemove)?.focus()
+  })
+  return true
+}
+
+// La confirmation tombe si une de ses créatures quitte la carte, si le combat finit ou si un ciblage commence.
+watch(
+  () => [props.tokens.map((t) => t.id).join(), props.combat === null, props.attacker] as const,
+  ([, noCombat, attacker]) => {
+    const ids = confirming.value
+    if (!ids) return
+    if (noCombat || attacker !== null || !ids.every((id) => props.tokens.some((t) => t.id === id))) {
+      confirming.value = null
+      returnFocus = null
+    }
+  },
+)
 
 watch(
   () => props.tokens.length,
@@ -68,7 +154,7 @@ watch(
     const index = Math.min(focusAfterRemoval, length - 1)
     focusAfterRemoval = null
     await nextTick()
-    ;(index >= 0 ? entries.value[index] : title.value)?.focus()
+    focusRow(index >= 0 ? rows.value[index] : undefined)
   },
 )
 
@@ -77,23 +163,21 @@ watch(
  * sinon sur le titre (aucune à portée).
  */
 function focusFirstTarget() {
-  const index = rows.value.findIndex((token) => token.id !== props.attacker && props.ranges[token.id]?.allowed)
-  ;(index >= 0 ? entries.value[index] : title.value)?.focus()
+  focusRow(rows.value.find((token) => token.id !== props.attacker && props.ranges[token.id]?.allowed))
 }
-defineExpose({ focusFirstTarget })
+defineExpose({ focusFirstTarget, requestRemoval, cancelRemoval })
 
 /**
- * En combat hors ciblage, le tableau se resserre en bande d'initiative (la carte garde la place) ;
- * la ligne de la créature qui joue reste en vue.
+ * En combat, la bande d'initiative garde la créature qui joue en vue : à chaque tour, et au retour d'un ciblage.
+ * Pendant le ciblage, le focus de la cible tient la bande : la ramener à l'attaquant la ferait sortir.
  */
-const compact = computed(() => props.combat !== null && !aiming.value)
 watch(
-  () => [props.combat?.activeId, compact.value] as const,
-  async ([activeId]) => {
-    if (!activeId) return
+  () => [props.combat?.activeId, aiming.value] as const,
+  async ([activeId, isAiming]) => {
+    if (!activeId || isAiming) return
     await nextTick()
-    const index = rows.value.findIndex((token) => token.creatureId === activeId)
-    entries.value[index]?.closest('tr')?.scrollIntoView({ block: 'nearest' })
+    const token = rows.value.find((t) => t.creatureId === activeId)
+    if (token) entries.get(token.id)?.closest('tr')?.scrollIntoView({ block: 'nearest' })
   },
 )
 
@@ -116,7 +200,7 @@ function health(token: TokenView): number {
 </script>
 
 <template>
-  <section class="board" :class="{ compact }" aria-labelledby="board-title">
+  <section class="board" :class="{ compact: combat }" aria-labelledby="board-title">
 
     <p v-if="!tokens.length" class="empty">Aucune créature posée : choisir une créature du catalogue, puis une case.</p>
     <div v-else class="scroll">
@@ -134,7 +218,7 @@ function health(token: TokenView): number {
         </thead>
         <tbody>
           <tr
-            v-for="(token, index) in rows"
+            v-for="token in rows"
             :key="token.id"
             :class="[token.kind.toLowerCase(), { selected: selected.includes(token.id), down: isDown(token), active: turns.get(token.creatureId)?.active }]"
             :aria-current="turns.get(token.creatureId)?.active ? 'true' : undefined"
@@ -142,7 +226,7 @@ function health(token: TokenView): number {
             <td v-if="combat" class="num figure init-col">{{ turns.get(token.creatureId)?.initiative ?? '…' }}</td>
             <td class="who">
               <button
-                ref="entries"
+                :ref="entryRef(token.id)"
                 type="button"
                 class="entry"
                 :aria-pressed="aiming ? undefined : selected.includes(token.id)"
@@ -176,13 +260,32 @@ function health(token: TokenView): number {
               </span>
             </td>
             <td class="act">
+              <span
+                v-if="confirmRow === token.id"
+                role="group"
+                class="confirm"
+                :aria-label="`Retirer ${confirmLabel} du combat ? Le retrait ne s'annule pas.`"
+              >
+                <span class="ask" aria-hidden="true">Retirer ?</span>
+                <button
+                  :ref="confirmRef"
+                  type="button"
+                  class="danger"
+                  :aria-label="`Confirmer le retrait de ${confirmLabel}`"
+                  @click="confirmRemoval()"
+                >
+                  Confirmer
+                </button>
+                <button type="button" @click="cancelRemoval">Annuler</button>
+              </span>
               <button
+                v-else
                 type="button"
                 class="remove"
                 :disabled="token.pending"
                 :aria-label="`Retirer ${token.name}`"
-                title="Retirer de la carte"
-                @click="remove(token.id, index)"
+                :title="combat ? 'Retirer du combat (à confirmer)' : 'Retirer de la carte'"
+                @click="requestRemoval([token.id])"
               >
                 <AppIcon name="remove" />
               </button>
@@ -204,19 +307,35 @@ function health(token: TokenView): number {
   padding: 0.75rem 1rem;
   color: var(--ink-muted);
 }
-/* Cinq lignes visibles ; au-delà, le tableau défile sans pousser la carte. */
+/*
+ * Cinq lignes visibles ; au-delà, le tableau défile sans pousser la carte. Hauteurs d'en-tête et de ligne fixes :
+ * la fenêtre tombe pile sur une ligne entière, et une ligne ne change pas de hauteur quand la confirmation de
+ * retrait remplace le ×. Le défilement (focus, ligne qui joue) s'arrête sous l'en-tête collant, pas dessous.
+ */
 .scroll {
-  max-height: 14rem;
+  --head: 2rem;
+  --row: 2.2rem;
+  max-height: calc(var(--head) + 5 * var(--row));
   overflow-y: auto;
+  scroll-padding-top: var(--head);
 }
-/* En combat : trois lignes, la créature qui joue et les suivantes ; le ciblage rouvre le tableau entier. */
+/*
+ * En combat : trois lignes, la créature qui joue et les suivantes, ciblage compris. La bande garde sa hauteur
+ * quand on vise : la carte ne bouge pas sous le pointeur ; les autres cibles défilent dans la bande.
+ */
 .compact .scroll {
-  max-height: 8.25rem;
+  max-height: calc(var(--head) + 3 * var(--row));
 }
 table {
   width: 100%;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
+}
+thead tr {
+  height: var(--head);
+}
+tbody tr {
+  height: var(--row);
 }
 th {
   position: sticky;
@@ -399,6 +518,23 @@ abbr {
   color: var(--danger);
   border-color: var(--danger);
   background: transparent;
+}
+/* Retrait en combat à confirmer : la question et ses deux réponses prennent la place du ×. */
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.ask {
+  font-weight: 700;
+  color: var(--danger);
+}
+.confirm button {
+  padding: 0.1rem 0.5rem;
+}
+.confirm .danger {
+  border-color: var(--danger);
+  color: var(--danger);
 }
 h2:focus {
   outline: none;

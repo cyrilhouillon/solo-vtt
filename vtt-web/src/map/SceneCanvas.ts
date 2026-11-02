@@ -1,13 +1,16 @@
 import Konva from 'konva'
 import { formatLength, type CreatureKind, type SceneView, type TokenView } from '../types'
-import { CELL, occupant, round, snapToCell, type Point } from './grid'
+import { CELL, magnet, occupant, round, snapToCell, type Point } from './grid'
+import { checkMove, moveLabel, snapToLimit, type MoveLimit } from './move'
 import { rangeVerdict, type RangeVerdict } from './range'
 
 /** Ce que la carte signale ; les coordonnées sont dans l'unité de la carte. */
 export interface SceneCanvasEvents {
-  /** `free` : la touche Maj était tenue, la position n'est pas calée sur la case. */
+  /** `free` : la position n'est pas calée sur la case (Maj non tenue ; Maj cale sur la case). */
   onBackgroundClick(x: number, y: number, free: boolean): void
   onTokenClick(tokenId: string): void
+  /** Un jeton glissé est relâché à cette position, libre ou calée (Maj) ; le jeton attend la réponse au départ. */
+  onTokenMove(tokenId: string, x: number, y: number): void
 }
 
 export interface SceneCanvasState {
@@ -21,6 +24,12 @@ export interface SceneCanvasState {
   targeting: Targeting | null
   /** La créature dont c'est le tour en combat, ou `null`. */
   activeId: string | null
+  /** Les jetons se glissent : faux en pose, en ciblage, pendant une décision ou un déplacement envoyé. */
+  movable: boolean
+  /** Le seul jeton limité dans son déplacement et ce qui lui reste, ou `null` : tout jeton se déplace librement. */
+  movementLimit: MoveLimit | null
+  /** Le jeton déplacé au clavier vers `cursor`, ou `null`. */
+  moving: string | null
 }
 
 /**
@@ -70,9 +79,13 @@ export class SceneCanvas {
   private pixelsPerUnit = 1
   private origin = { x: MARGIN, y: MARGIN }
   private pointerInside = false
-  /** Maj change l'aperçu sans attendre que la souris bouge. */
+  /** Maj tenue : la pose et le glisser se calent sur la case. */
+  private shiftHeld = false
+  /** Maj change l'aperçu sans attendre que la souris bouge : tenue, elle cale sur la case. */
   private readonly onShift = (e: KeyboardEvent) => {
-    if (e.key === 'Shift' && this.pointerInside) this.drawPointerPreview(e.type === 'keydown')
+    if (e.key !== 'Shift') return
+    this.shiftHeld = e.type === 'keydown'
+    if (this.pointerInside) this.drawPointerPreview(!this.shiftHeld)
   }
 
   constructor(container: HTMLDivElement, events: SceneCanvasEvents) {
@@ -82,7 +95,7 @@ export class SceneCanvas {
     this.stage.add(this.layer, this.preview)
     this.stage.on('mousemove', (e) => {
       this.pointerInside = true
-      this.drawPointerPreview(e.evt.shiftKey)
+      this.drawPointerPreview(!e.evt.shiftKey)
     })
     this.stage.on('mouseleave', () => {
       this.pointerInside = false
@@ -168,16 +181,20 @@ export class SceneCanvas {
     this.layer.add(names)
     if (measure) this.layer.add(measure)
     this.layer.draw()
-    if (this.state.cursor) this.drawPreview(this.state.cursor, false, true)
+    if (this.state.cursor) {
+      const moved = this.state.moving ? scene.tokens.find((t) => t.id === this.state!.moving) : undefined
+      if (moved) this.drawMovePreview(moved, this.state.cursor, true)
+      else this.drawPreview(this.state.cursor, true)
+    }
   }
 
-  /** Position visée par le pointeur, calée sur la case sauf si `free`, ou `null` hors de la carte. */
+  /** Position visée par le pointeur, ou `null` hors de la carte : calée sur la case, ou libre et aimantée au contact. */
   private pointerTarget(scene: SceneView, free: boolean): Point | null {
     const pointer = this.stage.getPointerPosition()
     if (!pointer) return null
     const p = this.toUnits(pointer)
     if (p.x < 0 || p.y < 0 || p.x > scene.width || p.y > scene.height) return null
-    return free ? { x: round(p.x), y: round(p.y) } : snapToCell(scene, p)
+    return free ? magnet(scene, { x: round(p.x), y: round(p.y) }) : snapToCell(scene, p)
   }
 
   private drawGround(scene: SceneView): void {
@@ -191,7 +208,7 @@ export class SceneCanvas {
       strokeWidth: 1,
     })
     ground.on('click tap', (e) => {
-      const free = 'shiftKey' in e.evt && e.evt.shiftKey
+      const free = !('shiftKey' in e.evt && e.evt.shiftKey)
       const target = this.pointerTarget(scene, free)
       if (target) this.events.onBackgroundClick(target.x, target.y, free)
     })
@@ -416,9 +433,11 @@ export class SceneCanvas {
       e.cancelBubble = true
       this.events.onTokenClick(token.id)
     })
+    const movable = !!this.state?.movable && clickable && !token.pending
+    if (movable) this.makeDraggable(scene, token, group, full, isSelected || isActive)
     // En ciblage, le viseur n'apparaît que là où un clic lance l'attaque.
     const targeting = this.state?.targeting
-    const cursor = !targeting ? 'pointer' : token.id === targeting.attackerId || !reachable ? 'not-allowed' : 'crosshair'
+    const cursor = !targeting ? (movable ? 'grab' : 'pointer') : token.id === targeting.attackerId || !reachable ? 'not-allowed' : 'crosshair'
     group.on('mouseenter', () => {
       this.stage.container().style.cursor = cursor
       full.visible(true)
@@ -436,6 +455,79 @@ export class SceneCanvas {
       this.layer.batchDraw()
     })
     this.layer.add(group)
+  }
+
+  /**
+   * Le jeton suit le pointeur, librement ou calé sur la case (Maj), sans sortir de la carte ; l'aperçu dit la distance
+   * parcourue et ce qui reste. Relâché, il revient au départ et signale la position d'arrivée : l'application la vérifie
+   * et le serveur tranche.
+   */
+  private makeDraggable(scene: SceneView, token: TokenView, group: Konva.Group, name: Konva.Label, named: boolean): void {
+    const start = { x: group.x(), y: group.y() }
+    const target = (pixels: { x: number; y: number }): Point => {
+      const p = this.toUnits(pixels)
+      const inside = { x: Math.min(scene.width, Math.max(0, p.x)), y: Math.min(scene.height, Math.max(0, p.y)) }
+      if (this.shiftHeld) return snapToCell(scene, inside)
+      // Aimanté au contact, sans dépasser ce qui reste à parcourir ; sinon, aimanté au bord de ce qui reste.
+      const limit = this.state?.movementLimit ?? null
+      const free = { x: round(inside.x), y: round(inside.y) }
+      const contact = magnet(scene, free, token.id, (p) => !checkMove(scene, token, p, limit).tooFar)
+      return contact !== free ? contact : snapToLimit(scene, token, free, limit)
+    }
+    group.draggable(true)
+    group.dragDistance(4)
+    group.dragBoundFunc((pos) => {
+      const t = target(pos)
+      return { x: this.toPixelsX(t.x), y: this.toPixelsY(t.y) }
+    })
+    group.on('dragstart', () => {
+      group.moveToTop()
+      name.visible(false)
+      this.stage.container().style.cursor = 'grabbing'
+    })
+    group.on('dragmove', () => this.drawMovePreview(token, target(group.position()), false))
+    group.on('dragend', () => {
+      const to = target(group.position())
+      group.position(start)
+      name.visible(named)
+      this.clearPreview()
+      this.stage.container().style.cursor = 'grab'
+      this.layer.batchDraw()
+      if (to.x !== token.x || to.y !== token.y) this.events.onTokenMove(token.id, to.x, to.y)
+    })
+  }
+
+  /**
+   * Aperçu d'un déplacement : le cercle de ce qui reste autour du départ (s'il y a une limite), le trait du départ à
+   * l'arrivée et une bulle « parcouru · reste ». Interdit (trop loin, trop près) : trait et anneau `--danger`.
+   * `ghost` dessine la créature à l'arrivée (clavier) ; au glisser, c'est le jeton lui-même.
+   */
+  private drawMovePreview(token: TokenView, to: Point, ghost: boolean): void {
+    if (!this.state) return
+    const { scene, movementLimit } = this.state
+    this.preview.destroyChildren()
+    const check = checkMove(scene, token, to, movementLimit)
+    const color = check.allowed ? this.colors.live : this.colors.danger
+    const radius = this.tokenRadius(scene)
+    const from = { x: this.toPixelsX(token.x), y: this.toPixelsY(token.y) }
+    const at = { x: this.toPixelsX(to.x), y: this.toPixelsY(to.y) }
+    if (movementLimit?.tokenId === token.id) {
+      const clipped = new Konva.Group({
+        clip: { x: this.toPixelsX(0), y: this.toPixelsY(0), width: scene.width * this.pixelsPerUnit, height: scene.height * this.pixelsPerUnit },
+      })
+      clipped.add(new Konva.Circle({ ...from, radius: movementLimit.left * this.pixelsPerUnit, stroke: this.colors.live, strokeWidth: 2 }))
+      this.preview.add(clipped)
+    }
+    this.preview.add(new Konva.Line({ points: [from.x, from.y, at.x, at.y], stroke: color, strokeWidth: 2, dash: [8, 6] }))
+    if (ghost) this.preview.add(this.tokenShape(token.kind, radius, { ...at, opacity: 0.5, stroke: this.colors.live, strokeWidth: 2 }))
+    if (!check.allowed) this.preview.add(new Konva.Circle({ ...at, radius: radius * 1.3, stroke: this.colors.danger, strokeWidth: 3 }))
+    const label = new Konva.Label({ ...at, y: at.y - radius - 6 })
+    label.add(
+      new Konva.Tag({ fill: this.colors.labelGround, stroke: color, strokeWidth: 1, cornerRadius: 4, pointerDirection: 'down', pointerWidth: 10, pointerHeight: 5 }),
+      new Konva.Text({ text: moveLabel(check, scene.unitSymbol), fontSize: 15, fontStyle: '700', fontFamily: FONT, fill: this.colors.label, padding: 4, wrap: 'none' }),
+    )
+    this.preview.add(label)
+    this.preview.batchDraw()
   }
 
   /** Distance et verdict de portée, au-dessus du jeton survolé ; cerclé de laiton si la cible est permise. */
@@ -485,21 +577,21 @@ export class SceneCanvas {
     if (!this.state?.placing) return this.clearPreview()
     const target = this.pointerTarget(this.state.scene, free)
     if (!target) return this.clearPreview()
-    this.drawPreview(target, free, false)
+    this.drawPreview(target, false)
   }
 
   /**
    * Fantôme de la créature à poser. Sur une case prise, un anneau rouge plein, plus large
    * que le jeton, et un curseur d'interdiction. `framed` encadre la case visée au clavier.
    */
-  private drawPreview(target: Point, free: boolean, framed: boolean): void {
+  private drawPreview(target: Point, framed: boolean): void {
     this.clearPreview()
     if (!this.state?.placing) return
     const { scene, placing } = this.state
     const radius = this.tokenRadius(scene)
     const x = this.toPixelsX(target.x)
     const y = this.toPixelsY(target.y)
-    const taken = !free && occupant(scene, target) !== undefined
+    const taken = occupant(scene, target) !== undefined
     if (framed) {
       const side = CELL[scene.unit] * this.pixelsPerUnit
       this.preview.add(

@@ -4,6 +4,7 @@ import dnd.engine.attack.AttackAction;
 import dnd.engine.combat.EndTurn;
 import dnd.engine.combat.JoinCombat;
 import dnd.engine.combat.LeaveCombat;
+import dnd.engine.combat.Move;
 import dnd.engine.combat.StartCombat;
 import dnd.engine.events.GameEvent;
 import dnd.engine.rules.StandardRules;
@@ -17,6 +18,7 @@ import solovtt.engine.Decision;
 import solovtt.engine.Dice;
 import solovtt.engine.Engine;
 import solovtt.engine.StepResult;
+import solovtt.scene.DistanceUnit;
 
 import java.util.List;
 
@@ -236,13 +238,16 @@ class CombatTest {
         var e = engine(state, 10, 10, 1);
         var who = ((StepResult.AwaitingDecision) e.submit(StartCombat.of(state))).decision();
         e.answer(who.id(), "Guerrière");
+        e.submit(Move.of("guerriere", 4.5, DistanceUnit.METRE, state));
         e.submit(EndTurn.of(state));
         e.submit(EndTurn.of(state));
+        e.submit(Move.of("squelette", 3, DistanceUnit.METRE, state));
         e.submit(EndTurn.of(state));
 
         e.events().forEach(ev -> ev.apply(initial));
 
         assertEquals(e.state().signature(), initial.signature());
         assertTrue(initial.signature().contains("combat[round=2"));
+        assertTrue(initial.signature().contains("déplacement=3.0"));
     }
 }

@@ -1,30 +1,56 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import type { AttackRoll, Damage } from '../types'
+
 /**
  * La piste à dés, sous la carte : la dernière attaque tranchée par le moteur. Les tours de combat ne l'effacent pas
  * (la barre dit qui joue). Les dés eux-mêmes viendront avec les jets structurés (story « voir les dés rouler »).
  * Muette pour les lecteurs d'écran : l'issue leur est annoncée à part.
  */
 export interface TrayResult {
+  /** Numéro de l'action : chaque attaque tranchée en a un nouveau, et le verdict se pose à chacune. */
+  action: number
   /** L'annonce de l'attaque (qui, avec quoi, sur qui). */
   title: string
-  /** L'issue (« … contre CA 17 → RATÉ »), absente tant que l'attaque attend une décision. */
-  outcome: string | null
-  /** Ce qui a changé le coup ou en découle : réaction, dégâts. */
-  details: string[]
-  /** Absent quand le résultat est relu du journal (rechargement) : la piste n'a alors que le texte. */
+  /** L'issue et son calcul, tels que le moteur les a tranchés. */
+  roll: AttackRoll
+  /** Les dégâts subis, dans l'ordre du journal. */
+  damage: Damage[]
+  /** Les réactions qui ont changé le coup, dans le texte du journal. */
+  reactions: string[]
+  /** Absent quand le résultat est relu du journal (rechargement) : la piste n'a alors pas la jauge. */
   target?: { name: string; hitPoints: number; maxHitPoints: number }
 }
 
-defineProps<{ result: TrayResult | null }>()
+const props = defineProps<{ result: TrayResult | null }>()
+
+/** L'issue de l'attaque, pas son intérêt pour le joueur : elle se lit à la forme (voir les styles). */
+const LABELS: Record<AttackRoll['outcome'], string> = { CRITICAL: 'Coup critique', HIT: 'Touché', MISS: 'Raté' }
+
+/** « Touché · 6 dégâts tranchants » : l'issue d'abord, ce qu'elle a coûté ensuite. */
+const headline = computed(() => {
+  if (!props.result) return ''
+  const { roll, damage } = props.result
+  if (!damage.length) return LABELS[roll.outcome]
+  const total = damage.reduce((sum, d) => sum + d.amount, 0)
+  const type = damage.length === 1 ? ` ${damage[0]!.type}` : ''
+  return `${LABELS[roll.outcome]} · ${total} ${total > 1 ? 'dégâts' : 'dégât'}${type}`
+})
+
+/** Le calcul (« 14 contre CA 17 ») et la réaction qui l'a changé, lus juste après le verdict. */
+const line = computed(() => {
+  const r = props.result
+  return r ? [`${r.roll.total} contre CA ${r.roll.armorClass}`, ...r.reactions].join(' · ') : ''
+})
 </script>
 
 <template>
   <div class="rim" aria-hidden="true">
     <div class="tray">
       <template v-if="result">
-        <p :key="result.outcome ?? result.title" class="verdict">{{ result.outcome ?? result.title }}</p>
-        <p v-if="result.outcome" class="title">{{ result.title }}</p>
-        <p v-if="result.details.length" class="details">{{ result.details.join(' · ') }}</p>
+        <p :key="result.action" class="verdict" :class="result.roll.outcome.toLowerCase()">{{ headline }}</p>
+        <p class="line">{{ line }}</p>
+        <p class="title">{{ result.title }}</p>
         <p v-if="result.target" class="target">
           <span class="who">{{ result.target.name }}</span>
           <span class="gauge"><i :style="{ width: `${Math.max(0, result.target.hitPoints / result.target.maxHitPoints) * 100}%` }" /></span>
@@ -43,11 +69,17 @@ defineProps<{ result: TrayResult | null }>()
   background: var(--wood);
   border-top: 1px solid var(--rule);
 }
+/*
+ * Hauteur fixe de trois lignes (verdict, action, réaction ou dégâts) : la carte au-dessus ne se redimensionne pas
+ * quand une réaction ajoute une ligne.
+ */
 .tray {
-  min-height: 5.25rem;
+  height: calc(1.5rem * 1.2 + 2 * 0.95rem * 1.45 + 1.2rem);
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto auto;
+  align-content: center;
   align-items: center;
   column-gap: 1.5rem;
   padding: 0.6rem 1.25rem;
@@ -70,14 +102,18 @@ p {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.details {
+/* Le calcul et la réaction : ce qui explique le verdict, lu juste après lui. */
+.line {
   grid-column: 1;
   font-size: 0.95rem;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* L'issue se lit à la forme, pas à la teinte (le feutre est déjà vert) : touché en rubrique et en gras, coup critique
+   en capitales pleines, raté en ivoire atténué et maigre. */
 .verdict {
   grid-column: 1;
   font-family: var(--font-title);
@@ -86,7 +122,19 @@ p {
   letter-spacing: 0.02em;
   line-height: 1.2;
   color: var(--rubric);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   animation: land 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.verdict.critical {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.verdict.miss {
+  font-weight: 500;
+  color: var(--map-label);
+  opacity: 0.75;
 }
 /* Le verdict se pose sur le feutre, comme un dé qui s'arrête. */
 @keyframes land {

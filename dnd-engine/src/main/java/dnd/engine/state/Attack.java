@@ -2,8 +2,6 @@ package dnd.engine.state;
 
 import solovtt.scene.DistanceUnit;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -38,6 +36,18 @@ public record Attack(Weapon weapon, Mode mode) {
         return mode == Mode.RANGED && weapon.isMelee();
     }
 
+    /**
+     * Hors grille, une créature n'occupe pas une case exacte : une cible au corps à corps est à l'allonge si son centre
+     * est à au plus allonge + une demi-case (0,75 m) du centre de l'attaquant. Le contact hors grille et la diagonale
+     * (2,12 m) comptent ; deux cases d'écart (3 m) restent hors d'allonge.
+     */
+    public static final double CONTACT_TOLERANCE = Weapon.STANDARD_REACH / 2;
+
+    /** La distance de centre à centre jusqu'où porte une attaque au corps à corps (allonge + demi-case), ou rien à distance. */
+    public Optional<Double> reachLimit() {
+        return mode == Mode.MELEE ? Optional.of(weapon.reach() + CONTACT_TOLERANCE) : Optional.empty();
+    }
+
     /** Au-delà de la portée normale : le jet se fait avec désavantage. */
     public boolean beyondNormalRange(double distanceMetres) {
         return mode == Mode.RANGED && distanceMetres > weapon.range().normal() + EPSILON;
@@ -48,14 +58,10 @@ public record Attack(Weapon weapon, Mode mode) {
      * Les longueurs du message sont données dans {@code unit}.
      */
     public Optional<String> refusal(double distanceMetres, DistanceUnit unit) {
-        double limit = mode == Mode.MELEE ? weapon.reach() : weapon.range().longRange();
+        double limit = reachLimit().orElseGet(() -> weapon.range().longRange());
         if (distanceMetres <= limit + EPSILON) return Optional.empty();
         String what = mode == Mode.MELEE ? "hors d'allonge" : "au-delà de la portée longue";
-        return Optional.of("%s : cible à %s, %s (%s)".formatted(label(), length(distanceMetres, unit), what, length(limit, unit)));
-    }
-
-    private static String length(double metres, DistanceUnit unit) {
-        var format = new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.FRANCE));
-        return format.format(DistanceUnit.METRE.convert(metres, unit)) + " " + unit.symbol();
+        double shown = mode == Mode.MELEE ? weapon.reach() : limit;
+        return Optional.of("%s : cible à %s, %s (%s)".formatted(label(), Length.of(distanceMetres, unit), what, Length.of(shown, unit)));
     }
 }
