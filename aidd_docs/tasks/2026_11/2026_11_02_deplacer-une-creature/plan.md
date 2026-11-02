@@ -1,6 +1,6 @@
 ---
 objective: "Le joueur glisse un jeton (ou le déplace au clavier) : en combat, la créature active se déplace dans la limite de sa vitesse restante, affichée pendant le geste, refusée au-delà et rendue pleine à son tour suivant ; toute autre créature, et toute créature hors combat, se repositionne librement ; la pose et le déplacement sont hors grille par défaut, Maj cale sur la case."
-status: pending
+status: implemented
 ---
 
 # Plan: déplacer une créature dans la limite de sa vitesse
