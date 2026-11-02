@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 ---
 
 # Instruction: Serveur : la session enregistre ses commandes et ses dés derrière un port, puis les rejoue

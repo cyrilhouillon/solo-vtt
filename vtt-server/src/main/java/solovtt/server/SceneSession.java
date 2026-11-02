@@ -26,16 +26,20 @@ import solovtt.scene.Position;
 import solovtt.scene.Scene;
 import solovtt.scene.Token;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * La scène en préparation et l'état D&D qui l'accompagne. Une seule session, en mémoire :
- * le jeu est local et solo ; la persistance viendra avec la story « reprendre une partie ».
+ * le jeu est local et solo.
  *
  * <p>La préparation construit l'état initial : elle ne passe pas par le journal du moteur.
  * Les actions (attaques) passent par le moteur, et chaque événement émis est décrit dans le journal
@@ -49,6 +53,11 @@ import java.util.OptionalDouble;
  * son initiative) ou la sortie d'une créature retirée. La créature elle-même est créée et supprimée hors journal,
  * comme pendant la préparation. Un refus d'état (combat déjà lancé, pas de combat…) lève
  * {@link ActionRefusedException}.</p>
+ *
+ * <p>La partie se garde par ses commandes : chaque appel réussi qui la modifie est ajouté, avec les dés tirés pendant
+ * l'appel, à une {@link SavedGame} confiée au {@link GameStore}. À la construction, la session rejoue la partie chargée
+ * avec ces dés : scène, état, journal et décision en attente reviennent à l'identique. Un rejeu qui échoue (règles
+ * changées depuis la sauvegarde, partie illisible) laisse la session sans carte et met la partie de côté.</p>
  */
 @ApplicationScoped
 public class SceneSession {
@@ -59,6 +68,14 @@ public class SceneSession {
     private final Map<String, CatalogEntry> entries = new HashMap<>();
     private final Map<String, Integer> instanceCounters = new HashMap<>();
     private final Dice dice;
+    private final GameStore store;
+    /** D'où viennent les dés : ceux du jeu, ou ceux de la commande rejouée. */
+    private Dice source;
+    /** Les dés tirés pendant l'appel en cours, gardés avec sa commande. */
+    private final List<Integer> rolls = new ArrayList<>();
+    /** Les commandes réussies depuis la dernière carte. */
+    private final List<SavedGame.SavedCommand> commands = new ArrayList<>();
+    private boolean replaying;
     private Engine<GameState, GameEvent> engine;
     private final List<JournalEntry> journal = new ArrayList<>();
     /** Numéro de l'action en cours, qui groupe ses entrées dans le journal. */
@@ -96,16 +113,33 @@ public class SceneSession {
     /** Ce qu'une action (ou sa reprise) a ajouté au journal, sa cible ({@code null} sans cible), et la décision qui l'arrête, s'il y en a une. */
     public record ActionOutcome(List<JournalEntry> entries, String targetId, Optional<Decision> decision) {}
 
+    private static final System.Logger LOG = System.getLogger(SceneSession.class.getName());
+
+    /** Une session qui ne garde pas sa partie. */
     @Inject
     public SceneSession(Dice dice) {
+        this(dice, GameStore.none());
+    }
+
+    /** Une session qui reprend la partie gardée par {@code store}, puis l'y sauve après chaque commande réussie. */
+    public SceneSession(Dice dice, GameStore store) {
         this.dice = dice;
+        this.source = dice;
+        this.store = store;
+        restore();
     }
 
     public synchronized Scene create(double width, double height, DistanceUnit unit) {
+        rolls.clear();
+        commands.clear();
         Scene created = new Scene(width, height, unit);
         scene = created;
         state = new GameState();
-        engine = new Engine<>(state, StandardRules.create(), dice);
+        engine = new Engine<>(state, StandardRules.create(), sides -> {
+            int value = source.roll(sides);
+            rolls.add(value);
+            return value;
+        });
         engine.subscribe(event -> journal.add(
                 new JournalEntry(action, event.describe(state), event instanceof GameEvent.RoundStarted, highlight(event),
                         event instanceof GameEvent.AttackResolved a
@@ -117,6 +151,7 @@ public class SceneSession {
         actionTargetId = null;
         entries.clear();
         instanceCounters.clear();
+        record(r -> new SavedGame.SavedCommand.Create(width, height, unit, r));
         return created;
     }
 
@@ -132,28 +167,28 @@ public class SceneSession {
         // Le jeton porte l'id de sa créature (voir place).
         double distance = scene.distance(attackerId, targetId);
         var resolution = AttackAction.of(attackerId, attackId, targetId, distance, scene.unit(), state);
-        return run(resolution, targetId);
+        return recorded(() -> run(resolution, targetId), r -> new SavedGame.SavedCommand.Attack(attackerId, attackId, targetId, r));
     }
 
     /** Lance le combat : chaque créature tire son initiative. */
     public synchronized ActionOutcome startCombat() {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        return run(refusable(() -> StartCombat.of(state)), null);
+        return recorded(() -> run(refusable(() -> StartCombat.of(state)), null), SavedGame.SavedCommand.StartCombat::new);
     }
 
     /** Termine le tour de la créature active et ouvre le suivant. */
     public synchronized ActionOutcome endTurn() {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        return run(refusable(() -> EndTurn.of(state)), null);
+        return recorded(() -> run(refusable(() -> EndTurn.of(state)), null), SavedGame.SavedCommand.EndTurn::new);
     }
 
     /** Met fin au combat : plus de tours ; les créatures restent sur la carte avec leurs PV. */
     public synchronized ActionOutcome endCombat() {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        return run(refusable(() -> EndCombat.of(state)), null);
+        return recorded(() -> run(refusable(() -> EndCombat.of(state)), null), SavedGame.SavedCommand.EndCombat::new);
     }
 
     /**
@@ -168,13 +203,15 @@ public class SceneSession {
         Token token = scene.token(tokenId);
         Position to = new Position(x, y);
         String creatureId = token.entityId();
-        if (!Move.limits(creatureId, state)) {
+        return recorded(() -> {
+            if (!Move.limits(creatureId, state)) {
+                scene.move(tokenId, to);
+                return new ActionOutcome(List.of(), null, Optional.empty());
+            }
+            Move move = Move.of(creatureId, token.position().distanceTo(to), scene.unit(), state);
             scene.move(tokenId, to);
-            return new ActionOutcome(List.of(), null, Optional.empty());
-        }
-        Move move = Move.of(creatureId, token.position().distanceTo(to), scene.unit(), state);
-        scene.move(tokenId, to);
-        return run(move, null);
+            return run(move, null);
+        }, r -> new SavedGame.SavedCommand.Move(tokenId, x, y, r));
     }
 
     /** La vitesse restante de la créature active, dans l'unité de la carte ; vide quand rien ne limite le déplacement. */
@@ -213,8 +250,10 @@ public class SceneSession {
      */
     public synchronized Optional<ActionOutcome> answer(String decisionId, String option) {
         if (pendingDecision().filter(d -> d.id().equals(decisionId)).isEmpty()) return Optional.empty();
-        int from = journal.size();
-        return Optional.of(outcome(from, engine.answer(decisionId, option)));
+        return Optional.of(recorded(() -> {
+            int from = journal.size();
+            return outcome(from, engine.answer(decisionId, option));
+        }, r -> new SavedGame.SavedCommand.Answer(decisionId, option, r)));
     }
 
     public synchronized Optional<Decision> pendingDecision() {
@@ -252,15 +291,17 @@ public class SceneSession {
     public synchronized Token place(CatalogEntry entry, double x, double y) {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        int n = instanceCounters.getOrDefault(entry.id(), 0) + 1;
-        String id = entry.id() + "-" + n;
-        Token token = new Token(id, id, new Position(x, y));
-        scene.place(token);
-        instanceCounters.put(entry.id(), n);
-        state.add(entry.create(id, n == 1 ? entry.name() : entry.name() + " " + n));
-        entries.put(id, entry);
-        if (state.combat().isPresent()) run(JoinCombat.of(state, id), null);
-        return token;
+        return recorded(() -> {
+            int n = instanceCounters.getOrDefault(entry.id(), 0) + 1;
+            String id = entry.id() + "-" + n;
+            Token token = new Token(id, id, new Position(x, y));
+            scene.place(token);
+            instanceCounters.put(entry.id(), n);
+            state.add(entry.create(id, n == 1 ? entry.name() : entry.name() + " " + n));
+            entries.put(id, entry);
+            if (state.combat().isPresent()) run(JoinCombat.of(state, id), null);
+            return token;
+        }, r -> new SavedGame.SavedCommand.Place(entry.id(), x, y, r));
     }
 
     /**
@@ -270,11 +311,14 @@ public class SceneSession {
     public synchronized void remove(String tokenId) {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        String creatureId = scene.token(tokenId).entityId();
-        if (state.combat().filter(c -> c.includes(creatureId)).isPresent()) run(LeaveCombat.of(state, creatureId), null);
-        Token token = scene.remove(tokenId);
-        state.remove(token.entityId());
-        entries.remove(token.entityId());
+        recorded(() -> {
+            String creatureId = scene.token(tokenId).entityId();
+            if (state.combat().filter(c -> c.includes(creatureId)).isPresent()) run(LeaveCombat.of(state, creatureId), null);
+            Token token = scene.remove(tokenId);
+            state.remove(token.entityId());
+            entries.remove(token.entityId());
+            return token;
+        }, r -> new SavedGame.SavedCommand.Remove(tokenId, r));
     }
 
     public synchronized Optional<Creature> creature(String id) {
@@ -284,6 +328,97 @@ public class SceneSession {
 
     public synchronized CatalogEntry entryOf(String creatureId) {
         return entries.get(creatureId);
+    }
+
+    /** Fait l'appel puis, seulement s'il réussit, l'ajoute à la partie avec les dés qu'il a tirés. */
+    private <T> T recorded(Supplier<T> call, Function<List<Integer>, SavedGame.SavedCommand> command) {
+        rolls.clear();
+        T result = call.get();
+        record(command);
+        return result;
+    }
+
+    private void record(Function<List<Integer>, SavedGame.SavedCommand> command) {
+        commands.add(command.apply(List.copyOf(rolls)));
+        rolls.clear();
+        if (!replaying) store.save(new SavedGame(commands));
+    }
+
+    /** Rejoue la partie gardée ; si elle ne se rejoue pas à l'identique, repart sans carte et la met de côté. */
+    private void restore() {
+        try {
+            store.load().ifPresent(this::replay);
+        } catch (RuntimeException e) {
+            LOG.log(System.Logger.Level.WARNING, "Partie impossible à reprendre, mise de côté : " + e.getMessage(), e);
+            reset();
+            store.setAside();
+        }
+    }
+
+    private void replay(SavedGame game) {
+        replaying = true;
+        try {
+            for (SavedGame.SavedCommand command : game.commands()) {
+                ReplayDice replayDice = new ReplayDice(command.rolls());
+                source = replayDice;
+                replay(command);
+                if (!replayDice.used()) throw new IllegalStateException("Dés non consommés au rejeu de " + command);
+            }
+        } finally {
+            replaying = false;
+            source = dice;
+        }
+    }
+
+    private void replay(SavedGame.SavedCommand command) {
+        switch (command) {
+            case SavedGame.SavedCommand.Create c -> create(c.width(), c.height(), c.unit());
+            case SavedGame.SavedCommand.Place c -> place(catalogEntry(c.catalogId())
+                    .orElseThrow(() -> new IllegalStateException("Entrée de catalogue inconnue : " + c.catalogId())), c.x(), c.y());
+            case SavedGame.SavedCommand.Remove c -> remove(c.tokenId());
+            case SavedGame.SavedCommand.Move c -> move(c.tokenId(), c.x(), c.y());
+            case SavedGame.SavedCommand.Attack c -> attack(c.attackerId(), c.attackId(), c.targetId());
+            case SavedGame.SavedCommand.StartCombat c -> startCombat();
+            case SavedGame.SavedCommand.EndTurn c -> endTurn();
+            case SavedGame.SavedCommand.EndCombat c -> endCombat();
+            case SavedGame.SavedCommand.Answer c -> answer(c.decisionId(), c.option())
+                    .orElseThrow(() -> new IllegalStateException("Aucune décision " + c.decisionId() + " au rejeu"));
+        }
+    }
+
+    /** Sans carte, comme au premier lancement. */
+    private void reset() {
+        scene = null;
+        state = null;
+        engine = null;
+        journal.clear();
+        action = 0;
+        actionTargetId = null;
+        entries.clear();
+        instanceCounters.clear();
+        commands.clear();
+        rolls.clear();
+    }
+
+    /** Les dés d'une commande rejouée, dans l'ordre ; en manquer ou en laisser veut dire que le rejeu a divergé. */
+    private static final class ReplayDice implements Dice {
+        private final Deque<Integer> values;
+
+        ReplayDice(List<Integer> values) {
+            this.values = new ArrayDeque<>(values);
+        }
+
+        @Override
+        public int roll(int sides) {
+            Integer value = values.poll();
+            if (value == null) throw new IllegalStateException("Dé manquant au rejeu (d" + sides + ")");
+            if (value < 1 || value > sides) throw new IllegalStateException("Dé " + value + " impossible sur un d" + sides + " au rejeu");
+            return value;
+        }
+
+        boolean used() {
+            return values.isEmpty();
+        }
     }
 
     public static Optional<CatalogEntry> catalogEntry(String id) {
