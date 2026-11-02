@@ -758,6 +758,7 @@ onBeforeUnmount(() => {
         Carte {{ formatLength(scene.width, scene.unitSymbol) }} × {{ formatLength(scene.height, scene.unitSymbol) }} ·
         {{ scene.tokens.length }} {{ scene.tokens.length > 1 ? 'créatures' : 'créature' }}
       </p>
+      <strong v-if="mode" class="mode">{{ mode }}</strong>
       <span class="spacer" />
       <CombatControl
         v-if="scene"
@@ -767,7 +768,6 @@ onBeforeUnmount(() => {
         @start="startCombat"
         @end-turn="combatAction(api.endTurn)"
       />
-      <strong v-if="mode" class="mode">{{ mode }}</strong>
       <button
         type="button"
         class="icon-button"
@@ -967,8 +967,15 @@ onBeforeUnmount(() => {
 .spacer {
   flex: 1;
 }
-/* Le mode en cours : l'état vivant, en laiton. */
+/*
+ * Le mode en cours : l'état vivant, en laiton. Il suit les infos de carte, avant l'espace libre : il apparaît et
+ * disparaît sans déplacer le combat ni le thème, ancrés à droite.
+ */
 .mode {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 0.25rem 0.85rem;
   border-radius: 999px;
   background: var(--brass);
@@ -1038,8 +1045,14 @@ onBeforeUnmount(() => {
   border-top: 0;
   border-bottom: 0;
 }
+/*
+ * Deux lignes réservées : la consigne de ciblage d'une attaque à distance passe à la ligne sous 1500 px environ,
+ * et la carte au-dessus ne doit pas rétrécir au moment de viser.
+ */
 .status {
   margin: 0;
+  min-height: calc(2lh + 0.9rem + 1px);
+  align-content: center;
   padding: 0.45rem 1rem;
   background: var(--wood);
   border-top: 1px solid var(--rule);

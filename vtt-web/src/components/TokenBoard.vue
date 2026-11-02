@@ -201,7 +201,7 @@ function health(token: TokenView): number {
 </script>
 
 <template>
-  <section class="board" :class="{ compact }" aria-labelledby="board-title">
+  <section class="board" :class="{ compact: combat }" aria-labelledby="board-title">
 
     <p v-if="!tokens.length" class="empty">Aucune créature posée : choisir une créature du catalogue, puis une case.</p>
     <div v-else class="scroll">
@@ -313,7 +313,10 @@ function health(token: TokenView): number {
   max-height: 14rem;
   overflow-y: auto;
 }
-/* En combat : trois lignes, la créature qui joue et les suivantes ; le ciblage rouvre le tableau entier. */
+/*
+ * En combat : trois lignes, la créature qui joue et les suivantes, ciblage compris. La bande garde sa hauteur
+ * quand on vise : la carte ne bouge pas sous le pointeur ; les autres cibles défilent dans la bande.
+ */
 .compact .scroll {
   max-height: 8.25rem;
 }

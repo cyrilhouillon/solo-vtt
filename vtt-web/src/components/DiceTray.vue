@@ -43,11 +43,17 @@ defineProps<{ result: TrayResult | null }>()
   background: var(--wood);
   border-top: 1px solid var(--rule);
 }
+/*
+ * Hauteur fixe de trois lignes (verdict, action, réaction ou dégâts) : la carte au-dessus ne se redimensionne pas
+ * quand une réaction ajoute une ligne.
+ */
 .tray {
-  min-height: 5.25rem;
+  height: calc(1.5rem * 1.2 + 2 * 0.95rem * 1.45 + 1.2rem);
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto auto;
+  align-content: center;
   align-items: center;
   column-gap: 1.5rem;
   padding: 0.6rem 1.25rem;
