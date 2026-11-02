@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Client : les dés roulent sur la piste puis le verdict se pose

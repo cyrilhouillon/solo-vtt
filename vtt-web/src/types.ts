@@ -65,6 +65,18 @@ export interface JournalEntry {
   roll: AttackRoll | null
   /** Les dégâts subis (entrée `DAMAGE`), `null` sinon. */
   damage: Damage | null
+  /** Les dés d'un jet (d20, dés bonus, dés de dégâts), `null` sinon. */
+  dice: RolledDice | null
+}
+
+/**
+ * Des dés tirés par le serveur, dans l'ordre du tirage. `kept` est la valeur gardée d'un d20 (avantage : le meilleur,
+ * désavantage : le pire), `null` pour les autres dés.
+ */
+export interface RolledDice {
+  sides: number
+  values: number[]
+  kept: number | null
 }
 
 /** L'issue d'une attaque et le calcul qui la tranche. */

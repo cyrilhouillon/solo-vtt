@@ -88,12 +88,19 @@ function trayFromJournal(target?: TrayResult['target']): TrayResult | null {
   const outcome = [...journal.value].reverse().find((e) => e.highlight === 'OUTCOME' && e.roll)
   if (!outcome?.roll) return null
   const entries = journal.value.filter((e) => e.action === outcome.action)
+  // Les dés tirés avant l'issue sont le jet d'attaque (d20, dés bonus) ; ceux d'après, les dégâts.
+  const at = entries.indexOf(outcome)
+  const diceOf = (part: JournalEntry[]) => part.flatMap((e) => (e.dice ? [e.dice] : []))
   return {
     action: outcome.action,
     title: entries[0]?.text ?? '',
     roll: outcome.roll,
     damage: entries.flatMap((e) => (e.damage ? [e.damage] : [])),
     reactions: entries.filter((e) => e.highlight === 'REACTION').map((e) => e.text),
+    attackDice: diceOf(entries.slice(0, at)),
+    damageDice: diceOf(entries.slice(at + 1)),
+    // Seule une attaque qui vient d'être tranchée (elle a sa cible) fait rouler les dés ; relue du journal, elle est posée.
+    live: target !== undefined,
     target,
   }
 }
