@@ -1,7 +1,7 @@
 import Konva from 'konva'
 import { formatLength, type CreatureKind, type SceneView, type TokenView } from '../types'
 import { CELL, magnet, occupant, round, snapToCell, type Point } from './grid'
-import { checkMove, moveLabel, type MoveLimit } from './move'
+import { checkMove, moveLabel, snapToLimit, type MoveLimit } from './move'
 import { rangeVerdict, type RangeVerdict } from './range'
 
 /** Ce que la carte signale ; les coordonnées sont dans l'unité de la carte. */
@@ -468,9 +468,11 @@ export class SceneCanvas {
       const p = this.toUnits(pixels)
       const inside = { x: Math.min(scene.width, Math.max(0, p.x)), y: Math.min(scene.height, Math.max(0, p.y)) }
       if (this.shiftHeld) return snapToCell(scene, inside)
-      // Aimanté au contact, sans dépasser ce qui reste à parcourir.
+      // Aimanté au contact, sans dépasser ce qui reste à parcourir ; sinon, aimanté au bord de ce qui reste.
       const limit = this.state?.movementLimit ?? null
-      return magnet(scene, { x: round(inside.x), y: round(inside.y) }, token.id, (p) => !checkMove(scene, token, p, limit).tooFar)
+      const free = { x: round(inside.x), y: round(inside.y) }
+      const contact = magnet(scene, free, token.id, (p) => !checkMove(scene, token, p, limit).tooFar)
+      return contact !== free ? contact : snapToLimit(scene, token, free, limit)
     }
     group.draggable(true)
     group.dragDistance(4)
