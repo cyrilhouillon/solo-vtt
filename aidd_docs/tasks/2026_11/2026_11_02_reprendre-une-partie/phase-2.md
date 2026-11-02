@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Brancher la sauvegarde sur un fichier configurable, valider dans le navigateur, mettre à jour la mémoire
