@@ -1,6 +1,7 @@
 package dnd.engine;
 
 import dnd.engine.attack.AttackAction;
+import dnd.engine.combat.EndCombat;
 import dnd.engine.combat.EndTurn;
 import dnd.engine.combat.JoinCombat;
 import dnd.engine.combat.LeaveCombat;
@@ -229,6 +230,71 @@ class CombatTest {
         int before = e.events().size();
         assertThrows(IllegalStateException.class, () -> StartCombat.of(e.state()));
         assertEquals(before, e.events().size());
+    }
+
+    @Test
+    void terminerLeCombat_plusDeTours_lesCreaturesGardentLeursPv() {
+        var state = table();
+        var e = engine(state, 10, 15, 4);
+        e.submit(StartCombat.of(state));
+        e.emit(new GameEvent.DamageDealt("guerriere", 5, DamageType.SLASHING));
+        int before = e.events().size();
+
+        assertInstanceOf(StepResult.Idle.class, e.submit(EndCombat.of(state)));
+
+        assertTrue(state.combat().isEmpty());
+        assertEquals(7, state.get("guerriere").hitPoints());
+        assertEquals(3, state.creatures().size());
+        assertEquals(List.of("Le combat se termine"), journal(e).subList(before, e.events().size()));
+        assertThrows(IllegalStateException.class, () -> EndTurn.of(state), "plus de tours");
+    }
+
+    @Test
+    void terminerLeCombat_horsCombat_refuseSansEvenement() {
+        var e = engine(table());
+
+        var refused = assertThrows(IllegalStateException.class, () -> EndCombat.of(e.state()));
+
+        assertEquals("Aucun combat en cours", refused.getMessage());
+        assertTrue(e.events().isEmpty());
+    }
+
+    @Test
+    void terminerLeCombat_pendantQuiJoue_refuse() {
+        var e = engine(table(), 10, 10, 1);
+        e.submit(StartCombat.of(e.state()));
+
+        assertThrows(IllegalStateException.class, () -> e.submit(EndCombat.of(e.state())));
+
+        assertTrue(e.state().combat().isPresent());
+    }
+
+    @Test
+    void apresLaFin_leCombatSeRelance() {
+        var e = engine(table(), 10, 15, 4, 3, 2, 18);
+        e.submit(StartCombat.of(e.state()));
+        e.submit(EndCombat.of(e.state()));
+
+        e.submit(StartCombat.of(e.state()));
+
+        assertEquals("squelette", active(e), "nouvelle initiative : 3+2, 2+2, 18+3");
+        assertEquals(1, combat(e).round());
+    }
+
+    @Test
+    void rejouerLeJournalDUnCombatTermineRedonneLEtatFinal() {
+        var state = table();
+        var initial = state.copy();
+        var e = engine(state, 10, 15, 4);
+        e.submit(StartCombat.of(state));
+        e.submit(Move.of("gobelin", 3, DistanceUnit.METRE, state));
+        e.emit(new GameEvent.DamageDealt("squelette", 4, DamageType.SLASHING));
+        e.submit(EndCombat.of(state));
+
+        e.events().forEach(ev -> ev.apply(initial));
+
+        assertEquals(e.state().signature(), initial.signature());
+        assertFalse(initial.signature().contains("combat["));
     }
 
     @Test

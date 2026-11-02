@@ -140,6 +140,17 @@ public sealed interface GameEvent extends Event<GameState> {
         }
     }
 
+    /** Le joueur met fin au combat : plus d'ordre ni de tour ; les créatures gardent leurs PV. */
+    record CombatEnded() implements GameEvent {
+        public void apply(GameState s) {
+            s.endCombat();
+        }
+
+        public String describe(GameState s) {
+            return "Le combat se termine";
+        }
+    }
+
     record InitiativeRolled(String creatureId, int roll, int bonus) implements GameEvent {
         public String describe(GameState s) {
             return "Initiative de %s : d20 %d %s %d = %d".formatted(
