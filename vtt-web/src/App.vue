@@ -510,7 +510,6 @@ async function settleAction(result: ActionResult) {
   if (result.decision || result.targetId === null) return
   if (result.targetHitPoints === null || result.targetMaxHitPoints === null) return
   const target = scene.value?.tokens.find((token) => token.id === result.targetId)
-  if (target) target.hitPoints = result.targetHitPoints
   const tray = trayFromJournal({
     id: result.targetId,
     name: target?.name ?? result.targetId,
@@ -518,6 +517,8 @@ async function settleAction(result: ActionResult) {
     maxHitPoints: result.targetMaxHitPoints,
   })
   lastResult.value = tray
+  // Les PV de la carte baissent à l'arrêt des dés (`showImpact`) ; sans piste, tout de suite.
+  if (!tray && target) target.hitPoints = result.targetHitPoints
   announcement.value = tray
     ? journal.value.filter((e) => e.action === tray.action && e.highlight).map((e) => e.text).join('. ')
     : 'Attaque résolue.'
@@ -528,10 +529,15 @@ async function settleAction(result: ActionResult) {
   if (target) target.armorClass = fresh.armorClass
 }
 
-/** Les dés se sont arrêtés : la cible porte l'issue (« −11 », « Raté »), là où le regard se pose après le clic. */
+/**
+ * Les dés se sont arrêtés : la jauge de la cible baisse et elle porte l'issue (« −11 », « Raté »), là où le regard se
+ * pose après le clic. Avant, ses PV trahiraient le verdict.
+ */
 function showImpact(result: TrayResult) {
   const targetId = result.target?.id
   if (!targetId) return
+  const token = scene.value?.tokens.find((t) => t.id === targetId)
+  if (token) token.hitPoints = result.target!.hitPoints
   const total = result.damage.reduce((sum, d) => sum + d.amount, 0)
   mapView.value?.showImpact(targetId, result.roll.outcome === 'MISS' ? 'Raté' : `−${total}`)
 }

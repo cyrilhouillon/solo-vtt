@@ -79,6 +79,8 @@ const rolling = ref(false)
 const faces = ref<number[]>([])
 let ticker: number | undefined
 let stopper: number | undefined
+/** Le résultat dont les dés roulent. */
+let rollingResult: TrayResult | undefined
 
 function stopRolling() {
   window.clearInterval(ticker)
@@ -93,8 +95,12 @@ function shuffleFaces() {
 watch(
   () => props.result?.action,
   () => {
+    // Une attaque qui en interrompt une autre ne prive pas la précédente de son arrêt : ses PV et son issue se posent.
+    const interrupted = rolling.value ? rollingResult : undefined
     stopRolling()
+    if (interrupted) emit('landed', interrupted)
     const result = props.result
+    rollingResult = result ?? undefined
     if (!result?.live) return
     if (REDUCED_MOTION.matches) {
       emit('landed', result)
@@ -137,7 +143,7 @@ function shown(index: number, die: Die): number {
             <b>{{ shown(attackDice.length + i, die) }}</b><small>d{{ die.sides }}</small>
           </span>
         </div>
-        <p v-if="result.target" class="target">
+        <p v-if="result.target" class="target" :class="{ waiting: rolling }">
           <span class="who">{{ result.target.name }}</span>
           <span class="gauge"><i :style="{ width: `${Math.max(0, result.target.hitPoints / result.target.maxHitPoints) * 100}%` }" /></span>
           <span class="hp">{{ result.target.hitPoints === 0 ? 'à terre' : `${result.target.hitPoints} / ${result.target.maxHitPoints} PV` }}</span>
