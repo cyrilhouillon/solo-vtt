@@ -1,6 +1,6 @@
 ---
 objective: "Quand une attaque part, ses dés (d20 gardé distingué, dés bonus, dés de dégâts) roulent sur la piste puis s'arrêtent sur les valeurs du serveur, la cible porte brièvement « −11 » ou « Raté » sur la carte, et chaque jeton montre ses PV en permanence."
-status: in-progress
+status: implemented
 ---
 
 # Plan: voir les dés rouler et le résultat sur la carte
