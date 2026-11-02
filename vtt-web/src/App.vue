@@ -702,7 +702,8 @@ function onKey(e: KeyboardEvent) {
   // Le dialogue modal rend la page inerte, pas l'écouteur de window : rien ne passe tant qu'il attend.
   if (decision.value) return
   if (e.key === 'Escape') {
-    // Un pas à la fois : d'abord le ciblage ou le placement, puis la sélection.
+    // Un pas à la fois : d'abord un retrait à confirmer, le ciblage ou le placement, puis la sélection.
+    if (board.value?.cancelRemoval()) return
     if (targeting.value) endTargeting()
     else if (movingId.value) endMoving()
     else if (armed.value) arm(null)
@@ -714,7 +715,8 @@ function onKey(e: KeyboardEvent) {
   if (isTyping(e.target) || !scene.value) return
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault()
-    if (chosenByPlayer.value) removeTokens(selected.value)
+    // Le tableau retire, ou en combat demande confirmation sur la ligne.
+    if (chosenByPlayer.value) board.value?.requestRemoval(selected.value)
     else if (selected.value.length) tell('Cliquer sur la créature pour la choisir, puis Suppr pour la retirer.')
   } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault()
@@ -824,7 +826,7 @@ onBeforeUnmount(() => {
           :ranges="rangeVerdicts"
           :combat="combat"
           @select="onTokenChosen"
-          @remove="removeTokens([$event])"
+          @remove="removeTokens"
         />
         <div class="map-frame" :style="{ '--map-ratio': `${scene.width} / ${scene.height}` }">
           <MapView
