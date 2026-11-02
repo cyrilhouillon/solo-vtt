@@ -186,6 +186,21 @@ class CombatTest {
     }
 
     @Test
+    void aZeroPv_laCreatureActiveNAttaquePas_sonTourSOuvreQuandMeme() {
+        var state = table();
+        var e = engine(state, 10, 15, 4);
+        e.submit(StartCombat.of(state)); // Gobelin guerrier actif
+        e.emit(new GameEvent.DamageDealt("gobelin", state.get("gobelin").hitPoints(), DamageType.SLASHING));
+        int before = e.events().size();
+
+        var refused = assertThrows(IllegalArgumentException.class, () -> AttackAction.of("gobelin", "guerriere", state));
+
+        assertEquals("Gobelin guerrier est à terre : à 0 PV, une créature ne peut pas attaquer", refused.getMessage());
+        assertEquals(before, e.events().size());
+        assertEquals("gobelin", state.combat().orElseThrow().activeId().orElseThrow());
+    }
+
+    @Test
     void auDebutDeSonTour_laCreatureRecupereSaReaction_bouclierReste() {
         var state = new GameState()
                 .add(Creature.builder("magicienne", "Magicienne").initiative(2).armorClass(12).build())

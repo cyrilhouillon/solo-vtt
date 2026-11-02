@@ -62,10 +62,13 @@ final class Dtos {
 
     record AttackRequest(String attackerId, String attackId, String targetId) {}
 
-    /** {@code round} : l'entrée ouvre un round, le journal la montre en séparateur. */
-    record JournalEntryDto(int action, String text, boolean round) {
+    /**
+     * {@code round} : l'entrée ouvre un round, le journal la montre en séparateur. {@code highlight} : ce que la piste
+     * à dés retient d'une attaque (issue, dégâts, réaction), ou {@code null}.
+     */
+    record JournalEntryDto(int action, String text, boolean round, SceneSession.Highlight highlight) {
         static JournalEntryDto of(SceneSession.JournalEntry e) {
-            return new JournalEntryDto(e.action(), e.text(), e.round());
+            return new JournalEntryDto(e.action(), e.text(), e.round(), e.highlight());
         }
     }
 
@@ -137,18 +140,19 @@ final class Dtos {
         }
     }
 
+    /** {@code attackRefusal} : pourquoi la créature ne peut pas attaquer en ce moment, ou {@code null}. */
     record CreatureSheetDto(String id, String name, CatalogEntry.Kind kind, int armorClass,
                             int hitPoints, int maxHitPoints, Measure speed, List<AttackDto> attacks,
-                            List<String> resistances, List<String> vulnerabilities) {
+                            List<String> resistances, List<String> vulnerabilities, String attackRefusal) {
 
         /** Vitesse, allonges et portées, en mètres dans le moteur, sont données dans l'unité de la carte. */
-        static CreatureSheetDto of(Creature c, CatalogEntry.Kind kind, DistanceUnit unit) {
+        static CreatureSheetDto of(Creature c, CatalogEntry.Kind kind, DistanceUnit unit, String attackRefusal) {
             double speed = inUnit(c.speed(), unit);
             List<AttackDto> attacks = c.attacks().stream().map(a -> AttackDto.of(a, unit)).toList();
             List<String> resistances = Arrays.stream(DamageType.values()).filter(c::isResistantTo).map(DamageType::label).toList();
             List<String> vulnerabilities = Arrays.stream(DamageType.values()).filter(c::isVulnerableTo).map(DamageType::label).toList();
             return new CreatureSheetDto(c.id(), c.name(), kind, c.armorClass(), c.hitPoints(), c.maxHitPoints(),
-                    new Measure(speed, unit.symbol()), attacks, resistances, vulnerabilities);
+                    new Measure(speed, unit.symbol()), attacks, resistances, vulnerabilities, attackRefusal);
         }
     }
 }

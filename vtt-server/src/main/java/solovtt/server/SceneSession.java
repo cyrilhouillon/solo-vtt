@@ -63,8 +63,23 @@ public class SceneSession {
     /** La cible de la dernière action (aucune pour le combat), pour rendre ses PV quand l'action reprend après une décision. */
     private String actionTargetId;
 
-    /** Une ligne du journal : la description d'un événement, l'action à laquelle il appartient, et si elle ouvre un round. */
-    public record JournalEntry(int action, String text, boolean round) {}
+    /**
+     * Une ligne du journal : la description d'un événement, l'action à laquelle il appartient, si elle ouvre un round,
+     * et ce que la piste à dés en retient ({@code null} pour un détail ou ce qui n'est pas une attaque).
+     */
+    public record JournalEntry(int action, String text, boolean round, Highlight highlight) {}
+
+    /** Ce que la piste retient d'une attaque : son issue, les dégâts, une réaction qui l'a changée. */
+    public enum Highlight { OUTCOME, DAMAGE, REACTION }
+
+    private static Highlight highlight(GameEvent event) {
+        return switch (event) {
+            case GameEvent.AttackResolved ignored -> Highlight.OUTCOME;
+            case GameEvent.DamageDealt ignored -> Highlight.DAMAGE;
+            case GameEvent.ReactionUsed ignored -> Highlight.REACTION;
+            default -> null;
+        };
+    }
 
     /** Ce qu'une action (ou sa reprise) a ajouté au journal, sa cible ({@code null} sans cible), et la décision qui l'arrête, s'il y en a une. */
     public record ActionOutcome(List<JournalEntry> entries, String targetId, Optional<Decision> decision) {}
@@ -79,7 +94,8 @@ public class SceneSession {
         scene = created;
         state = new GameState();
         engine = new Engine<>(state, StandardRules.create(), dice);
-        engine.subscribe(event -> journal.add(new JournalEntry(action, event.describe(state), event instanceof GameEvent.RoundStarted)));
+        engine.subscribe(event -> journal.add(
+                new JournalEntry(action, event.describe(state), event instanceof GameEvent.RoundStarted, highlight(event))));
         journal.clear();
         action = 0;
         actionTargetId = null;
@@ -162,6 +178,11 @@ public class SceneSession {
     private void requireNoDecision() {
         var pending = pendingDecision();
         if (pending.isPresent()) throw new DecisionPendingException(pending.get());
+    }
+
+    /** Pourquoi la créature ne peut pas attaquer en ce moment (à terre, pas son tour), selon les règles D&D. */
+    public synchronized Optional<String> attackRefusal(String creatureId) {
+        return AttackAction.refusal(creatureId, state);
     }
 
     public synchronized List<JournalEntry> journal() {

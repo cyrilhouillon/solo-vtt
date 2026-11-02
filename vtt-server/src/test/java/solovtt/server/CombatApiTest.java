@@ -129,6 +129,16 @@ class CombatApiTest {
     }
 
     @Test
+    void enCombat_laFeuilleDitPourquoiUneCreatureNePeutPasAttaquer() {
+        given().get("/api/creatures/guerriere-1").then().body("attackRefusal", nullValue());
+        dice.script(10, 15, 4);
+        lancer().statusCode(200);
+
+        given().get("/api/creatures/guerriere-1").then().body("attackRefusal", equalTo("Ce n'est pas le tour de Guerrière"));
+        given().get("/api/creatures/gobelin-1").then().body("attackRefusal", nullValue());
+    }
+
+    @Test
     void enCombat_unePoseEntreDansLOrdre_unRetraitEnSort() {
         dice.script(10, 15, 4, /* Loup */ 12);
         lancer().statusCode(200);
