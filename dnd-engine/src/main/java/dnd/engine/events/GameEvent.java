@@ -64,13 +64,19 @@ public sealed interface GameEvent extends Event<GameState> {
         }
     }
 
-    record DiceRolled(String source, String notation, List<Integer> values) implements GameEvent {
+    /** Des dés tirés hors d20 (bonus au jet, dégâts) : {@code values.size()} dés à {@code sides} faces. */
+    record DiceRolled(String source, int sides, List<Integer> values) implements GameEvent {
         public DiceRolled {
             values = List.copyOf(values);
         }
 
+        /** « 2d6 » : le nombre de dés tirés et leurs faces. */
+        public String notation() {
+            return values.size() + "d" + sides;
+        }
+
         public String describe(GameState s) {
-            return "%s %s : %s = %d".formatted(source, notation, values, sum(values));
+            return "%s %s : %s = %d".formatted(source, notation(), values, sum(values));
         }
     }
 
