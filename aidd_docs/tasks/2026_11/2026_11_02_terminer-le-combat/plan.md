@@ -1,6 +1,6 @@
 ---
 objective: "En combat, le joueur termine le combat quand il le décide (après confirmation sur place) : il n'y a plus de tours, les créatures restent sur la carte avec leurs PV, et le journal dit « Le combat se termine »."
-status: in-progress
+status: implemented
 ---
 
 # Plan: terminer le combat à tout moment
