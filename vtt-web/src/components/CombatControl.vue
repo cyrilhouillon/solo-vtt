@@ -91,12 +91,7 @@ defineExpose({ cancelEnd })
       >
         Fin du tour
       </button>
-      <span
-        v-if="confirming"
-        role="group"
-        class="confirm"
-        aria-label="Terminer le combat ? Le combat ne reprendra pas : le relancer retire l'initiative."
-      >
+      <span v-if="confirming" role="group" class="confirm" aria-label="Terminer le combat ?">
         <span class="ask" aria-hidden="true">Terminer le combat ?</span>
         <button ref="confirmButton" type="button" class="danger" :disabled="blocked" @click="confirmEnd">Confirmer</button>
         <button type="button" @click="cancelEnd">Annuler</button>
