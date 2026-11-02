@@ -15,11 +15,16 @@ export function snapToCell(scene: SceneView, point: Point): Point {
   return { x: centre(point.x, scene.width), y: centre(point.y, scene.height) }
 }
 
-/** Le jeton dont le centre est dans la même case que le point, s'il y en a un. */
-export function occupant(scene: SceneView, point: Point): TokenView | undefined {
+/** Tolérance d'arrondi : deux jetons calés sur des cases voisines ne se chevauchent pas. */
+const EPSILON = 1e-6
+
+/**
+ * Le jeton qui chevaucherait une créature posée au point : son centre est à moins d'une case,
+ * que les positions soient calées sur la grille ou non. `ignoreId` exclut le jeton qu'on déplace.
+ */
+export function occupant(scene: SceneView, point: Point, ignoreId?: string): TokenView | undefined {
   const cell = CELL[scene.unit]
-  const index = (value: number) => Math.floor(value / cell)
-  return scene.tokens.find((t) => index(t.x) === index(point.x) && index(t.y) === index(point.y))
+  return scene.tokens.find((t) => t.id !== ignoreId && Math.hypot(t.x - point.x, t.y - point.y) < cell - EPSILON)
 }
 
 /** Au dixième d'unité : assez précis pour une table, et lisible dans le journal. */

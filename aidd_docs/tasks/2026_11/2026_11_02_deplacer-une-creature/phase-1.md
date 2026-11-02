@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Client : hors grille par défaut, Maj cale sur la case

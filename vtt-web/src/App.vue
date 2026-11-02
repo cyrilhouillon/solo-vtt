@@ -308,16 +308,16 @@ function names(tokens: TokenView[]): string {
   return tokens.map((t) => t.name).join(' et ')
 }
 
-function onBackgroundClick(x: number, y: number, free: boolean) {
+function onBackgroundClick(x: number, y: number) {
   // En ciblage, un clic à côté ne vise rien et garde la feuille de l'attaquant.
   if (targeting.value) return
   if (!armed.value) {
     clearSelection()
     return
   }
-  const taken = free || !scene.value ? undefined : occupant(scene.value, { x, y })
+  const taken = scene.value ? occupant(scene.value, { x, y }) : undefined
   if (taken) {
-    error.value = `Case occupée par ${taken.name}. Choisir une autre case, ou Maj + clic pour poser hors grille.`
+    error.value = `Trop près de ${taken.name}. Choisir une autre position.`
     return
   }
   const entry = armedEntry.value
@@ -759,7 +759,7 @@ onBeforeUnmount(() => {
               Hachures : portée longue, avec désavantage.</template>
           </template>
           <template v-else-if="armedEntry">
-            Pose : <strong>{{ armedEntry.name }}</strong>. Cliquer sur une case ; Maj + clic pose hors grille, Échap
+            Pose : <strong>{{ armedEntry.name }}</strong>. Cliquer pour poser ; Maj + clic cale sur la case, Échap
             arrête.
           </template>
           <template v-else-if="measure">

@@ -5,7 +5,7 @@ import { rangeVerdict, type RangeVerdict } from './range'
 
 /** Ce que la carte signale ; les coordonnées sont dans l'unité de la carte. */
 export interface SceneCanvasEvents {
-  /** `free` : la touche Maj était tenue, la position n'est pas calée sur la case. */
+  /** `free` : la position n'est pas calée sur la case (Maj non tenue ; Maj cale sur la case). */
   onBackgroundClick(x: number, y: number, free: boolean): void
   onTokenClick(tokenId: string): void
 }
@@ -70,9 +70,9 @@ export class SceneCanvas {
   private pixelsPerUnit = 1
   private origin = { x: MARGIN, y: MARGIN }
   private pointerInside = false
-  /** Maj change l'aperçu sans attendre que la souris bouge. */
+  /** Maj change l'aperçu sans attendre que la souris bouge : tenue, elle cale sur la case. */
   private readonly onShift = (e: KeyboardEvent) => {
-    if (e.key === 'Shift' && this.pointerInside) this.drawPointerPreview(e.type === 'keydown')
+    if (e.key === 'Shift' && this.pointerInside) this.drawPointerPreview(e.type !== 'keydown')
   }
 
   constructor(container: HTMLDivElement, events: SceneCanvasEvents) {
@@ -82,7 +82,7 @@ export class SceneCanvas {
     this.stage.add(this.layer, this.preview)
     this.stage.on('mousemove', (e) => {
       this.pointerInside = true
-      this.drawPointerPreview(e.evt.shiftKey)
+      this.drawPointerPreview(!e.evt.shiftKey)
     })
     this.stage.on('mouseleave', () => {
       this.pointerInside = false
@@ -168,7 +168,7 @@ export class SceneCanvas {
     this.layer.add(names)
     if (measure) this.layer.add(measure)
     this.layer.draw()
-    if (this.state.cursor) this.drawPreview(this.state.cursor, false, true)
+    if (this.state.cursor) this.drawPreview(this.state.cursor, true)
   }
 
   /** Position visée par le pointeur, calée sur la case sauf si `free`, ou `null` hors de la carte. */
@@ -191,7 +191,7 @@ export class SceneCanvas {
       strokeWidth: 1,
     })
     ground.on('click tap', (e) => {
-      const free = 'shiftKey' in e.evt && e.evt.shiftKey
+      const free = !('shiftKey' in e.evt && e.evt.shiftKey)
       const target = this.pointerTarget(scene, free)
       if (target) this.events.onBackgroundClick(target.x, target.y, free)
     })
@@ -485,21 +485,21 @@ export class SceneCanvas {
     if (!this.state?.placing) return this.clearPreview()
     const target = this.pointerTarget(this.state.scene, free)
     if (!target) return this.clearPreview()
-    this.drawPreview(target, free, false)
+    this.drawPreview(target, false)
   }
 
   /**
    * Fantôme de la créature à poser. Sur une case prise, un anneau rouge plein, plus large
    * que le jeton, et un curseur d'interdiction. `framed` encadre la case visée au clavier.
    */
-  private drawPreview(target: Point, free: boolean, framed: boolean): void {
+  private drawPreview(target: Point, framed: boolean): void {
     this.clearPreview()
     if (!this.state?.placing) return
     const { scene, placing } = this.state
     const radius = this.tokenRadius(scene)
     const x = this.toPixelsX(target.x)
     const y = this.toPixelsY(target.y)
-    const taken = !free && occupant(scene, target) !== undefined
+    const taken = occupant(scene, target) !== undefined
     if (framed) {
       const side = CELL[scene.unit] * this.pixelsPerUnit
       this.preview.add(
