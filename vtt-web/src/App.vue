@@ -12,6 +12,7 @@ import JournalPanel from './components/JournalPanel.vue'
 import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
 import SavedMapsPanel from './components/SavedMapsPanel.vue'
+import ShortcutsDialog from './components/ShortcutsDialog.vue'
 import TokenBoard from './components/TokenBoard.vue'
 import { alignedMap, alignmentOf, previewGrid, type Alignment } from './map/alignment'
 import { CELL, occupant } from './map/grid'
@@ -253,6 +254,8 @@ const rangeVerdicts = computed<Record<string, RangeVerdict>>(() => {
 })
 /** Résultat de la dernière action, affiché dans la barre d'état et lu par les lecteurs d'écran. */
 const notice = ref('')
+/** La légende des raccourcis est ouverte : les touches du jeu se taisent tant qu'elle l'est. */
+const shortcutsOpen = ref(false)
 /** Ce que lit le lecteur d'écran : la dernière action, ou la distance mesurée. */
 const announcement = ref('')
 
@@ -834,20 +837,30 @@ function startMoving() {
 }
 
 /** Lance le combat ou termine le tour ; un second clic avant la réponse n'envoie rien. */
-function combatAction(send: () => Promise<ActionResult>) {
+function combatAction(send: () => Promise<ActionResult>, then?: () => void) {
   if (combatBusy.value) return
   combatBusy.value = true
   void attempt(async () => {
     await settleAction(await send())
+    then?.()
   }).finally(() => {
     combatBusy.value = false
   })
 }
 
-/** Lancer le combat met fin à la pose en cours. */
+/**
+ * Lancer le combat met fin à la pose en cours, vide la piste (l'attaque d'avant n'est plus de ce combat) et dit
+ * l'initiative tirée, dans l'ordre de jeu : « Combat lancé. Initiative : Loup 17 · Guerrière 14 ».
+ */
 function startCombat() {
   arm(null)
-  combatAction(api.startCombat)
+  combatAction(api.startCombat, () => {
+    lastResult.value = null
+    const order = combat.value?.groups
+      .map((g) => `${g.members.map((m) => m.name).join(', ')} ${g.initiative}`)
+      .join(' · ')
+    if (order) tell(`Combat lancé. Initiative : ${order}.`)
+  })
 }
 
 /** Termine le combat ; la feuille ouverte se recharge, car ses attaques n'attendent plus un tour. */
@@ -983,7 +996,12 @@ function isTyping(target: EventTarget | null): boolean {
 
 function onKey(e: KeyboardEvent) {
   // Le dialogue modal rend la page inerte, pas l'écouteur de window : rien ne passe tant qu'il attend.
-  if (decision.value) return
+  if (decision.value || shortcutsOpen.value) return
+  if (e.key === '?' && !isTyping(e.target)) {
+    e.preventDefault()
+    shortcutsOpen.value = true
+    return
+  }
   if (e.key === 'Escape' && aligning.value) {
     aligning.value = null
     return
@@ -1091,7 +1109,18 @@ onBeforeUnmount(() => {
       >
         <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" />
       </button>
+      <button
+        type="button"
+        class="icon-button"
+        aria-label="Raccourcis"
+        aria-keyshortcuts="?"
+        title="Raccourcis (?)"
+        @click="shortcutsOpen = true"
+      >
+        <AppIcon name="keys" />
+      </button>
     </header>
+    <ShortcutsDialog :open="shortcutsOpen" @close="shortcutsOpen = false" />
 
     <nav class="rail" aria-label="Outils">
       <button
@@ -1235,12 +1264,11 @@ onBeforeUnmount(() => {
             <strong>{{ formatLength(measure.value, scene.unitSymbol) }}</strong> ({{ cellsLabel(measure.cells) }})
           </template>
           <template v-else-if="!notice && combat">
-            Glisser une créature pour la déplacer (Maj cale sur la case) ; D : déplacer au clavier, 1 à 9 : attaques de la
-            feuille, Maj+F : fin du tour.
+            Glisser une créature pour la déplacer ; 1 à 9 : attaques de la feuille, Maj+F : fin du tour. ? : tous les
+            raccourcis.
           </template>
           <template v-else-if="!notice">
-            Glisser une créature pour la déplacer (Maj cale sur la case). Sélectionner deux créatures pour mesurer leur
-            distance ; Suppr retire de la carte les créatures sélectionnées.
+            Glisser une créature pour la déplacer ; en choisir deux pour mesurer leur distance. ? : tous les raccourcis.
           </template>
         </p>
         <DiceTray :result="lastResult" :rolling="rolling" />

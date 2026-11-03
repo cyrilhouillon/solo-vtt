@@ -81,7 +81,7 @@ function signed(value: number): string {
           :aria-label="aiming === attack.id ? `Annuler l'attaque ${attack.label}` : `Attaquer avec ${attack.label}`"
           @click="emit('attack', attack)"
         >
-          {{ aiming === attack.id ? 'Annuler' : 'Attaquer' }}
+          {{ aiming === attack.id ? 'Annuler' : 'Attaquer' }}<kbd v-if="index < 9 && aiming !== attack.id" class="key">{{ index + 1 }}</kbd>
         </button>
       </li>
     </ul>
@@ -176,6 +176,21 @@ h4 {
 }
 .attacks button {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+/* Sa touche, dans le bouton : un petit pavé en creux, lu sans survol. */
+.attacks kbd {
+  min-width: 1.15rem;
+  padding: 0 0.25rem;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: var(--ink-muted);
+  text-align: center;
 }
 .attacks button.aiming {
   background: var(--brass);
