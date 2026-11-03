@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 source: aidd_docs/tasks/2026_11/2026_11_01-solo-vtt-prd.md
 depends_on:
   - aidd_docs/backlog/stories/mettre-une-image-de-fond-sur-la-carte.md
