@@ -12,6 +12,7 @@ import JournalPanel from './components/JournalPanel.vue'
 import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
 import SavedMapsPanel from './components/SavedMapsPanel.vue'
+import ShortcutsDialog from './components/ShortcutsDialog.vue'
 import TokenBoard from './components/TokenBoard.vue'
 import { alignedMap, alignmentOf, previewGrid, type Alignment } from './map/alignment'
 import { CELL, occupant } from './map/grid'
@@ -253,6 +254,8 @@ const rangeVerdicts = computed<Record<string, RangeVerdict>>(() => {
 })
 /** Résultat de la dernière action, affiché dans la barre d'état et lu par les lecteurs d'écran. */
 const notice = ref('')
+/** La légende des raccourcis est ouverte : les touches du jeu se taisent tant qu'elle l'est. */
+const shortcutsOpen = ref(false)
 /** Ce que lit le lecteur d'écran : la dernière action, ou la distance mesurée. */
 const announcement = ref('')
 
@@ -834,20 +837,30 @@ function startMoving() {
 }
 
 /** Lance le combat ou termine le tour ; un second clic avant la réponse n'envoie rien. */
-function combatAction(send: () => Promise<ActionResult>) {
+function combatAction(send: () => Promise<ActionResult>, then?: () => void) {
   if (combatBusy.value) return
   combatBusy.value = true
   void attempt(async () => {
     await settleAction(await send())
+    then?.()
   }).finally(() => {
     combatBusy.value = false
   })
 }
 
-/** Lancer le combat met fin à la pose en cours. */
+/**
+ * Lancer le combat met fin à la pose en cours, vide la piste (l'attaque d'avant n'est plus de ce combat) et dit
+ * l'initiative tirée, dans l'ordre de jeu : « Combat lancé. Initiative : Loup 17 · Guerrière 14 ».
+ */
 function startCombat() {
   arm(null)
-  combatAction(api.startCombat)
+  combatAction(api.startCombat, () => {
+    lastResult.value = null
+    const order = combat.value?.groups
+      .map((g) => `${g.members.map((m) => m.name).join(', ')} ${g.initiative}`)
+      .join(' · ')
+    if (order) tell(`Combat lancé. Initiative : ${order}.`)
+  })
 }
 
 /** Termine le combat ; la feuille ouverte se recharge, car ses attaques n'attendent plus un tour. */
@@ -927,6 +940,13 @@ const mode = computed(() => {
   return null
 })
 
+/** Sans carte : le tiroir déjà ouvert dit où agir ; sinon, le rail. */
+const emptyMapText = computed(() => {
+  if (drawer.value === 'map') return 'Aucune carte. La décrire dans « Nouvelle carte », à gauche, ou en charger une depuis « Cartes enregistrées ».'
+  if (drawer.value === 'maps') return 'Aucune carte. En charger une à gauche, ou en créer une depuis « Nouvelle carte ».'
+  return 'Aucune carte. La créer depuis « Nouvelle carte », ou en charger une depuis « Cartes enregistrées », dans le rail à gauche.'
+})
+
 const TABS = [
   { id: 'sheet', label: 'Feuille' },
   { id: 'target', label: 'Cible' },
@@ -976,7 +996,12 @@ function isTyping(target: EventTarget | null): boolean {
 
 function onKey(e: KeyboardEvent) {
   // Le dialogue modal rend la page inerte, pas l'écouteur de window : rien ne passe tant qu'il attend.
-  if (decision.value) return
+  if (decision.value || shortcutsOpen.value) return
+  if (e.key === '?' && !isTyping(e.target)) {
+    e.preventDefault()
+    shortcutsOpen.value = true
+    return
+  }
   if (e.key === 'Escape' && aligning.value) {
     aligning.value = null
     return
@@ -1016,7 +1041,8 @@ function onKey(e: KeyboardEvent) {
     undo()
   } else if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) {
     return
-  } else if (e.key.toLowerCase() === 'f' && combat.value?.activeId && !combatBusy.value) {
+  } else if (e.key.toLowerCase() === 'f' && e.shiftKey && combat.value?.activeId && !combatBusy.value) {
+    // Maj+F, pas F seul : finir un tour ne s'annule pas, une touche égarée ne doit pas le faire.
     e.preventDefault()
     combatAction(api.endTurn)
   } else if (e.key.toLowerCase() === 'd' && !armed.value && !targeting.value) {
@@ -1083,7 +1109,18 @@ onBeforeUnmount(() => {
       >
         <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" />
       </button>
+      <button
+        type="button"
+        class="icon-button shortcuts-button"
+        aria-label="Raccourcis"
+        aria-keyshortcuts="?"
+        title="Raccourcis (?)"
+        @click="shortcutsOpen = true"
+      >
+        <AppIcon name="keys" />
+      </button>
     </header>
+    <ShortcutsDialog :open="shortcutsOpen" @close="shortcutsOpen = false" />
 
     <nav class="rail" aria-label="Outils">
       <button
@@ -1163,7 +1200,7 @@ onBeforeUnmount(() => {
     </aside>
 
     <main class="table">
-      <div v-if="error" class="error" role="alert">
+      <div v-if="error && !scene" class="error" role="alert">
         <p>{{ error }}</p>
         <button type="button" @click="error = null">Fermer</button>
       </div>
@@ -1198,7 +1235,12 @@ onBeforeUnmount(() => {
             @token-move="moveToken"
           />
         </div>
-        <p class="status">
+        <!-- L'erreur prend la place de la consigne, sous la carte où l'on vient d'agir : rien ne couvre le tableau. -->
+        <div v-if="error" class="status error" role="alert">
+          <p>{{ error }}</p>
+          <button type="button" @click="error = null">Fermer</button>
+        </div>
+        <p v-else class="status">
           <strong v-if="notice" class="notice">{{ notice }}</strong>
           <template v-if="aligning">
             Calage de la grille : glisser au bouton du milieu pour décaler la grille, ou régler décalages et taille de
@@ -1222,17 +1264,16 @@ onBeforeUnmount(() => {
             <strong>{{ formatLength(measure.value, scene.unitSymbol) }}</strong> ({{ cellsLabel(measure.cells) }})
           </template>
           <template v-else-if="!notice && combat">
-            Glisser une créature pour la déplacer (Maj cale sur la case) ; D : déplacer au clavier, 1 à 9 : attaques de la
-            feuille, F : fin du tour.
+            Glisser une créature pour la déplacer ; 1 à 9 : attaques de la feuille, Maj+F : fin du tour. ? : tous les
+            raccourcis.
           </template>
           <template v-else-if="!notice">
-            Glisser une créature pour la déplacer (Maj cale sur la case). Sélectionner deux créatures pour mesurer leur
-            distance ; Suppr retire de la carte les créatures sélectionnées.
+            Glisser une créature pour la déplacer ; en choisir deux pour mesurer leur distance. ? : tous les raccourcis.
           </template>
         </p>
         <DiceTray :result="lastResult" :rolling="rolling" />
       </template>
-      <p v-else class="empty">Aucune carte. La créer depuis « Nouvelle carte », ou en charger une depuis « Cartes enregistrées », dans le rail à gauche.</p>
+      <p v-else class="empty">{{ emptyMapText }}</p>
       <p class="sr-only" aria-live="polite">{{ announcement }}</p>
     </main>
 
@@ -1270,12 +1311,14 @@ onBeforeUnmount(() => {
           empty="Sélectionner une créature sur la carte ou dans le tableau pour voir sa feuille."
           @attack="startAttack"
         />
-        <CreatureSheet
-          v-else-if="tab === 'target'"
-          :sheet="targetSheet"
-          :actions="false"
-          empty="Aucune cible pour l'instant : la créature visée par la dernière attaque s'affiche ici."
-        />
+        <template v-else-if="tab === 'target'">
+          <p v-if="targetSheet" class="tab-note">Visée par la dernière attaque tranchée.</p>
+          <CreatureSheet
+            :sheet="targetSheet"
+            :actions="false"
+            empty="Aucune cible pour l'instant : la créature visée par la dernière attaque s'affiche ici."
+          />
+        </template>
         <JournalPanel v-else :entries="journal" />
       </div>
     </aside>
@@ -1345,6 +1388,31 @@ onBeforeUnmount(() => {
   width: 2.5rem;
   height: 2.5rem;
   padding: 0;
+}
+/*
+ * En combat, la barre déborde sous 745 px environ (« Round 1 · Tour de Gobelin guerrier 2 », Fin du tour, Terminer),
+ * et sous 1000 px quand « Terminer le combat ? » demande confirmation. Sous 1000 px, elle passe sur deux lignes : le nom, l'info de carte, le mode et les boutons d'affichage, puis le
+ * contrôle de combat sur toute la largeur. Sur un téléphone, l'info de carte se tait (le tableau compte déjà les
+ * créatures), et la légende des raccourcis, qui sert au clavier, perd son bouton : la touche « ? » l'ouvre toujours.
+ * Au-dessus de 1000 px, la barre tient sur une ligne : l'info de carte se resserre sur plusieurs lignes.
+ */
+@media (max-width: 1000px) {
+  .bar {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+  .bar > .combat {
+    order: 1;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    row-gap: 0.4rem;
+  }
+}
+@media (max-width: 600px) {
+  .map-info,
+  .shortcuts-button {
+    display: none;
+  }
 }
 /* Grille masquée : le bouton s'éteint. */
 .icon-button[aria-pressed='false'] {
@@ -1435,21 +1503,28 @@ onBeforeUnmount(() => {
   font-size: 1.15rem;
   text-align: center;
 }
-/* Par-dessus la carte : l'apparition d'une erreur ne la redimensionne pas. */
+/*
+ * Avec une carte, l'erreur occupe la barre d'état, à sa hauteur réservée : la carte ne bouge pas. Sans carte, elle
+ * ouvre la colonne.
+ */
 .error {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 1rem;
   background: var(--wood-raised);
   border-bottom: 2px solid var(--danger);
   color: var(--danger);
   font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.status.error {
+  border-bottom: 0;
+  box-shadow: inset 0 2px 0 var(--danger);
+  color: var(--danger);
+}
+.error button {
+  flex: none;
 }
 .error p {
   margin: 0;
@@ -1493,6 +1568,13 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow-y: auto;
   padding: 1rem 1.1rem 1.5rem;
+}
+/* Ce que montre l'onglet Cible, au-dessus de la feuille : une ligne discrète, pas un titre. */
+.tab-note {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--ink-muted);
 }
 .tab-panel:focus-visible {
   outline-offset: -2px;
