@@ -268,7 +268,7 @@ class ResumeGameTest {
     }
 
     /** Crypte : 30 × 20 m sur image, grille masquée, un Gobelin et deux Loups. */
-    private static final SavedMap CRYPTE = new SavedMap("Crypte", 30, 20, DistanceUnit.METRE, "a".repeat(64), false, List.of(
+    private static final SavedMap CRYPTE = new SavedMap("Crypte", 30, 20, DistanceUnit.METRE, "a".repeat(64), false, 0, 0, List.of(
             new SavedMap.SavedToken("gobelin", 12, 1.5),
             new SavedMap.SavedToken("loup", 25, 15),
             new SavedMap.SavedToken("loup", 20.4, 3.7)));
@@ -320,6 +320,28 @@ class ResumeGameTest {
     }
 
     @Test
+    void uneCarteCalee_seChargeCalee_etSeReprend() {
+        var calee = new SavedMap("Crypte calée", 33, 22, DistanceUnit.METRE, "a".repeat(64), true, 0.25, 0.5,
+                List.of(new SavedMap.SavedToken("loup", 3.3, 4.95)));
+        var session = new SceneSession(Dice.scripted(), store);
+
+        session.load(calee);
+
+        assertEquals(calee, session.snapshot("Crypte calée"));
+        SceneSession apres = new SceneSession(Dice.scripted(), store);
+        assertEquals(calee, apres.snapshot("Crypte calée"));
+    }
+
+    @Test
+    void uneCarteSansDecalage_seChargeSansCommandeDeCalage() {
+        var session = new SceneSession(Dice.scripted(), store);
+
+        session.load(CRYPTE);
+
+        assertTrue(store.game().commands().stream().noneMatch(SavedCommand.AlignGrid.class::isInstance));
+    }
+
+    @Test
     void chargerPendantUneDecision_laJette() {
         SceneSession session = partieJusquABouclier();
 
@@ -345,7 +367,7 @@ class ResumeGameTest {
         session.create(10, 10, DistanceUnit.FOOT, null);
         session.place(entree("gobelin"), 3, 1.5);
         SavedGame gardee = store.game();
-        var perimee = new SavedMap("Marais", 30, 20, DistanceUnit.METRE, null, true, List.of(
+        var perimee = new SavedMap("Marais", 30, 20, DistanceUnit.METRE, null, true, 0, 0, List.of(
                 new SavedMap.SavedToken("gobelin", 12, 1.5), new SavedMap.SavedToken("hydre", 5, 5)));
 
         var refus = assertThrows(ActionRefusedException.class, () -> session.load(perimee));

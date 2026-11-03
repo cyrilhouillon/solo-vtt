@@ -27,7 +27,7 @@ class SceneWithoutMapTest {
     @Test
     void uneCarteDontUneCreatureAQuitteLeCatalogue_refuseLeChargement() {
         var maps = MapStore.inMemory();
-        maps.save(new SavedMap("Marais", 30, 20, DistanceUnit.METRE, null, true, List.of(new SavedMap.SavedToken("hydre", 5, 5))));
+        maps.save(new SavedMap("Marais", 30, 20, DistanceUnit.METRE, null, true, 0, 0, List.of(new SavedMap.SavedToken("hydre", 5, 5))));
 
         var e = assertThrows(ActionRefusedException.class, () -> new MapResource(session, maps).load(new Dtos.MapNameRequest("Marais")));
         assertTrue(e.getMessage().contains("hydre"));

@@ -427,7 +427,7 @@ public class SceneSession {
     }
 
     /**
-     * La carte en cours comme modèle à enregistrer sous {@code name} : dimensions, unité, image, grille, et chaque créature
+     * La carte en cours comme modèle à enregistrer sous {@code name} : dimensions, unité, image, grille et son calage, et chaque créature
      * posée (son entrée du catalogue et sa position), dans l'ordre de pose. Ni PV, ni effets, ni combat : la partie ne
      * change pas.
      */
@@ -436,13 +436,13 @@ public class SceneSession {
         var tokens = scene.tokens().stream()
                 .map(t -> new SavedMap.SavedToken(entries.get(t.entityId()).id(), t.position().x(), t.position().y()))
                 .toList();
-        return new SavedMap(name, scene.width(), scene.height(), scene.unit(), imageId, gridVisible, tokens);
+        return new SavedMap(name, scene.width(), scene.height(), scene.unit(), imageId, gridVisible, gridOffsetX, gridOffsetY, tokens);
     }
 
     /**
      * Remplace la carte en cours par la carte enregistrée, comme une nouvelle carte : la partie repart de zéro, sans
      * combat, et ses créatures sont neuves, aux positions enregistrées. La partie copie la carte en commandes ordinaires
-     * (création, grille, poses) et n'en garde le nom qu'à titre d'information. Permis en combat et pendant une décision.
+     * (création, grille, calage, poses) et n'en garde le nom qu'à titre d'information. Permis en combat et pendant une décision.
      *
      * @throws ActionRefusedException si une créature de la carte n'est plus au catalogue ; la carte en cours ne change pas
      */
@@ -451,12 +451,16 @@ public class SceneSession {
                 .map(t -> catalogEntry(t.catalogId()).orElseThrow(() -> new ActionRefusedException(
                         "Carte « " + map.name() + " » : créature inconnue au catalogue (" + t.catalogId() + ")")))
                 .toList();
-        Scene created = create(map.width(), map.height(), map.unit(), map.imageId(), map.name());
+        create(map.width(), map.height(), map.unit(), map.imageId(), map.name());
         if (!map.gridVisible()) showGrid(false);
+        if (map.gridOffsetX() != 0 || map.gridOffsetY() != 0) {
+            alignGrid(map.width(), map.height(), map.gridOffsetX(), map.gridOffsetY());
+        }
         for (int i = 0; i < toPlace.size(); i++) {
             place(toPlace.get(i), map.tokens().get(i).x(), map.tokens().get(i).y());
         }
-        return created;
+        // Le calage remplace la scène créée : rendre celle qui porte les créatures.
+        return scene;
     }
 
     public synchronized Optional<Creature> creature(String id) {
