@@ -1,6 +1,6 @@
 ---
 objective: "Sur une carte avec image, le joueur décale la grille et ajuste la taille d'une case au pixel près, en voyant la grille bouger ; à la validation, dimensions, distances et calage (Maj) suivent la nouvelle grille, les créatures restent au même endroit de l'image, et le calage est gardé avec la partie et les cartes enregistrées."
-status: in-progress
+status: implemented
 ---
 
 # Plan: réaligner la grille sur l'image
