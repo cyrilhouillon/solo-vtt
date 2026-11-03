@@ -30,6 +30,7 @@ class CombatApiTest {
 
     @BeforeEach
     void scene() {
+        Campagnes.ouvrirUneNeuve();
         nouvelleCarte();
         poser("guerriere", 1.5, 1.5).statusCode(201);
         poser("gobelin", 3, 1.5).statusCode(201);

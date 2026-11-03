@@ -54,9 +54,13 @@ import java.util.function.Supplier;
  * comme pendant la préparation. Un refus d'état (combat déjà lancé, pas de combat…) lève
  * {@link ActionRefusedException}.</p>
  *
+ * <p>La session tient la campagne ouverte : sa partie et ses cartes enregistrées. Au lancement, aucune campagne n'est
+ * ouverte, et créer ou charger une carte est refusé ({@link NoCampaignException}). Ouvrir une campagne remet la session
+ * à zéro puis rejoue sa partie.</p>
+ *
  * <p>La partie se garde par ses commandes : chaque appel réussi qui la modifie est ajouté, avec les dés tirés pendant
- * l'appel, à une {@link SavedGame} confiée au {@link GameStore}. À la construction, la session rejoue la partie chargée
- * avec ces dés : scène, état, journal et décision en attente reviennent à l'identique. Un rejeu qui échoue (règles
+ * l'appel, à une {@link SavedGame} confiée au {@link GameStore} de la campagne. À l'ouverture, la session rejoue la partie
+ * chargée avec ces dés : scène, état, journal et décision en attente reviennent à l'identique. Un rejeu qui échoue (règles
  * changées depuis la sauvegarde, partie illisible) laisse la session sans carte et met la partie de côté.</p>
  */
 @ApplicationScoped
@@ -80,7 +84,14 @@ public class SceneSession {
     private final Map<String, CatalogEntry> entries = new HashMap<>();
     private final Map<String, Integer> instanceCounters = new HashMap<>();
     private final Dice dice;
-    private final GameStore store;
+    /** Les campagnes, {@code null} pour une session de test ouverte d'emblée sur une partie. */
+    private final CampaignStore campaigns;
+    /** La campagne ouverte, {@code null} avant d'en ouvrir une. */
+    private Campaign campaign;
+    /** La partie de la campagne ouverte. */
+    private GameStore store;
+    /** Les cartes enregistrées de la campagne ouverte. */
+    private MapStore maps;
     /** D'où viennent les dés : ceux du jeu, ou ceux de la commande rejouée. */
     private Dice source;
     /** Les dés tirés pendant l'appel en cours, gardés avec sa commande. */
@@ -143,22 +154,70 @@ public class SceneSession {
 
     private static final System.Logger LOG = System.getLogger(SceneSession.class.getName());
 
-    /** Une session qui ne garde pas sa partie. */
+    /** La campagne sans nom d'une session ouverte d'emblée sur une partie (tests). */
+    private static final Campaign UNNAMED = new Campaign("", "");
+
+    /** Une session ouverte d'emblée sur une campagne sans nom, qui ne garde pas sa partie. */
     public SceneSession(Dice dice) {
         this(dice, GameStore.none());
     }
 
-    /** Une session qui reprend la partie gardée par {@code store}, puis l'y sauve après chaque commande réussie. */
-    @Inject
+    /**
+     * Une session ouverte d'emblée sur une campagne sans nom, qui reprend la partie gardée par {@code store}, puis l'y
+     * sauve après chaque commande réussie ; ses cartes enregistrées vivent en mémoire.
+     */
     public SceneSession(Dice dice, GameStore store) {
         this.dice = dice;
         this.source = dice;
+        this.campaigns = null;
+        this.campaign = UNNAMED;
         this.store = store;
+        this.maps = MapStore.inMemory();
         restore();
+    }
+
+    /** La session de l'application : aucune campagne ouverte avant {@link #open(Campaign)}. */
+    @Inject
+    public SceneSession(Dice dice, CampaignStore campaigns) {
+        this.dice = dice;
+        this.source = dice;
+        this.campaigns = campaigns;
+        this.store = GameStore.none();
+    }
+
+    /**
+     * Ouvre la campagne : la session repart de zéro puis rejoue sa partie. La campagne quittée n'a rien à garder de plus,
+     * chaque commande y est déjà sauvée, décision en attente comprise. Permis à tout moment.
+     */
+    public synchronized void open(Campaign campaign) {
+        if (campaigns == null) throw new IllegalStateException("session sans campagnes");
+        GameStore games = campaigns.games(campaign.id());
+        MapStore campaignMaps = campaigns.maps(campaign.id());
+        reset();
+        this.campaign = campaign;
+        this.store = games;
+        this.maps = campaignMaps;
+        restore();
+    }
+
+    /** La campagne ouverte, vide avant d'en ouvrir une. */
+    public synchronized Optional<Campaign> campaign() {
+        return Optional.ofNullable(campaign);
+    }
+
+    /** Les cartes enregistrées de la campagne ouverte. */
+    public synchronized MapStore maps() {
+        requireCampaign();
+        return maps;
+    }
+
+    private void requireCampaign() {
+        if (campaign == null) throw new NoCampaignException();
     }
 
     /** Crée une carte, avec l'image de fond {@code imageId} ou sans ({@code null}) ; sa grille s'affiche. */
     public synchronized Scene create(double width, double height, DistanceUnit unit, String imageId) {
+        requireCampaign();
         return create(width, height, unit, imageId, null);
     }
 
@@ -447,6 +506,7 @@ public class SceneSession {
      * @throws ActionRefusedException si une créature de la carte n'est plus au catalogue ; la carte en cours ne change pas
      */
     public synchronized Scene load(SavedMap map) {
+        requireCampaign();
         List<CatalogEntry> toPlace = map.tokens().stream()
                 .map(t -> catalogEntry(t.catalogId()).orElseThrow(() -> new ActionRefusedException(
                         "Carte « " + map.name() + " » : créature inconnue au catalogue (" + t.catalogId() + ")")))

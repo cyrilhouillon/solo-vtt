@@ -26,6 +26,7 @@ class MoveApiTest {
 
     @BeforeEach
     void scene() {
+        Campagnes.ouvrirUneNeuve();
         nouvelleCarte("METRE");
     }
 

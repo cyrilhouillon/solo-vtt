@@ -32,6 +32,7 @@ class DecisionApiTest {
 
     @BeforeEach
     void scene() {
+        Campagnes.ouvrirUneNeuve();
         nouvelleCarte();
         poser("guerriere", 1.5, 1.5);
         poser("gobelin", 12, 1.5);

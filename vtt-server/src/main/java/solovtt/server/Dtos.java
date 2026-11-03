@@ -46,6 +46,15 @@ final class Dtos {
     /** Le nom sous lequel enregistrer la carte en cours, ou celui de la carte à charger ; {@code null} si absent. */
     record MapNameRequest(String name) {}
 
+    /** Le nom d'une campagne à créer. */
+    record CampaignNameRequest(String name) {}
+
+    record CampaignDto(String id, String name) {
+        static CampaignDto of(Campaign campaign) {
+            return new CampaignDto(campaign.id(), campaign.name());
+        }
+    }
+
     /** Une carte enregistrée, telle que la liste la montre. */
     record SavedMapDto(String name, double width, double height, String unitSymbol, String imageId, int creatureCount) {
         static SavedMapDto of(SavedMap map) {

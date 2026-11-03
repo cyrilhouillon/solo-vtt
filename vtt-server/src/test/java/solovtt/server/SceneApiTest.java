@@ -17,6 +17,7 @@ class SceneApiTest {
 
     @BeforeEach
     void carteVideDeTrenteSurVingtMetres() {
+        Campagnes.ouvrirUneNeuve();
         nouvelleCarte(30, 20, "METRE").statusCode(201)
                 .body("unit", equalTo("METRE"))
                 .body("unitSymbol", equalTo("m"))

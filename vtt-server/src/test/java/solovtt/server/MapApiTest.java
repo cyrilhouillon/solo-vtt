@@ -35,6 +35,7 @@ class MapApiTest {
 
     @BeforeEach
     void scene() {
+        Campagnes.ouvrirUneNeuve();
         given().contentType(ContentType.JSON).body("{\"width\":30,\"height\":20,\"unit\":\"METRE\"}")
                 .post("/api/scene").then().statusCode(201).body("mapName", nullValue());
         given().contentType(ContentType.JSON).body("{\"visible\":false}").put("/api/scene/grid").then().statusCode(200);

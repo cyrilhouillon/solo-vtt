@@ -32,6 +32,7 @@ class AttackApiTest {
 
     @BeforeEach
     void scene() {
+        Campagnes.ouvrirUneNeuve();
         nouvelleCarte(30, 20, "METRE");
         poser("guerriere", 1.5, 1.5);
         poser("squelette", 3, 1.5);
