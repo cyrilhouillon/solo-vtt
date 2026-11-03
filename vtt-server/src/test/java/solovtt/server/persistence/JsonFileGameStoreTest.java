@@ -24,8 +24,9 @@ class JsonFileGameStoreTest {
     Path dir;
 
     private static final SavedGame PARTIE = new SavedGame(List.of(
-            new SavedCommand.Create(30, 20, DistanceUnit.METRE, List.of()),
+            new SavedCommand.Create(30, 20, DistanceUnit.METRE, "a".repeat(64), List.of()),
             new SavedCommand.Place("gobelin", 12, 1.5, List.of()),
+            new SavedCommand.ShowGrid(false, List.of()),
             new SavedCommand.Move("gobelin-1", 10.5, 3, List.of()),
             new SavedCommand.StartCombat(List.of(14, 3)),
             new SavedCommand.EndTurn(List.of()),
@@ -50,7 +51,7 @@ class JsonFileGameStoreTest {
     void sauvegarderRemplaceLaPartie_sansFichierTemporaireRestant() throws IOException {
         var store = new JsonFileGameStore(dir.resolve("partie.json"));
         store.save(PARTIE);
-        var nouvelle = new SavedGame(List.of(new SavedCommand.Create(10, 10, DistanceUnit.FOOT, List.of())));
+        var nouvelle = new SavedGame(List.of(new SavedCommand.Create(10, 10, DistanceUnit.FOOT, null, List.of())));
         store.save(nouvelle);
         assertEquals(Optional.of(nouvelle), store.load());
         try (Stream<Path> files = Files.list(dir)) {
@@ -78,5 +79,16 @@ class JsonFileGameStoreTest {
             assertEquals(1, names.size());
             assertTrue(names.getFirst().matches("partie\\.json\\.\\d{8}-\\d{6}\\.illisible"), names.getFirst());
         }
+    }
+
+    @Test
+    void unePartieGardeeAvantLesImages_seLitSansImage() throws IOException {
+        Path file = dir.resolve("partie.json");
+        Files.writeString(file, """
+                { "commands": [ { "type": "create", "width": 30, "height": 20, "unit": "METRE", "rolls": [] } ] }
+                """);
+
+        assertEquals(Optional.of(new SavedGame(List.of(new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, List.of())))),
+                new JsonFileGameStore(file).load());
     }
 }

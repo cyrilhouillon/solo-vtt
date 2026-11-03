@@ -168,4 +168,12 @@ class DecisionApiTest {
 
         given().get("/api/decisions/pending").then().statusCode(200).body("id", equalTo(id));
     }
+
+    @Test
+    void pendantUneDecision_laGrilleSeBasculeQuandMeme() {
+        bouclierPropose();
+
+        given().contentType(ContentType.JSON).body("{\"visible\":false}").put("/api/scene/grid").then()
+                .statusCode(200).body("gridVisible", equalTo(false));
+    }
 }

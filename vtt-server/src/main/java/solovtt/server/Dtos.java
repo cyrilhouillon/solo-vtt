@@ -22,13 +22,20 @@ final class Dtos {
 
     record ErrorDto(String message) {}
 
+    /** Une image gardée, par son empreinte ; elle se relit sous `/api/images/{id}`. */
+    record ImageDto(String id) {}
+
     record CatalogEntryDto(String id, String name, CatalogEntry.Kind kind) {
         static CatalogEntryDto of(CatalogEntry e) {
             return new CatalogEntryDto(e.id(), e.name(), e.kind());
         }
     }
 
-    record NewSceneRequest(double width, double height, DistanceUnit unit) {}
+    /** {@code imageId} : l'image de fond déjà envoyée ({@code /api/images}), absente pour une carte sans image. */
+    record NewSceneRequest(double width, double height, DistanceUnit unit, String imageId) {}
+
+    /** {@code null} si absent de la requête. */
+    record GridRequest(Boolean visible) {}
 
     record PlaceTokenRequest(String catalogId, double x, double y) {}
 
@@ -48,12 +55,15 @@ final class Dtos {
         }
     }
 
-    record SceneDto(double width, double height, DistanceUnit unit, String unitSymbol, List<TokenDto> tokens) {
+    /** {@code imageId} : l'image de fond, à lire sous {@code /api/images/{id}}, {@code null} sans image. */
+    record SceneDto(double width, double height, DistanceUnit unit, String unitSymbol, String imageId, boolean gridVisible,
+                    List<TokenDto> tokens) {
         static SceneDto of(Scene scene, SceneSession session) {
             var tokens = scene.tokens().stream()
                     .map(t -> TokenDto.of(t, session.entryOf(t.entityId()), session.creature(t.entityId()).orElseThrow()))
                     .toList();
-            return new SceneDto(scene.width(), scene.height(), scene.unit(), scene.unit().symbol(), tokens);
+            return new SceneDto(scene.width(), scene.height(), scene.unit(), scene.unit().symbol(), session.imageId(),
+                    session.gridVisible(), tokens);
         }
     }
 

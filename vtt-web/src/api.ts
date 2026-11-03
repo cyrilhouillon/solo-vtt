@@ -17,7 +17,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(path, {
       ...init,
-      headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
+      // JSON par défaut ; une image part avec son propre type.
+      headers: init?.body ? { 'Content-Type': 'application/json', ...(init.headers as Record<string, string> | undefined) } : undefined,
     })
   } catch {
     throw new ApiError(0, UNREACHABLE)
@@ -25,6 +26,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     // Sans message, un 502-504 vient du proxy de Vite : vtt-server ne répond pas.
+    // Le seul corps assez lourd pour dépasser la limite du serveur est une image.
+    if (response.status === 413 && !body?.message) throw new ApiError(413, 'Image trop lourde (50 Mo au plus).')
     const fallback = response.status >= 502 && response.status <= 504 ? UNREACHABLE : `Le serveur a échoué (erreur ${response.status}). Réessayer ; si l'erreur persiste, voir la console de vtt-server.`
     const message = body?.message ?? fallback
     throw new ApiError(response.status, message)
@@ -33,13 +36,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
+/** L'adresse d'une image de fond gardée par le serveur. */
+export const imageUrl = (id: string) => `/api/images/${encodeURIComponent(id)}`
+
 export const api = {
   catalog: () => request<CatalogEntry[]>('/api/catalog'),
 
   scene: () => request<SceneView>('/api/scene'),
 
-  createScene: (width: number, height: number, unit: DistanceUnit) =>
-    request<SceneView>('/api/scene', { method: 'POST', body: JSON.stringify({ width, height, unit }) }),
+  /** Garde une image de fond sur le serveur ; rend son empreinte. */
+  uploadImage: async (file: File) =>
+    (await request<{ id: string }>('/api/images', { method: 'POST', body: file, headers: { 'Content-Type': file.type } })).id,
+
+  /** `imageId` : image de fond déjà envoyée, ou `null` pour une carte vide. */
+  createScene: (width: number, height: number, unit: DistanceUnit, imageId: string | null = null) =>
+    request<SceneView>('/api/scene', { method: 'POST', body: JSON.stringify({ width, height, unit, imageId }) }),
+
+  /** Affiche ou masque la grille de la carte ; c'est de l'affichage, permis en combat. */
+  showGrid: (visible: boolean) => request<SceneView>('/api/scene/grid', { method: 'PUT', body: JSON.stringify({ visible }) }),
 
   placeToken: (catalogId: string, x: number, y: number) =>
     request<TokenView>('/api/scene/tokens', { method: 'POST', body: JSON.stringify({ catalogId, x, y }) }),

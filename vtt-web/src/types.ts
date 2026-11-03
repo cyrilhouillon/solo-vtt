@@ -31,6 +31,10 @@ export interface SceneView {
   height: number
   unit: DistanceUnit
   unitSymbol: string
+  /** L'image de fond (`imageUrl`), ou `null` pour une carte sans image. */
+  imageId: string | null
+  /** La grille s'affiche ; sans effet sur les distances ni le calage. */
+  gridVisible: boolean
   tokens: TokenView[]
 }
 

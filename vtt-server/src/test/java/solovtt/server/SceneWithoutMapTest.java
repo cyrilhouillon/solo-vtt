@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SceneWithoutMapTest {
 
     private final SceneSession session = new SceneSession(Dice.scripted());
-    private final SceneResource resource = new SceneResource(session);
+    private final SceneResource resource = new SceneResource(session, ImageStore.inMemory());
 
     @Test
     void sansCarte_attaquerRend409() {
@@ -43,6 +43,12 @@ class SceneWithoutMapTest {
     @Test
     void sansCarte_lireLaSceneRend409() {
         var e = assertThrows(ClientErrorException.class, resource::get);
+        assertEquals(409, e.getResponse().getStatus());
+    }
+
+    @Test
+    void sansCarte_basculerLaGrilleRend409() {
+        var e = assertThrows(ClientErrorException.class, () -> resource.showGrid(new Dtos.GridRequest(false)));
         assertEquals(409, e.getResponse().getStatus());
     }
 }

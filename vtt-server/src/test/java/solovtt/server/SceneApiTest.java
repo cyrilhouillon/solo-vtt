@@ -128,4 +128,59 @@ class SceneApiTest {
     void uneCarteDeDimensionInvalideEstRefusee() {
         nouvelleCarte(0, 10, "METRE").statusCode(400).body("message", containsString("positives"));
     }
+
+    private static io.restassured.response.ValidatableResponse grille(String body) {
+        return given().contentType(ContentType.JSON).body(body).put("/api/scene/grid").then();
+    }
+
+    @Test
+    void uneCarteSurUneImage_porteSonImage_etAfficheSaGrille() {
+        String imageId = ImageApiTest.envoyer(ImageApiTest.PNG, "image/png");
+
+        given().contentType(ContentType.JSON)
+                .body("{\"width\":45,\"height\":45,\"unit\":\"METRE\",\"imageId\":\"%s\"}".formatted(imageId))
+                .post("/api/scene").then().statusCode(201)
+                .body("width", equalTo(45.0f))
+                .body("imageId", equalTo(imageId))
+                .body("gridVisible", equalTo(true));
+        given().get("/api/scene").then().statusCode(200).body("imageId", equalTo(imageId));
+    }
+
+    @Test
+    void uneCarteSansImage_nAPasDImage() {
+        given().get("/api/scene").then().statusCode(200)
+                .body("imageId", org.hamcrest.Matchers.nullValue())
+                .body("gridVisible", equalTo(true));
+    }
+
+    @Test
+    void uneImageInconnue_estRefusee_etLaCarteEnCoursReste() {
+        poser("gobelin", 3, 4).statusCode(201);
+
+        given().contentType(ContentType.JSON)
+                .body("{\"width\":45,\"height\":45,\"unit\":\"METRE\",\"imageId\":\"%s\"}".formatted("0".repeat(64)))
+                .post("/api/scene").then().statusCode(400)
+                .body("message", containsString("Image inconnue"));
+        given().get("/api/scene").then().statusCode(200).body("width", equalTo(30.0f)).body("tokens", hasSize(1));
+    }
+
+    @Test
+    void masquerPuisAfficherLaGrille() {
+        grille("{\"visible\":false}").statusCode(200).body("gridVisible", equalTo(false));
+        given().get("/api/scene").then().body("gridVisible", equalTo(false));
+
+        grille("{\"visible\":true}").statusCode(200).body("gridVisible", equalTo(true));
+    }
+
+    @Test
+    void uneNouvelleCarte_afficheDeNouveauSaGrille() {
+        grille("{\"visible\":false}").statusCode(200);
+
+        nouvelleCarte(30, 20, "METRE").statusCode(201).body("gridVisible", equalTo(true));
+    }
+
+    @Test
+    void basculerLaGrilleSansDireSiElleSAffiche_estRefuse() {
+        grille("{}").statusCode(400);
+    }
 }
