@@ -63,6 +63,10 @@ import java.util.function.Supplier;
 public class SceneSession {
 
     private Scene scene;
+    /** L'empreinte de l'image de fond de la carte ({@link ImageStore}), {@code null} pour une carte sans image. */
+    private String imageId;
+    /** La grille de la carte s'affiche : un choix d'affichage, sans effet sur les règles. */
+    private boolean gridVisible = true;
     private GameState state;
     /** L'entrée du catalogue de chaque créature posée, par id de créature. */
     private final Map<String, CatalogEntry> entries = new HashMap<>();
@@ -146,10 +150,17 @@ public class SceneSession {
     }
 
     public synchronized Scene create(double width, double height, DistanceUnit unit) {
+        return create(width, height, unit, null);
+    }
+
+    /** Crée une carte, avec l'image de fond {@code imageId} ou sans ({@code null}) ; sa grille s'affiche. */
+    public synchronized Scene create(double width, double height, DistanceUnit unit, String imageId) {
         rolls.clear();
         commands.clear();
         Scene created = new Scene(width, height, unit);
         scene = created;
+        this.imageId = imageId;
+        gridVisible = true;
         state = new GameState();
         engine = new Engine<>(state, StandardRules.create(), sides -> {
             int value = source.roll(sides);
@@ -168,7 +179,7 @@ public class SceneSession {
         actionTargetId = null;
         entries.clear();
         instanceCounters.clear();
-        record(r -> new SavedGame.SavedCommand.Create(width, height, unit, r));
+        record(r -> new SavedGame.SavedCommand.Create(width, height, unit, imageId, r));
         return created;
     }
 
@@ -300,6 +311,24 @@ public class SceneSession {
         return Optional.ofNullable(scene);
     }
 
+    /** L'empreinte de l'image de fond de la carte, {@code null} sans image. */
+    public synchronized String imageId() {
+        return imageId;
+    }
+
+    public synchronized boolean gridVisible() {
+        return gridVisible;
+    }
+
+    /**
+     * Affiche ou masque la grille de la carte. C'est de l'affichage, pas une action de jeu : permis en combat
+     * et pendant une décision.
+     */
+    public synchronized void showGrid(boolean visible) {
+        if (scene == null) throw new IllegalStateException("aucune carte");
+        recorded(() -> gridVisible = visible, r -> new SavedGame.SavedCommand.ShowGrid(visible, r));
+    }
+
     /**
      * Crée une créature depuis le catalogue et pose son jeton ; le jeton porte l'id de la créature.
      * À partir de la deuxième instance d'une entrée, le nom est numéroté (« Loup 2 ») pour rester distinct.
@@ -389,7 +418,8 @@ public class SceneSession {
 
     private void replay(SavedGame.SavedCommand command) {
         switch (command) {
-            case SavedGame.SavedCommand.Create c -> create(c.width(), c.height(), c.unit());
+            case SavedGame.SavedCommand.Create c -> create(c.width(), c.height(), c.unit(), c.imageId());
+            case SavedGame.SavedCommand.ShowGrid c -> showGrid(c.visible());
             case SavedGame.SavedCommand.Place c -> place(catalogEntry(c.catalogId())
                     .orElseThrow(() -> new IllegalStateException("Entrée de catalogue inconnue : " + c.catalogId())), c.x(), c.y());
             case SavedGame.SavedCommand.Remove c -> remove(c.tokenId());
@@ -406,6 +436,8 @@ public class SceneSession {
     /** Sans carte, comme au premier lancement. */
     private void reset() {
         scene = null;
+        imageId = null;
+        gridVisible = true;
         state = null;
         engine = null;
         journal.clear();

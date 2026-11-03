@@ -8,6 +8,7 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
@@ -18,22 +19,43 @@ import solovtt.scene.Scene;
 public class SceneResource {
 
     private final SceneSession session;
+    private final ImageStore images;
 
-    public SceneResource(SceneSession session) {
+    public SceneResource(SceneSession session, ImageStore images) {
         this.session = session;
+        this.images = images;
     }
 
-    /** Crée une carte vide ; la précédente et ses créatures disparaissent. */
+    /** Crée une carte, vide ou sur une image déjà envoyée ; la précédente et ses créatures disparaissent. */
     @POST
     @APIResponse(responseCode = "201", description = "La carte créée",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.SceneDto.class)))
-    @APIResponse(responseCode = "400", description = "Dimensions ou unité invalides")
+    @APIResponse(responseCode = "400", description = "Dimensions ou unité invalides, ou image inconnue")
     @ResponseStatus(201)
     public Dtos.SceneDto create(Dtos.NewSceneRequest request) {
         if (request == null || request.unit() == null) {
             throw new IllegalArgumentException("Indiquer la largeur, la hauteur et l'unité de la carte");
         }
-        return Dtos.SceneDto.of(session.create(request.width(), request.height(), request.unit()), session);
+        if (request.imageId() != null && images.find(request.imageId()).isEmpty()) {
+            throw new IllegalArgumentException("Image inconnue : l'envoyer d'abord");
+        }
+        return Dtos.SceneDto.of(session.create(request.width(), request.height(), request.unit(), request.imageId()), session);
+    }
+
+    /** Affiche ou masque la grille de la carte ; permis en combat et pendant une décision. */
+    @PUT
+    @Path("/grid")
+    @APIResponse(responseCode = "200", description = "La carte, avec son choix de grille",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.SceneDto.class)))
+    @APIResponse(responseCode = "400", description = "Choix absent de la requête")
+    @APIResponse(responseCode = "409", description = "Aucune carte")
+    public Dtos.SceneDto showGrid(Dtos.GridRequest request) {
+        Scene scene = requireScene();
+        if (request == null || request.visible() == null) {
+            throw new IllegalArgumentException("Indiquer si la grille s'affiche");
+        }
+        session.showGrid(request.visible());
+        return Dtos.SceneDto.of(scene, session);
     }
 
     @GET

@@ -121,7 +121,7 @@ class ResumeGameTest {
 
         session.create(10, 10, DistanceUnit.FOOT);
 
-        assertEquals(List.of(new SavedCommand.Create(10, 10, DistanceUnit.FOOT, List.of())), store.game().commands());
+        assertEquals(List.of(new SavedCommand.Create(10, 10, DistanceUnit.FOOT, null, List.of())), store.game().commands());
     }
 
     @Test
@@ -135,7 +135,7 @@ class ResumeGameTest {
     @Test
     void unePartieQuiNeSeRejouePlus_estMiseDeCote_etLaSessionDemarreSansCarte() {
         var divergente = new InMemoryGameStore(new SavedGame(List.of(
-                new SavedCommand.Create(30, 20, DistanceUnit.METRE, List.of()),
+                new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, List.of()),
                 new SavedCommand.Place("gobelin", 12, 1.5, List.of()),
                 new SavedCommand.StartCombat(List.of(15, 7)))));
 
@@ -150,7 +150,7 @@ class ResumeGameTest {
     @Test
     void uneReponseSansDecisionAuRejeu_estUnEchec() {
         var divergente = new InMemoryGameStore(new SavedGame(List.of(
-                new SavedCommand.Create(30, 20, DistanceUnit.METRE, List.of()),
+                new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, List.of()),
                 new SavedCommand.Answer("d1", "Ne rien faire", List.of()))));
 
         SceneSession session = new SceneSession(Dice.scripted(), divergente);
@@ -174,6 +174,37 @@ class ResumeGameTest {
         var session = new SceneSession(Dice.scripted());
         session.create(30, 20, DistanceUnit.METRE);
         assertFalse(session.scene().isEmpty());
+    }
+
+    @Test
+    void rouvrir_redonneLImageEtLeChoixDeGrille() {
+        var session = new SceneSession(Dice.scripted(20, 15), store);
+        session.create(45, 45, DistanceUnit.METRE, "a".repeat(64));
+        session.place(entree("guerriere"), 1.5, 1.5);
+        session.place(entree("gobelin"), 12, 1.5);
+        session.showGrid(false);
+        session.startCombat();
+
+        SceneSession apres = new SceneSession(Dice.scripted(), store);
+
+        assertEquals("a".repeat(64), apres.imageId());
+        assertFalse(apres.gridVisible());
+        assertMemeScene(session.scene().orElseThrow(), apres.scene().orElseThrow());
+        assertEquals(new SavedCommand.ShowGrid(false, List.of()), store.game().commands().get(3));
+        assertEquals(0, store.setAsides);
+    }
+
+    @Test
+    void uneImageDisparueDuStockage_neMetPasLaPartieDeCote() {
+        // La session ne lit jamais l'image : seule la création en direct (SceneResource) refuse une image inconnue.
+        var gardee = new InMemoryGameStore(new SavedGame(List.of(
+                new SavedCommand.Create(45, 45, DistanceUnit.METRE, "b".repeat(64), List.of()))));
+
+        SceneSession session = new SceneSession(Dice.scripted(), gardee);
+
+        assertEquals("b".repeat(64), session.imageId());
+        assertTrue(session.gridVisible());
+        assertEquals(0, gardee.setAsides);
     }
 
     private static void assertMemeScene(Scene attendue, Scene reprise) {

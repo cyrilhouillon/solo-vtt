@@ -83,6 +83,7 @@ public final class JsonFileGameStore implements GameStore {
             @JsonSubTypes.Type(value = SavedCommand.EndTurn.class, name = "endTurn"),
             @JsonSubTypes.Type(value = SavedCommand.EndCombat.class, name = "endCombat"),
             @JsonSubTypes.Type(value = SavedCommand.Answer.class, name = "answer"),
+            @JsonSubTypes.Type(value = SavedCommand.ShowGrid.class, name = "showGrid"),
     })
     private interface SavedCommandFormat {}
 }

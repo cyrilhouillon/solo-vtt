@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: carte avec image et grille affichable, gardées avec la partie

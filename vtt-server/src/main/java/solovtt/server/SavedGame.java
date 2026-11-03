@@ -20,7 +20,10 @@ public record SavedGame(List<SavedCommand> commands) {
 
         List<Integer> rolls();
 
-        record Create(double width, double height, DistanceUnit unit, List<Integer> rolls) implements SavedCommand {}
+        /** {@code imageId} : l'image de fond, {@code null} pour une carte sans image (et dans les parties gardées avant les images). */
+        record Create(double width, double height, DistanceUnit unit, String imageId, List<Integer> rolls) implements SavedCommand {}
+
+        record ShowGrid(boolean visible, List<Integer> rolls) implements SavedCommand {}
 
         record Place(String catalogId, double x, double y, List<Integer> rolls) implements SavedCommand {}
 
