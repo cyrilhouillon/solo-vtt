@@ -202,7 +202,7 @@ function health(token: TokenView): number {
 <template>
   <section class="board" :class="{ compact: combat }" aria-labelledby="board-title">
 
-    <p v-if="!tokens.length" class="empty">Aucune créature posée : choisir une créature du catalogue, puis une case.</p>
+    <p v-if="!tokens.length" class="empty">Aucune créature posée : glisser une créature du catalogue sur la carte.</p>
     <div v-else class="scroll">
       <table aria-labelledby="board-title">
         <thead>

@@ -23,12 +23,12 @@ const groups = computed(() =>
   ).map(([kind, title]) => ({ kind, title, entries: props.entries.filter((e) => e.kind === kind) })),
 )
 
-function toggle(id: string) {
-  // Le clic qui suit un glisser n'arme pas.
-  if (justDragged) {
-    justDragged = false
-    return
-  }
+/**
+ * Seule une activation au clavier ou par un lecteur d'écran (`detail` à 0) arme la pose ; à la souris ou au doigt,
+ * on glisse la créature, et le clic, même celui qui suit un glisser, ne fait rien.
+ */
+function toggle(e: MouseEvent, id: string) {
+  if (e.detail !== 0) return
   emit('arm', props.armed === id ? null : id)
 }
 
@@ -49,7 +49,6 @@ interface Drag {
   active: boolean
 }
 let drag: Drag | null = null
-let justDragged = false
 let frame = 0
 /** Instant de l'image précédente : la vitesse ne dépend pas de la cadence de l'écran. */
 let lastFrame = 0
@@ -85,11 +84,7 @@ function onPointerUp(e: PointerEvent) {
   if (!drag || e.pointerId !== drag.pointerId) return
   const { active, entryId, x, y } = drag
   finish()
-  if (!active) return
-  justDragged = true
-  // Un toucher n'émet pas toujours de clic après un glisser : le drapeau ne doit pas avaler le clic suivant.
-  setTimeout(() => (justDragged = false))
-  emit('drop', entryId, x, y)
+  if (active) emit('drop', entryId, x, y)
 }
 
 /** Le navigateur reprend le pointeur (geste système, perte de capture) : le glisser s'annule. */
@@ -152,7 +147,10 @@ defineExpose({ cancelDrag })
     <h2 id="catalog-title" class="panel-title">Catalogue SRD</h2>
     <hr class="tapered" />
     <p class="hint">
-      {{ disabled ? 'Créer une carte pour poser des créatures.' : 'Choisir une créature, puis cliquer sur une case de la carte.' }}
+      <template v-if="disabled">Créer une carte pour poser des créatures.</template>
+      <template v-else>
+        Glisser une créature sur la carte. Au clavier : Entrée sur une créature, puis flèches et Entrée sur la carte.
+      </template>
     </p>
     <div v-for="group in groups" :key="group.kind" class="group">
       <h3>{{ group.title }}</h3>
@@ -164,7 +162,7 @@ defineExpose({ cancelDrag })
             :class="[group.kind.toLowerCase(), { armed: armed === entry.id }]"
             :aria-pressed="armed === entry.id"
             :disabled="disabled"
-            @click="toggle(entry.id)"
+            @click="toggle($event, entry.id)"
             @pointerdown="onPointerDown($event, entry.id)"
             @pointermove="onPointerMove"
             @pointerup="onPointerUp"

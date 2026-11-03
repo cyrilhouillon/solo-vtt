@@ -35,7 +35,7 @@ Le code, les commentaires et les messages sont en français ; les identifiants s
 - Conditions, Bénédiction, réaction Bouclier, style de combat Duel.
 - Moteur suspendable sur décision, pile de résolutions, journal d'événements rejouable.
 - Démo console (`dnd.engine.demo.Main`), avec un mode interactif.
-- Préparation de scène dans le navigateur : carte vide en mètres ou en pieds, créatures du catalogue SRD posées au clic, distance entre deux créatures, feuille de chaque créature.
+- Préparation de scène dans le navigateur : carte vide en mètres ou en pieds, créatures du catalogue SRD glissées sur la carte, à la souris ou au doigt (au clavier : Entrée sur la créature, puis flèches et Entrée), distance entre deux créatures, feuille de chaque créature.
 - Attaque depuis la feuille : ciblage sur la carte, allonge, portée normale et longue, lancer ; résultat dans le journal et PV mis à jour.
 - Dés à la table : les dés 3D de l'attaque roulent sur la carte (jet d'attaque, réaction éventuelle, puis dégâts) et s'arrêtent sur les valeurs du serveur ; la piste les pose (d20 écarté barré), le verdict se pose, et l'issue (« −11 », « Raté ») s'affiche brièvement sur la cible. Chaque jeton montre ses PV par une jauge.
 - Décision du moteur dans le navigateur : la réaction Bouclier arrête l'attaque, le joueur choisit dans un dialogue, puis l'attaque reprend.

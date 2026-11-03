@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: réserver la pose armée au clavier, textes et mémoire

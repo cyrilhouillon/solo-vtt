@@ -986,7 +986,7 @@ onBeforeUnmount(() => {
             Échap annule.
           </template>
           <template v-else-if="armedEntry">
-            Pose : <strong>{{ armedEntry.name }}</strong>. Cliquer pour poser ; Maj + clic cale sur la case, Échap
+            Pose : <strong>{{ armedEntry.name }}</strong>. Flèches pour choisir la case, Entrée pour poser ; Échap
             arrête.
           </template>
           <template v-else-if="measure">

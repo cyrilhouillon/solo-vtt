@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 ---
 
 # Story : poser une créature en la glissant du catalogue sur la carte
