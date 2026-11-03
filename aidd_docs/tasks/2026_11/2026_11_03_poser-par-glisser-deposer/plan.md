@@ -1,6 +1,6 @@
 ---
 objective: "Le joueur pose une créature en la glissant du catalogue sur la carte, à la souris comme au doigt ; un clic ou un toucher sur le catalogue ne fait plus rien, et la pose armée ne reste qu'au clavier."
-status: in-progress
+status: implemented
 ---
 
 # Plan: poser une créature par glisser-déposer
