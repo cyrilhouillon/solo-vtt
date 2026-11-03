@@ -15,7 +15,7 @@ order: 8
 
 ## Acceptance
 
-- Quand une attaque est tranchée, ses dés roulent sur la piste à dés, sous la carte. Ils s'arrêtent sur les valeurs tirées par le serveur : un d20, ou deux avec avantage ou désavantage (le dé gardé est distingué), puis les dés de dégâts.
+- Quand une attaque est tranchée, ses dés 3D roulent sur la carte : le jet d'attaque, puis les dégâts s'il touche (une réaction se décide entre les deux). Ils s'arrêtent sur les valeurs tirées par le serveur : un d20, ou deux avec avantage ou désavantage (le dé gardé est distingué), puis les dés de dégâts.
 - Les valeurs affichées sont celles du serveur, jamais un tirage du client.
 - Les effets (touché, raté, critique, dégâts, PV restants) se posent sur la piste après l'arrêt des dés.
 - L'issue posée sur la cible ne capte pas les clics et disparaît seule.
@@ -30,6 +30,7 @@ order: 8
 ## Notes
 
 - Amendement du 2026-11-03 (choix de l'utilisateur) : les dés roulent sur la piste à dés de `DESIGN.md`, pas en surimpression au milieu de la carte ; sur la carte, seule l'issue se pose sur la cible. La carte n'est jamais masquée.
+- Amendement du 2026-11-03 (demande de l'utilisateur) : des dés 3D qui roulent vraiment, sur la carte (couche transparente sans pointeur), en deux lancers ; la piste garde les valeurs posées après l'arrêt.
 - Déjà tenus avant cette story : créature à terre (carte et tableau), détail du journal replié, annonce unique aux lecteurs d'écran.
 
 - Le client a besoin des jets en données structurées (`AttackResultDto`), sans relire le texte du journal.
