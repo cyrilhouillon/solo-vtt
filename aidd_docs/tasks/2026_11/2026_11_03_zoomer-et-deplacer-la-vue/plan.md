@@ -1,6 +1,6 @@
 ---
 objective: "Le joueur zoome sur la carte autour du pointeur et déplace la vue en glissant le fond, en combat comme en préparation et pendant le calage (où le bouton du milieu décale désormais la grille), sans rien changer aux positions où il pose, déplace, cible ou mesure."
-status: in-progress
+status: implemented
 ---
 
 # Plan: zoomer et déplacer la vue de la carte
