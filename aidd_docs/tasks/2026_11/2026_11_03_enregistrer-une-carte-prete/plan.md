@@ -1,6 +1,6 @@
 ---
 objective: "Le joueur enregistre la carte en cours sous un nom (image, échelle, grille, créatures et positions), la retrouve dans une liste après un redémarrage du serveur, et la recharge comme une nouvelle carte, avec des créatures neuves aux positions enregistrées."
-status: in-progress
+status: implemented
 ---
 
 # Plan: enregistrer puis charger une carte prête
