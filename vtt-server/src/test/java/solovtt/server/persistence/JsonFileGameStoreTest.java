@@ -27,6 +27,7 @@ class JsonFileGameStoreTest {
             new SavedCommand.Create(30, 20, DistanceUnit.METRE, "a".repeat(64), "Crypte", List.of()),
             new SavedCommand.Place("gobelin", 12, 1.5, List.of()),
             new SavedCommand.ShowGrid(false, List.of()),
+            new SavedCommand.AlignGrid(33, 22, 0.25, 0.5, List.of()),
             new SavedCommand.Move("gobelin-1", 10.5, 3, List.of()),
             new SavedCommand.StartCombat(List.of(14, 3)),
             new SavedCommand.EndTurn(List.of()),

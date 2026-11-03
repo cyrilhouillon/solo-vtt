@@ -35,6 +35,9 @@ export interface SceneView {
   imageId: string | null
   /** La grille s'affiche ; sans effet sur les distances ni le calage. */
   gridVisible: boolean
+  /** Décalage de la grille depuis le coin haut gauche de la carte, en fraction de case, dans [0, 1). */
+  gridOffsetX: number
+  gridOffsetY: number
   /** La carte enregistrée d'où vient la carte, à titre d'information ; `null` pour une nouvelle carte. */
   mapName: string | null
   tokens: TokenView[]

@@ -13,6 +13,34 @@ class SceneTest {
     }
 
     @Test
+    void miseALEchelle_multiplieDimensionsEtPositions_sansToucherLOriginale() {
+        var scene = carte();
+        scene.place(new Token("b", "y", new Position(30, 20)));
+        scene.place(new Token("a", "x", new Position(3, 4.5)));
+
+        var moitie = scene.rescaled(0.5);
+
+        assertEquals(15, moitie.width(), 1e-9);
+        assertEquals(10, moitie.height(), 1e-9);
+        assertEquals(DistanceUnit.METRE, moitie.unit());
+        assertEquals(java.util.List.of("b", "a"), moitie.tokens().stream().map(Token::id).toList());
+        assertEquals(new Position(15, 10), moitie.token("b").position());
+        assertEquals(new Position(1.5, 2.25), moitie.token("a").position());
+        assertEquals("x", moitie.token("a").entityId());
+        assertEquals(30, scene.width(), 1e-9);
+        assertEquals(new Position(3, 4.5), scene.token("a").position());
+    }
+
+    @Test
+    void miseALEchelle_refuseUnFacteurNulNegatifOuInfini() {
+        var scene = carte();
+        assertThrows(IllegalArgumentException.class, () -> scene.rescaled(0));
+        assertThrows(IllegalArgumentException.class, () -> scene.rescaled(-1));
+        assertThrows(IllegalArgumentException.class, () -> scene.rescaled(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> scene.rescaled(Double.POSITIVE_INFINITY));
+    }
+
+    @Test
     void uneCarteNeuveEstVide() {
         var scene = carte();
         assertTrue(scene.tokens().isEmpty());

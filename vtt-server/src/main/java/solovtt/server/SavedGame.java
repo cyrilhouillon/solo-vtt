@@ -29,6 +29,9 @@ public record SavedGame(List<SavedCommand> commands) {
 
         record ShowGrid(boolean visible, List<Integer> rolls) implements SavedCommand {}
 
+        /** Le calage de la grille : dimensions de la carte mise à l'échelle, et décalage de la grille en fraction de case. */
+        record AlignGrid(double width, double height, double offsetX, double offsetY, List<Integer> rolls) implements SavedCommand {}
+
         record Place(String catalogId, double x, double y, List<Integer> rolls) implements SavedCommand {}
 
         record Remove(String tokenId, List<Integer> rolls) implements SavedCommand {}

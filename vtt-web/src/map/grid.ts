@@ -8,11 +8,35 @@ export interface Point {
   y: number
 }
 
-/** Centre exact de la case qui contient le point ; une case partielle en bord de carte reste dans la carte. */
-export function snapToCell(scene: SceneView, point: Point): Point {
+/** Les lignes d'une grille, dans l'unité de la carte : taille d'une case et position de la première ligne de chaque axe. */
+export interface GridLines {
+  cell: number
+  offsetX: number
+  offsetY: number
+}
+
+/** La grille de la carte, calée par son décalage. */
+export function gridOf(scene: SceneView): GridLines {
   const cell = CELL[scene.unit]
-  const centre = (value: number, max: number) => Math.min(max, (Math.floor(Math.min(value, max - 1e-9) / cell) + 0.5) * cell)
-  return { x: centre(point.x, scene.width), y: centre(point.y, scene.height) }
+  return { cell, offsetX: scene.gridOffsetX * cell, offsetY: scene.gridOffsetY * cell }
+}
+
+/**
+ * Centre exact de la case qui contient le point, sur la grille décalée ; une case partielle en bord de carte
+ * (des deux côtés quand la grille est décalée) reste dans la carte.
+ */
+export function snapToCell(scene: SceneView, point: Point): Point {
+  const { cell, offsetX, offsetY } = gridOf(scene)
+  const centre = (value: number, max: number, offset: number) =>
+    Math.max(0, Math.min(max, offset + (Math.floor((Math.min(value, max - 1e-9) - offset) / cell) + 0.5) * cell))
+  return { x: centre(point.x, scene.width, offsetX), y: centre(point.y, scene.height, offsetY) }
+}
+
+/** Colonne et ligne de la case qui contient le point, à partir de 1 ; une case partielle du bord compte. */
+export function cellOf(scene: SceneView, point: Point): { column: number; row: number } {
+  const { cell, offsetX, offsetY } = gridOf(scene)
+  const index = (value: number, offset: number) => Math.floor((value - offset) / cell) + (offset > 0 ? 2 : 1)
+  return { column: index(point.x, offsetX), row: index(point.y, offsetY) }
 }
 
 /** Tolérance d'arrondi : deux jetons calés sur des cases voisines ne se chevauchent pas. */

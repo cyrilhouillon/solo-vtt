@@ -269,6 +269,11 @@ input[type='number'] {
   align-items: flex-start;
   gap: 0.4rem;
 }
+/* Le libellé prend la largeur du tiroir : sans cela, « Aucun fichier choisi » le fait déborder. */
+.image label {
+  align-self: stretch;
+  min-width: 0;
+}
 .image input[type='file'] {
   max-width: 100%;
   color: var(--ink);

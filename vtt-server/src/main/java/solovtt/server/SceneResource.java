@@ -58,6 +58,26 @@ public class SceneResource {
         return Dtos.SceneDto.of(scene, session);
     }
 
+    /**
+     * Cale la grille sur l'image : la carte et ses jetons changent d'échelle ensemble, la grille part du décalage donné.
+     * Refusé en combat, pendant une décision et sans image.
+     */
+    @PUT
+    @Path("/alignment")
+    @APIResponse(responseCode = "200", description = "La carte mise à l'échelle, ses jetons et le décalage de sa grille",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.SceneDto.class)))
+    @APIResponse(responseCode = "400", description = "Champ absent, dimension non positive, décalage hors de [0, 1) ou cases non carrées")
+    @APIResponse(responseCode = "409", description = "Aucune carte, carte sans image, combat en cours, ou une décision attend une réponse")
+    public Dtos.SceneDto alignGrid(Dtos.AlignmentRequest request) {
+        requireScene();
+        if (request == null || request.width() == null || request.height() == null
+                || request.gridOffsetX() == null || request.gridOffsetY() == null) {
+            throw new IllegalArgumentException("Indiquer la largeur, la hauteur et le décalage de la grille");
+        }
+        Scene aligned = session.alignGrid(request.width(), request.height(), request.gridOffsetX(), request.gridOffsetY());
+        return Dtos.SceneDto.of(aligned, session);
+    }
+
     @GET
     @APIResponse(responseCode = "200", description = "La carte et ses jetons")
     @APIResponse(responseCode = "409", description = "Aucune carte")

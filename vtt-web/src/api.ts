@@ -55,6 +55,13 @@ export const api = {
   /** Affiche ou masque la grille de la carte ; c'est de l'affichage, permis en combat. */
   showGrid: (visible: boolean) => request<SceneView>('/api/scene/grid', { method: 'PUT', body: JSON.stringify({ visible }) }),
 
+  /**
+   * Cale la grille sur l'image : la carte prend ces dimensions (cases carrées), ses jetons changent d'échelle avec elle,
+   * et la grille part du décalage donné, en fraction de case. Refusé en combat, pendant une décision et sans image.
+   */
+  alignGrid: (width: number, height: number, gridOffsetX: number, gridOffsetY: number) =>
+    request<SceneView>('/api/scene/alignment', { method: 'PUT', body: JSON.stringify({ width, height, gridOffsetX, gridOffsetY }) }),
+
   /** Les cartes enregistrées, triées par nom. */
   savedMaps: () => request<SavedMapView[]>('/api/maps'),
 

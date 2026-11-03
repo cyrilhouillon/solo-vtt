@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class MapStoreTest {
 
     private static SavedMap carte(String nom, double largeur) {
-        return new SavedMap(nom, largeur, 20, DistanceUnit.METRE, null, true, List.of(new SavedMap.SavedToken("gobelin", 12, 1.5)));
+        return new SavedMap(nom, largeur, 20, DistanceUnit.METRE, null, true, 0, 0, List.of(new SavedMap.SavedToken("gobelin", 12, 1.5)));
     }
 
     @Test

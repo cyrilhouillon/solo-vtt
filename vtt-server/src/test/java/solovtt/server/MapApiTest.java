@@ -72,6 +72,28 @@ class MapApiTest {
     }
 
     @Test
+    void uneCarteCalee_enregistreePuisChargee_garderSonCalage() {
+        String imageId = ImageApiTest.envoyer(ImageApiTest.PNG, "image/png");
+        given().contentType(ContentType.JSON)
+                .body("{\"width\":30,\"height\":20,\"unit\":\"METRE\",\"imageId\":\"%s\"}".formatted(imageId))
+                .post("/api/scene").then().statusCode(201);
+        poser("loup", 3, 4.5);
+        given().contentType(ContentType.JSON).body("{\"width\":33,\"height\":22,\"gridOffsetX\":0.25,\"gridOffsetY\":0.5}")
+                .put("/api/scene/alignment").then().statusCode(200);
+        enregistrer(nom).statusCode(201);
+        given().contentType(ContentType.JSON).body("{\"width\":30,\"height\":20,\"unit\":\"METRE\"}")
+                .post("/api/scene").then().statusCode(201);
+
+        charger(nom).statusCode(200)
+                .body("width", equalTo(33.0f))
+                .body("height", equalTo(22.0f))
+                .body("gridOffsetX", equalTo(0.25f))
+                .body("gridOffsetY", equalTo(0.5f))
+                .body("tokens[0].x", equalTo(3.3f))
+                .body("tokens[0].y", equalTo(4.95f));
+    }
+
+    @Test
     void enregistrer_puisLister() {
         enregistrer("  " + nom + "  ").statusCode(201)
                 .body("name", equalTo(nom))

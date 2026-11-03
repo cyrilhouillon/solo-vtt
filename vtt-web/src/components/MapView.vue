@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CELL, occupant, snapToCell, type Point } from '../map/grid'
+import { CELL, cellOf, occupant, snapToCell, type GridLines, type Point } from '../map/grid'
 import { checkMove, moveLabel, type MoveLimit } from '../map/move'
 import { SceneCanvas, type Targeting } from '../map/SceneCanvas'
 import type { DiceRoller } from '../dice/DiceRoller'
@@ -21,11 +21,15 @@ const props = defineProps<{
   movementLimit: MoveLimit | null
   /** Le jeton déplacé au clavier, ou `null`. */
   moving: string | null
+  /** Pendant le calage, la grille d'aperçu, dans l'unité de la carte ; `null` hors calage. */
+  gridPreview: GridLines | null
 }>()
 const emit = defineEmits<{
   backgroundClick: [x: number, y: number, free: boolean]
   tokenClick: [tokenId: string]
   tokenMove: [tokenId: string, x: number, y: number]
+  /** Pendant le calage, la carte glissée de ce déplacement, dans l'unité de la carte. */
+  gridDrag: [dx: number, dy: number]
 }>()
 
 const movingToken = computed(() => (props.moving ? props.scene.tokens.find((t) => t.id === props.moving) ?? null : null))
@@ -65,6 +69,7 @@ function render() {
     movable: props.movable,
     movementLimit: props.movementLimit,
     moving: props.moving,
+    gridPreview: props.gridPreview,
   })
 }
 
@@ -74,6 +79,7 @@ onMounted(() => {
     onBackgroundClick: (x, y, free) => emit('backgroundClick', x, y, free),
     onTokenClick: (id) => emit('tokenClick', id),
     onTokenMove: (id, x, y) => emit('tokenMove', id, x, y),
+    onGridDrag: (dx, dy) => emit('gridDrag', dx, dy),
   })
   render()
   // Le canvas ne redessine pas seul quand les polices finissent de charger.
@@ -86,7 +92,7 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.scene, props.selected, props.placing, props.targeting, props.activeId, props.theme, props.movable, props.movementLimit, props.moving, cursor.value],
+  () => [props.scene, props.selected, props.placing, props.targeting, props.activeId, props.theme, props.movable, props.movementLimit, props.moving, props.gridPreview, cursor.value],
   render,
   { deep: true },
 )
@@ -99,8 +105,8 @@ watch(movingToken, (token, before) => {
 })
 
 function announce(point: Point) {
-  const cell = CELL[props.scene.unit]
-  const where = `Colonne ${Math.floor(point.x / cell) + 1}, ligne ${Math.floor(point.y / cell) + 1}`
+  const { column, row } = cellOf(props.scene, point)
+  const where = `Colonne ${column}, ligne ${row}`
   if (movingToken.value) {
     cursorAnnouncement.value = `${where} : ${moveLabel(checkMove(props.scene, movingToken.value, point, props.movementLimit), props.scene.unitSymbol)}`
     return
@@ -221,7 +227,7 @@ onBeforeUnmount(() => {
     <div
       ref="container"
       class="map"
-      :class="{ placing, targeting: targeting !== null }"
+      :class="{ placing, targeting: targeting !== null, aligning: gridPreview !== null }"
       :role="cursorMode ? 'application' : 'img'"
       :tabindex="cursorMode ? 0 : -1"
       :aria-label="label"
@@ -256,6 +262,10 @@ onBeforeUnmount(() => {
 }
 .map.placing {
   cursor: crosshair;
+}
+/* Pendant le calage, la carte se glisse pour décaler la grille. */
+.map.aligning {
+  cursor: move;
 }
 .map:focus-visible {
   outline-offset: -2px;
