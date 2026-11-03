@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { describeLoss } from '../replaceWarning'
 import { formatLength, type SavedMapView } from '../types'
 
@@ -25,9 +25,24 @@ function save() {
   emit('save', trimmed.value)
 }
 
+const root = ref<HTMLElement | null>(null)
+
+/** Le bouton pressé disparaît sous la confirmation : le focus passe à « Charger » de la confirmation. */
 function askLoad(map: string) {
-  if (props.tokenCount === null) emit('load', map)
-  else confirming.value = map
+  if (props.tokenCount === null) {
+    emit('load', map)
+    return
+  }
+  confirming.value = map
+  nextTick(() => root.value?.querySelector<HTMLButtonElement>('.confirm .danger')?.focus())
+}
+
+/** Annuler rend le focus au bouton « Charger » de la carte. */
+function cancelLoad() {
+  const map = confirming.value
+  confirming.value = null
+  if (map === null) return
+  nextTick(() => root.value?.querySelector<HTMLButtonElement>(`[data-map="${CSS.escape(map)}"]`)?.focus())
 }
 
 function load(map: string) {
@@ -42,13 +57,13 @@ function describe(map: SavedMapView): string {
 
 /** Échap annule d'abord une confirmation, puis ferme le tiroir. */
 function escape() {
-  if (confirming.value) confirming.value = null
+  if (confirming.value) cancelLoad()
   else emit('cancel')
 }
 </script>
 
 <template>
-  <section class="saved-maps" aria-labelledby="saved-maps-title" @keydown.esc.stop="escape">
+  <section ref="root" class="saved-maps" aria-labelledby="saved-maps-title" @keydown.esc.stop="escape">
     <h2 id="saved-maps-title" class="panel-title">Cartes enregistrées</h2>
     <hr class="tapered" />
     <form class="save" @submit.prevent="save">
@@ -57,7 +72,7 @@ function escape() {
         <input v-model="name" type="text" :maxlength="MAX_NAME_LENGTH" required :disabled="tokenCount === null" />
       </label>
       <p v-if="tokenCount === null" class="hint">Créer ou charger une carte pour l'enregistrer.</p>
-      <p v-else-if="taken" class="warning" role="note">Remplace la carte enregistrée « {{ trimmed }} ».</p>
+      <p v-else-if="taken" class="warning" role="note">Remplace la carte enregistrée «&nbsp;{{ trimmed }}&nbsp;».</p>
       <div class="actions">
         <button type="submit" :disabled="tokenCount === null || !trimmed || busy">Enregistrer</button>
       </div>
@@ -71,13 +86,13 @@ function escape() {
         <span class="info">{{ describe(map) }}</span>
         <template v-if="confirming === map.name && tokenCount !== null">
           <p class="warning" role="note">Remplace la carte actuelle{{ describeLoss(tokenCount) }}.</p>
-          <div class="actions">
+          <div class="actions confirm">
             <button type="button" class="danger" :disabled="busy" @click="load(map.name)">Charger</button>
-            <button type="button" @click="confirming = null">Annuler</button>
+            <button type="button" @click="cancelLoad">Annuler</button>
           </div>
         </template>
         <div v-else class="actions">
-          <button type="button" :disabled="busy" :aria-label="`Charger ${map.name}`" @click="askLoad(map.name)">Charger</button>
+          <button type="button" :data-map="map.name" :disabled="busy" :aria-label="`Charger ${map.name}`" @click="askLoad(map.name)">Charger</button>
         </div>
       </li>
     </ul>
