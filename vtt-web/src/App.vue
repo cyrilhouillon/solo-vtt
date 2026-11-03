@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { api, ApiError } from './api'
+import { api, ApiError, imageUrl } from './api'
 import AppIcon from './components/AppIcon.vue'
 import CatalogPanel from './components/CatalogPanel.vue'
 import CombatControl from './components/CombatControl.vue'
 import CreatureSheet from './components/CreatureSheet.vue'
 import DecisionDialog from './components/DecisionDialog.vue'
 import DiceTray, { type TrayResult } from './components/DiceTray.vue'
+import GridAlignPanel from './components/GridAlignPanel.vue'
 import JournalPanel from './components/JournalPanel.vue'
 import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
 import SavedMapsPanel from './components/SavedMapsPanel.vue'
 import TokenBoard from './components/TokenBoard.vue'
+import { alignedMap, alignmentOf, previewGrid, type Alignment } from './map/alignment'
 import { CELL, occupant } from './map/grid'
 import { checkMove, type MoveLimit } from './map/move'
 import { rangeVerdict, type RangeVerdict } from './map/range'
@@ -40,8 +42,15 @@ const selected = ref<string[]>([])
 const sheet = ref<Sheet | null>(null)
 const error = ref<string | null>(null)
 const journal = ref<JournalEntry[]>([])
-/** Tiroir ouvert depuis le rail : catalogue, nouvelle carte, cartes enregistrées, ou aucun. */
-const drawer = ref<'catalog' | 'map' | 'maps' | null>(null)
+/** Tiroir ouvert depuis le rail : catalogue, nouvelle carte, cartes enregistrées, calage de la grille, ou aucun. */
+const drawer = ref<'catalog' | 'map' | 'maps' | 'align' | null>(null)
+/**
+ * Le calage en cours (tiroir « Caler la grille ») : taille naturelle de l'image et calage d'aperçu, en pixels de l'image ;
+ * `null` hors calage. Rien n'est envoyé avant Valider.
+ */
+const aligning = ref<{ image: { width: number; height: number }; alignment: Alignment } | null>(null)
+/** Le calage est envoyé et pas encore revenu. */
+const alignBusy = ref(false)
 /** Les cartes enregistrées, relues à chaque ouverture de leur tiroir ; `null` tant qu'elles ne sont pas lues. */
 const savedMaps = ref<SavedMapView[] | null>(null)
 /** Un enregistrement ou un chargement de carte est en route. */
@@ -82,8 +91,12 @@ const movementLimit = computed<MoveLimit | null>(() => {
   const token = scene.value?.tokens.find((t) => t.creatureId === c.activeId)
   return token ? { tokenId: token.id, left: c.movementLeft } : null
 })
-/** Les jetons se glissent hors pose, ciblage, décision et déplacement en vol. */
-const movable = computed(() => !armed.value && !targeting.value && !decision.value && !moveBusy.value)
+/** Les jetons se glissent hors pose, ciblage, décision, déplacement en vol et calage. */
+const movable = computed(() => !armed.value && !targeting.value && !decision.value && !moveBusy.value && !aligning.value)
+/** La grille d'aperçu du calage, dans l'unité de la carte affichée ; `null` hors calage. */
+const gridPreview = computed(() =>
+  aligning.value && scene.value ? previewGrid(scene.value, aligning.value.image.width, aligning.value.alignment) : null,
+)
 const movingToken = computed(() => scene.value?.tokens.find((t) => t.id === movingId.value) ?? null)
 
 /** Affichage seul : la grille se montre ou se cache, sans toucher aux jetons (dont ceux en attente). */
@@ -128,9 +141,67 @@ function openDefaultDrawer() {
   drawer.value = !scene.value ? 'map' : scene.value.tokens.length ? null : 'catalog'
 }
 
-function toggleDrawer(which: 'catalog' | 'map' | 'maps') {
+function toggleDrawer(which: 'catalog' | 'map' | 'maps' | 'align') {
   drawer.value = drawer.value === which ? null : which
   if (drawer.value === 'maps') refreshSavedMaps()
+  if (drawer.value === 'align') startAligning()
+}
+
+// Fermer le tiroir de calage, par n'importe quel chemin, jette l'aperçu.
+watch(drawer, (open) => {
+  if (open !== 'align') aligning.value = null
+})
+
+/** Pourquoi le calage n'est pas possible en ce moment, ou `null`. */
+const alignRefusal = computed(() => (combat.value ? 'Impossible de caler la grille pendant un combat' : null))
+
+/** Lit la taille naturelle de l'image de fond, puis part du calage actuel ; la pose, le ciblage et le déplacement cessent. */
+function startAligning() {
+  const current = scene.value
+  if (!current?.imageId || alignRefusal.value) {
+    drawer.value = null
+    return
+  }
+  if (armed.value) disarm()
+  if (targeting.value) endTargeting()
+  if (movingId.value) endMoving()
+  const image = new Image()
+  image.onload = () => {
+    if (drawer.value !== 'align' || scene.value !== current) return
+    const size = { width: image.naturalWidth, height: image.naturalHeight }
+    aligning.value = { image: size, alignment: alignmentOf(current, size.width) }
+  }
+  image.onerror = () => {
+    drawer.value = null
+    error.value = 'Image de fond introuvable : impossible de caler la grille.'
+  }
+  image.src = imageUrl(current.imageId)
+}
+
+/** Glisser la carte décale la grille d'aperçu ; le déplacement arrive dans l'unité de la carte affichée. */
+function dragGrid(dx: number, dy: number) {
+  if (!aligning.value || !scene.value) return
+  const pixelsPerUnit = aligning.value.image.width / scene.value.width
+  const a = aligning.value.alignment
+  aligning.value = { ...aligning.value, alignment: { ...a, offsetX: a.offsetX + dx * pixelsPerUnit, offsetY: a.offsetY + dy * pixelsPerUnit } }
+}
+
+function previewAlignment(alignment: Alignment) {
+  if (aligning.value) aligning.value = { ...aligning.value, alignment }
+}
+
+/** Envoie le calage : la carte revient à sa nouvelle échelle ; Ctrl+Z ne repose plus rien à une position d'avant. */
+function applyAlignment() {
+  const current = aligning.value
+  if (!current || !scene.value || alignBusy.value) return
+  const map = alignedMap(current.image.width, current.image.height, scene.value.unit, current.alignment)
+  alignBusy.value = true
+  void attempt(async () => {
+    scene.value = await api.alignGrid(map.width, map.height, map.gridOffsetX, map.gridOffsetY)
+    history.length = 0
+    drawer.value = null
+    tell('Grille calée.')
+  }).finally(() => (alignBusy.value = false))
 }
 
 /** Entre 901 et 1280 px, tiroir et panneau latéral ne tiennent pas ensemble à côté de la carte. */
@@ -898,6 +969,12 @@ function isTyping(target: EventTarget | null): boolean {
 function onKey(e: KeyboardEvent) {
   // Le dialogue modal rend la page inerte, pas l'écouteur de window : rien ne passe tant qu'il attend.
   if (decision.value) return
+  if (e.key === 'Escape' && drawer.value === 'align') {
+    drawer.value = null
+    return
+  }
+  // Pendant le calage, seuls la carte (glisser) et le tiroir agissent.
+  if (aligning.value && e.key !== 'Escape') return
   if (e.key === 'Escape') {
     // Un pas à la fois : d'abord une fin de combat ou un retrait à confirmer, le ciblage ou le placement, puis la sélection.
     if (combatControl.value?.cancelEnd()) return
@@ -963,7 +1040,7 @@ onBeforeUnmount(() => {
         ref="combatControl"
         :combat="combat"
         :creature-count="scene.tokens.filter((t) => !t.pending).length"
-        :blocked="combatBusy"
+        :blocked="combatBusy || drawer === 'align'"
         @start="startCombat"
         @end-turn="combatAction(api.endTurn)"
         @end-combat="endCombat"
@@ -1027,6 +1104,20 @@ onBeforeUnmount(() => {
       >
         <AppIcon name="saved" />
       </button>
+      <button
+        v-if="scene?.imageId"
+        type="button"
+        class="rail-button"
+        :class="{ open: drawer === 'align' }"
+        :aria-expanded="drawer === 'align'"
+        aria-controls="drawer"
+        aria-label="Caler la grille"
+        :title="alignRefusal ?? 'Caler la grille sur l’image'"
+        :disabled="alignRefusal !== null"
+        @click="toggleDrawer('align')"
+      >
+        <AppIcon name="align" />
+      </button>
     </nav>
 
     <aside v-if="drawer" id="drawer" class="drawer">
@@ -1048,6 +1139,19 @@ onBeforeUnmount(() => {
         @create="createScene"
         @cancel="drawer = null"
       />
+      <template v-else-if="drawer === 'align'">
+        <GridAlignPanel
+          v-if="aligning && scene"
+          :alignment="aligning.alignment"
+          :image="aligning.image"
+          :unit="scene.unit"
+          :busy="alignBusy"
+          @change="previewAlignment"
+          @apply="applyAlignment"
+          @cancel="drawer = null"
+        />
+        <p v-else class="loading">Lecture de l’image…</p>
+      </template>
       <SavedMapsPanel
         v-else
         :maps="savedMaps"
@@ -1088,7 +1192,9 @@ onBeforeUnmount(() => {
             :movable="movable"
             :movement-limit="movementLimit"
             :moving="movingId"
+            :grid-preview="gridPreview"
             @background-click="onBackgroundClick"
+            @grid-drag="dragGrid"
             @token-click="onTokenChosen"
             @token-move="moveToken"
           />

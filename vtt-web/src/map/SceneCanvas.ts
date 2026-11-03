@@ -1,7 +1,7 @@
 import Konva from 'konva'
 import { imageUrl } from '../api'
 import { formatLength, type CreatureKind, type SceneView, type TokenView } from '../types'
-import { CELL, magnet, occupant, round, snapToCell, type Point } from './grid'
+import { CELL, gridOf, magnet, occupant, round, snapToCell, type GridLines, type Point } from './grid'
 import { checkMove, moveLabel, snapToLimit, type MoveLimit } from './move'
 import { rangeVerdict, type RangeVerdict } from './range'
 
@@ -12,6 +12,8 @@ export interface SceneCanvasEvents {
   onTokenClick(tokenId: string): void
   /** Un jeton glissé est relâché à cette position, libre ou calée (Maj) ; le jeton attend la réponse au départ. */
   onTokenMove(tokenId: string, x: number, y: number): void
+  /** Pendant le calage, la carte est glissée de ce déplacement depuis le signal précédent, dans l'unité de la carte. */
+  onGridDrag(dx: number, dy: number): void
 }
 
 export interface SceneCanvasState {
@@ -31,6 +33,11 @@ export interface SceneCanvasState {
   movementLimit: MoveLimit | null
   /** Le jeton déplacé au clavier vers `cursor`, ou `null`. */
   moving: string | null
+  /**
+   * Pendant le calage, la grille d'aperçu (dans l'unité de la carte), dessinée même masquée ; un glisser sur la carte
+   * la décale, et le fond ne pose rien. `null` hors calage.
+   */
+  gridPreview: GridLines | null
 }
 
 /**
@@ -97,6 +104,8 @@ export class SceneCanvas {
    * par le catalogue : Konva ne le voit pas, la carte vise donc depuis ces coordonnées.
    */
   private drag: { kind: CreatureKind; clientX: number; clientY: number } | null = null
+  /** Dernière position du pointeur pendant un glisser de calage, en pixels du stage ; `null` hors glisser. */
+  private gridDrag: { x: number; y: number } | null = null
   /** Maj change l'aperçu sans attendre que la souris bouge : tenue, elle cale sur la case. */
   private readonly onShift = (e: KeyboardEvent) => {
     if (e.key !== 'Shift') return
@@ -120,6 +129,18 @@ export class SceneCanvas {
     })
     window.addEventListener('keydown', this.onShift)
     window.addEventListener('keyup', this.onShift)
+    this.stage.on('mousedown touchstart', () => {
+      const pointer = this.stage.getPointerPosition()
+      if (this.state?.gridPreview && pointer) this.gridDrag = { ...pointer }
+    })
+    this.stage.on('mousemove touchmove', () => {
+      const pointer = this.stage.getPointerPosition()
+      if (!this.gridDrag || !pointer || !this.state?.gridPreview) return
+      const [dx, dy] = [pointer.x - this.gridDrag.x, pointer.y - this.gridDrag.y]
+      this.gridDrag = { ...pointer }
+      if (dx || dy) this.events.onGridDrag(dx / this.pixelsPerUnit, dy / this.pixelsPerUnit)
+    })
+    this.stage.on('mouseup touchend mouseleave', () => (this.gridDrag = null))
   }
 
   resize(width: number, height: number): void {
@@ -251,6 +272,7 @@ export class SceneCanvas {
       strokeWidth: 1,
     })
     ground.on('click tap', (e) => {
+      if (this.state?.gridPreview) return
       const free = !('shiftKey' in e.evt && e.evt.shiftKey)
       const target = this.pointerTarget(scene, free)
       if (target) this.events.onBackgroundClick(target.x, target.y, free)
@@ -278,17 +300,20 @@ export class SceneCanvas {
         listening: false,
       }))
     }
-    if (!scene.gridVisible) return
+    const preview = this.state?.gridPreview ?? null
+    if (!preview && !scene.gridVisible) return
 
     // Au demi-pixel près, pour des traits de 1 px nets et réguliers.
     const crisp = (pixels: number) => Math.round(pixels) + 0.5
-    const cell = CELL[scene.unit]
+    const { cell, offsetX, offsetY } = preview ?? gridOf(scene)
+    // La première ligne de chaque axe est celle du décalage ; une ligne sur le bord se confond avec lui.
+    const first = (offset: number) => (offset > 0 ? offset : cell)
     const lines = new Konva.Group({ listening: false })
-    for (let x = cell; x < scene.width; x += cell) {
+    for (let x = first(offsetX); x < scene.width; x += cell) {
       const px = crisp(this.toPixelsX(x))
       lines.add(this.gridLine([px, this.toPixelsY(0), px, this.toPixelsY(scene.height)]))
     }
-    for (let y = cell; y < scene.height; y += cell) {
+    for (let y = first(offsetY); y < scene.height; y += cell) {
       const py = crisp(this.toPixelsY(y))
       lines.add(this.gridLine([this.toPixelsX(0), py, this.toPixelsX(scene.width), py]))
     }
