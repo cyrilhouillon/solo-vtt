@@ -351,14 +351,18 @@ function onBackgroundClick(x: number, y: number) {
     clearSelection()
     return
   }
+  if (armedEntry.value) placeEntry(armedEntry.value, x, y)
+}
+
+/** Pose une créature du catalogue en (x, y), armée puis cliquée, ou glissée sur la carte. */
+function placeEntry(entry: CatalogEntry, x: number, y: number) {
   const taken = scene.value ? occupant(scene.value, { x, y }) : undefined
   if (taken) {
     error.value = `Trop près de ${taken.name}. Choisir une autre position.`
     return
   }
-  const entry = armedEntry.value
   const tokens = scene.value?.tokens
-  if (!entry || !tokens) return
+  if (!tokens) return
   // Le jeton s'affiche tout de suite ; la réponse du serveur le remplace, ou l'efface en cas d'échec.
   const pending: TokenView = {
     id: `en-attente-${++pendingCount}`,
@@ -445,6 +449,61 @@ function arm(entryId: string | null) {
   if (entryId) targeting.value = null
   notice.value = ''
 }
+
+/** L'entrée du catalogue qui a armé la pose : Échap y rend le focus. */
+let armOrigin: HTMLElement | null = null
+
+/**
+ * Armée depuis le catalogue (au clavier seulement), la pose passe à la carte : le focus y va et le curseur de case
+ * apparaît. La carte ne prend le focus qu'une fois passée en mode curseur, au rendu suivant.
+ */
+function armFromCatalog(entryId: string | null) {
+  arm(entryId)
+  if (!entryId) return
+  armOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  void nextTick(() => mapView.value?.focus())
+}
+
+/** Échap arrête la pose armée et rend le focus à l'entrée du catalogue. */
+function disarm() {
+  arm(null)
+  if (armOrigin?.isConnected) armOrigin.focus()
+  armOrigin = null
+}
+
+const catalogPanel = ref<InstanceType<typeof CatalogPanel> | null>(null)
+
+/** Glisser depuis le catalogue : il remplace la pose armée, le ciblage et le déplacement au clavier. */
+function onDragStart() {
+  if (!scene.value || decision.value) {
+    catalogPanel.value?.cancelDrag()
+    return
+  }
+  if (targeting.value) endTargeting()
+  arm(null)
+}
+
+function onDragMove(entryId: string, clientX: number, clientY: number) {
+  const entry = catalog.value.find((e) => e.id === entryId)
+  if (entry) mapView.value?.dragOver(entry.kind, clientX, clientY)
+}
+
+/** Relâchée hors de la carte, la créature n'est pas posée. */
+function onDrop(entryId: string, clientX: number, clientY: number) {
+  const target = mapView.value?.dropTarget(clientX, clientY) ?? null
+  mapView.value?.endDrag()
+  const entry = catalog.value.find((e) => e.id === entryId)
+  if (entry && target) placeEntry(entry, target.x, target.y)
+}
+
+function onDragCancel() {
+  mapView.value?.endDrag()
+}
+
+// Une décision ouverte pendant un glisser l'arrête : le serveur refuserait la pose.
+watch(decision, (d) => {
+  if (d) catalogPanel.value?.cancelDrag()
+})
 
 const board = ref<InstanceType<typeof TokenBoard> | null>(null)
 /** Le bouton d'attaque qui a lancé le ciblage : le focus y revient une fois le ciblage fini. */
@@ -784,7 +843,7 @@ function onKey(e: KeyboardEvent) {
     if (board.value?.cancelRemoval()) return
     if (targeting.value) endTargeting()
     else if (movingId.value) endMoving()
-    else if (armed.value) arm(null)
+    else if (armed.value) disarm()
     else clearSelection()
     notice.value = ''
     error.value = null
@@ -887,7 +946,18 @@ onBeforeUnmount(() => {
     </nav>
 
     <aside v-if="drawer" id="drawer" class="drawer">
-      <CatalogPanel v-if="drawer === 'catalog'" :entries="catalog" :armed="armed" :disabled="!scene" @arm="arm" />
+      <CatalogPanel
+        v-if="drawer === 'catalog'"
+        ref="catalogPanel"
+        :entries="catalog"
+        :armed="armed"
+        :disabled="!scene"
+        @arm="armFromCatalog"
+        @drag-start="onDragStart"
+        @drag-move="onDragMove"
+        @drop="onDrop"
+        @drag-cancel="onDragCancel"
+      />
       <NewMapForm v-else :token-count="scene ? scene.tokens.length : null" @create="createScene" @cancel="drawer = null" />
     </aside>
 
@@ -937,7 +1007,7 @@ onBeforeUnmount(() => {
             Échap annule.
           </template>
           <template v-else-if="armedEntry">
-            Pose : <strong>{{ armedEntry.name }}</strong>. Cliquer pour poser ; Maj + clic cale sur la case, Échap
+            Pose : <strong>{{ armedEntry.name }}</strong>. Flèches pour choisir la case, Entrée pour poser ; Échap
             arrête.
           </template>
           <template v-else-if="measure">
