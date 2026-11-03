@@ -450,6 +450,27 @@ function arm(entryId: string | null) {
   notice.value = ''
 }
 
+/** L'entrée du catalogue qui a armé la pose : Échap y rend le focus. */
+let armOrigin: HTMLElement | null = null
+
+/**
+ * Armée depuis le catalogue (au clavier seulement), la pose passe à la carte : le focus y va et le curseur de case
+ * apparaît. La carte ne prend le focus qu'une fois passée en mode curseur, au rendu suivant.
+ */
+function armFromCatalog(entryId: string | null) {
+  arm(entryId)
+  if (!entryId) return
+  armOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  void nextTick(() => mapView.value?.focus())
+}
+
+/** Échap arrête la pose armée et rend le focus à l'entrée du catalogue. */
+function disarm() {
+  arm(null)
+  if (armOrigin?.isConnected) armOrigin.focus()
+  armOrigin = null
+}
+
 const catalogPanel = ref<InstanceType<typeof CatalogPanel> | null>(null)
 
 /** Glisser depuis le catalogue : il remplace la pose armée, le ciblage et le déplacement au clavier. */
@@ -822,7 +843,7 @@ function onKey(e: KeyboardEvent) {
     if (board.value?.cancelRemoval()) return
     if (targeting.value) endTargeting()
     else if (movingId.value) endMoving()
-    else if (armed.value) arm(null)
+    else if (armed.value) disarm()
     else clearSelection()
     notice.value = ''
     error.value = null
@@ -931,7 +952,7 @@ onBeforeUnmount(() => {
         :entries="catalog"
         :armed="armed"
         :disabled="!scene"
-        @arm="arm"
+        @arm="armFromCatalog"
         @drag-start="onDragStart"
         @drag-move="onDragMove"
         @drop="onDrop"
