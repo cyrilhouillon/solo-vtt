@@ -23,10 +23,13 @@ function fraction(offset: number, cellPixels: number): number {
   return f >= 1 ? 0 : f
 }
 
-/** Le calage actuel de la carte, en pixels de son image (de largeur naturelle `imageWidth`). */
+/**
+ * Le calage actuel de la carte, en pixels de son image (de largeur naturelle `imageWidth`). Le décalage se règle au pixel
+ * entier : ramené dans une case de taille fractionnaire (40 px dans 32,5 px donnent 7,5 px), il est arrondi au pixel.
+ */
 export function alignmentOf(scene: SceneView, imageWidth: number): Alignment {
   const cellPixels = imageWidth / (scene.width / CELL[scene.unit])
-  return { offsetX: scene.gridOffsetX * cellPixels, offsetY: scene.gridOffsetY * cellPixels, cellPixels }
+  return { offsetX: Math.round(scene.gridOffsetX * cellPixels), offsetY: Math.round(scene.gridOffsetY * cellPixels), cellPixels }
 }
 
 /** La carte que donne ce calage : dimensions tirées de l'image, décalage en fraction de case. */

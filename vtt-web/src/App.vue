@@ -165,6 +165,7 @@ function startAligning() {
   image.onload = () => {
     if (drawer.value !== 'map' || scene.value !== current) return
     const size = { width: image.naturalWidth, height: image.naturalHeight }
+    dragRest = { x: 0, y: 0 }
     aligning.value = { image: size, alignment: alignmentOf(current, size.width) }
   }
   image.onerror = () => {
@@ -173,12 +174,23 @@ function startAligning() {
   image.src = imageUrl(current.imageId)
 }
 
-/** Glisser la carte décale la grille d'aperçu ; le déplacement arrive dans l'unité de la carte affichée. */
+/** Ce que le glisser a parcouru en deçà du pixel entier, en pixels d'image : gardé pour le signal suivant. */
+let dragRest = { x: 0, y: 0 }
+
+/**
+ * Glisser la carte décale la grille d'aperçu au pixel entier de l'image, comme le champ ; le déplacement arrive dans
+ * l'unité de la carte affichée, et le reste sous le pixel s'ajoute au signal suivant pour qu'un glisser lent avance.
+ */
 function dragGrid(dx: number, dy: number) {
   if (!aligning.value || !scene.value) return
   const pixelsPerUnit = aligning.value.image.width / scene.value.width
   const a = aligning.value.alignment
-  aligning.value = { ...aligning.value, alignment: { ...a, offsetX: a.offsetX + dx * pixelsPerUnit, offsetY: a.offsetY + dy * pixelsPerUnit } }
+  const x = a.offsetX + dx * pixelsPerUnit + dragRest.x
+  const y = a.offsetY + dy * pixelsPerUnit + dragRest.y
+  const [offsetX, offsetY] = [Math.round(x), Math.round(y)]
+  dragRest = { x: x - offsetX, y: y - offsetY }
+  if (offsetX === a.offsetX && offsetY === a.offsetY) return
+  aligning.value = { ...aligning.value, alignment: { ...a, offsetX, offsetY } }
 }
 
 function previewAlignment(alignment: Alignment) {
