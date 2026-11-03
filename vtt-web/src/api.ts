@@ -1,4 +1,4 @@
-import type { ActionResult, CatalogEntry, Combat, CreatureSheet, Decision, DistanceUnit, JournalEntry, SceneView, TokenView } from './types'
+import type { ActionResult, CatalogEntry, Combat, CreatureSheet, Decision, DistanceUnit, JournalEntry, SavedMapView, SceneView, TokenView } from './types'
 
 /** Erreur rendue par le serveur, avec son message lisible. */
 export class ApiError extends Error {
@@ -54,6 +54,15 @@ export const api = {
 
   /** Affiche ou masque la grille de la carte ; c'est de l'affichage, permis en combat. */
   showGrid: (visible: boolean) => request<SceneView>('/api/scene/grid', { method: 'PUT', body: JSON.stringify({ visible }) }),
+
+  /** Les cartes enregistrées, triées par nom. */
+  savedMaps: () => request<SavedMapView[]>('/api/maps'),
+
+  /** Enregistre la carte en cours sous ce nom ; une carte du même nom est remplacée. */
+  saveMap: (name: string) => request<SavedMapView>('/api/maps', { method: 'POST', body: JSON.stringify({ name }) }),
+
+  /** Remplace la carte en cours par la carte enregistrée, comme une nouvelle carte. */
+  loadMap: (name: string) => request<SceneView>('/api/maps/load', { method: 'POST', body: JSON.stringify({ name }) }),
 
   placeToken: (catalogId: string, x: number, y: number) =>
     request<TokenView>('/api/scene/tokens', { method: 'POST', body: JSON.stringify({ catalogId, x, y }) }),

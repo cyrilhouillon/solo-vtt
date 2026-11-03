@@ -35,7 +35,19 @@ export interface SceneView {
   imageId: string | null
   /** La grille s'affiche ; sans effet sur les distances ni le calage. */
   gridVisible: boolean
+  /** La carte enregistrée d'où vient la carte, à titre d'information ; `null` pour une nouvelle carte. */
+  mapName: string | null
   tokens: TokenView[]
+}
+
+/** Une carte enregistrée, prête à charger. */
+export interface SavedMapView {
+  name: string
+  width: number
+  height: number
+  unitSymbol: string
+  imageId: string | null
+  creatureCount: number
 }
 
 export interface Measure {
