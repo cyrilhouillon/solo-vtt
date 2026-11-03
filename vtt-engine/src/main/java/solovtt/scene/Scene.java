@@ -71,6 +71,24 @@ public final class Scene {
         }
     }
 
+    /**
+     * La même carte à une autre échelle : dimensions et positions multipliées par {@code factor}, jetons gardés dans
+     * leur ordre. Chaque jeton reste au même endroit relatif de la carte ; cette scène ne change pas.
+     *
+     * @throws IllegalArgumentException facteur nul, négatif ou non fini
+     */
+    public Scene rescaled(double factor) {
+        if (!(factor > 0) || Double.isInfinite(factor)) {
+            throw new IllegalArgumentException("Le facteur d'échelle doit être positif : " + factor);
+        }
+        Scene scaled = new Scene(width * factor, height * factor, unit);
+        for (Token t : tokens.values()) {
+            scaled.place(new Token(t.id(), t.entityId(),
+                    new Position(Math.min(t.position().x() * factor, scaled.width), Math.min(t.position().y() * factor, scaled.height))));
+        }
+        return scaled;
+    }
+
     /** Retire un jeton ; un id inconnu est refusé. */
     public Token remove(String tokenId) {
         Token removed = tokens.remove(tokenId);
