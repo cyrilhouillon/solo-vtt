@@ -11,10 +11,13 @@
   "dependencies": {
     "@fontsource/alegreya-sans": "5.3.0",
     "@fontsource/alegreya-sc": "5.3.0",
+    "cannon-es": "0.20.0",
     "konva": "10.9.1",
+    "three": "0.186.1",
     "vue": "3.5.44"
   },
   "devDependencies": {
+    "@types/three": "0.186.0",
     "@vitejs/plugin-vue": "6.0.10",
     "@vue/tsconfig": "0.9.1",
     "typescript": "6.0.3",

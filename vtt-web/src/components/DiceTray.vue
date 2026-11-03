@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { AttackRoll, Damage, RolledDice } from '../types'
 
 /**
  * La piste à dés, sous la carte : la dernière attaque tranchée par le moteur. Les tours de combat ne l'effacent pas
- * (la barre dit qui joue). Une attaque qui vient d'être tranchée fait rouler ses dés, qui s'arrêtent sur les valeurs
- * du serveur, puis le verdict se pose. Muette pour les lecteurs d'écran : l'issue leur est annoncée à part.
+ * (la barre dit qui joue). Ses dés y sont posés, valeurs du serveur, une fois que les dés 3D se sont arrêtés sur la
+ * carte ; le verdict se pose alors. Muette pour les lecteurs d'écran : l'issue leur est annoncée à part.
  */
 export interface TrayResult {
   /** Numéro de l'action : chaque attaque tranchée en a un nouveau, et les dés roulent à chacune. */
@@ -28,9 +28,8 @@ export interface TrayResult {
   target?: { id: string; name: string; hitPoints: number; maxHitPoints: number }
 }
 
-const props = defineProps<{ result: TrayResult | null }>()
-/** Le verdict d'une attaque qui vient d'être tranchée est posé : ses dés se sont arrêtés, ou n'ont pas roulé. */
-const emit = defineEmits<{ landed: [result: TrayResult] }>()
+/** `rolling` : les dés 3D roulent sur la carte ; verdict, dés posés et cible attendent leur arrêt, à leur place. */
+const props = defineProps<{ result: TrayResult | null; rolling: boolean }>()
 
 /** L'issue de l'attaque, pas son intérêt pour le joueur : elle se lit à la forme (voir les styles). */
 const LABELS: Record<AttackRoll['outcome'], string> = { CRITICAL: 'Coup critique', HIT: 'Touché', MISS: 'Raté' }
@@ -69,60 +68,6 @@ function diceOf(rolls: RolledDice[]): Die[] {
 const attackDice = computed(() => diceOf(props.result?.attackDice ?? []))
 const damageDice = computed(() => diceOf(props.result?.damageDice ?? []))
 
-const ROLL_MS = 600
-const FACE_MS = 70
-const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)')
-
-/** Les dés roulent : ils montrent des faces de passage, que le verdict, caché jusqu'à l'arrêt, ne confirme jamais. */
-const rolling = ref(false)
-/** Une face de passage par dé, renouvelée à chaque pas du roulement : de l'affichage, pas un tirage. */
-const faces = ref<number[]>([])
-let ticker: number | undefined
-let stopper: number | undefined
-/** Le résultat dont les dés roulent. */
-let rollingResult: TrayResult | undefined
-
-function stopRolling() {
-  window.clearInterval(ticker)
-  window.clearTimeout(stopper)
-  rolling.value = false
-}
-
-function shuffleFaces() {
-  faces.value = [...attackDice.value, ...damageDice.value].map((d) => 1 + Math.floor(Math.random() * d.sides))
-}
-
-watch(
-  () => props.result?.action,
-  () => {
-    // Une attaque qui en interrompt une autre ne prive pas la précédente de son arrêt : ses PV et son issue se posent.
-    const interrupted = rolling.value ? rollingResult : undefined
-    stopRolling()
-    if (interrupted) emit('landed', interrupted)
-    const result = props.result
-    rollingResult = result ?? undefined
-    if (!result?.live) return
-    if (REDUCED_MOTION.matches) {
-      emit('landed', result)
-      return
-    }
-    rolling.value = true
-    shuffleFaces()
-    ticker = window.setInterval(shuffleFaces, FACE_MS)
-    stopper = window.setTimeout(() => {
-      stopRolling()
-      emit('landed', result)
-    }, ROLL_MS)
-  },
-  { immediate: true },
-)
-
-onBeforeUnmount(stopRolling)
-
-/** Ce que montre un dé : sa face de passage pendant le roulement, la valeur du serveur ensuite. */
-function shown(index: number, die: Die): number {
-  return rolling.value ? (faces.value[index] ?? die.value) : die.value
-}
 </script>
 
 <template>
@@ -134,13 +79,13 @@ function shown(index: number, die: Die): number {
         </p>
         <p class="line" :class="{ waiting: rolling }">{{ line }}</p>
         <p class="title">{{ result.title }}</p>
-        <div class="dice" :class="{ rolling }">
-          <span v-for="(die, i) in attackDice" :key="`a${result.action}-${i}`" class="die" :class="{ dropped: die.dropped && !rolling }">
-            <b>{{ shown(i, die) }}</b><small>d{{ die.sides }}</small>
+        <div class="dice" :class="{ waiting: rolling }">
+          <span v-for="(die, i) in attackDice" :key="`a${result.action}-${i}`" class="die" :class="{ dropped: die.dropped }">
+            <b>{{ die.value }}</b><small>d{{ die.sides }}</small>
           </span>
           <i v-if="damageDice.length" class="split" />
           <span v-for="(die, i) in damageDice" :key="`d${result.action}-${i}`" class="die">
-            <b>{{ shown(attackDice.length + i, die) }}</b><small>d{{ die.sides }}</small>
+            <b>{{ die.value }}</b><small>d{{ die.sides }}</small>
           </span>
         </div>
         <p v-if="result.target" class="target" :class="{ waiting: rolling }">
@@ -236,8 +181,7 @@ p {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .verdict,
-  .rolling .die {
+  .verdict {
     animation: none;
   }
 }
@@ -288,17 +232,6 @@ p {
 .die.dropped b {
   text-decoration: line-through;
   text-decoration-thickness: 2px;
-}
-.rolling .die {
-  animation: tumble 140ms linear infinite alternate;
-}
-@keyframes tumble {
-  from {
-    transform: rotate(-8deg) translateY(-1px);
-  }
-  to {
-    transform: rotate(8deg) translateY(1px);
-  }
 }
 .split {
   flex: none;

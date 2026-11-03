@@ -45,6 +45,10 @@ const tab = ref<'sheet' | 'target' | 'journal'>('sheet')
 const targetSheet = ref<Sheet | null>(null)
 /** Ce que la piste à dés montre : la dernière attaque résolue. */
 const lastResult = ref<TrayResult | null>(null)
+/** Les dés 3D de la dernière attaque roulent sur la carte : la piste attend leur arrêt. */
+const rolling = ref(false)
+/** Numéro du dernier lancer : seul lui libère la piste à son arrêt. */
+let rollId = 0
 const theme = ref<Theme>(initialTheme())
 /** La question du moteur qui suspend l'action en cours ; tant qu'elle attend, aucune autre action. */
 const decision = ref<Decision | null>(null)
@@ -518,7 +522,8 @@ async function settleAction(result: ActionResult) {
   })
   lastResult.value = tray
   // Les PV de la carte baissent à l'arrêt des dés (`showImpact`) ; sans piste, tout de suite.
-  if (!tray && target) target.hitPoints = result.targetHitPoints
+  if (tray) rollThenLand(tray)
+  else if (target) target.hitPoints = result.targetHitPoints
   announcement.value = tray
     ? journal.value.filter((e) => e.action === tray.action && e.highlight).map((e) => e.text).join('. ')
     : 'Attaque résolue.'
@@ -527,6 +532,19 @@ async function settleAction(result: ActionResult) {
   const fresh = await api.sheet(result.targetId)
   targetSheet.value = fresh
   if (target) target.armorClass = fresh.armorClass
+}
+
+/**
+ * Lance les dés 3D sans les attendre (l'action est finie, ses verrous se libèrent) ; à leur arrêt, l'issue se pose.
+ * Un lancer suivant arrête celui-ci : il se pose aussitôt, puis le suivant roule.
+ */
+function rollThenLand(tray: TrayResult) {
+  const id = ++rollId
+  rolling.value = true
+  void (mapView.value?.rollDice(tray.attackDice, tray.damageDice) ?? Promise.resolve()).finally(() => {
+    showImpact(tray)
+    if (id === rollId) rolling.value = false
+  })
 }
 
 /**
@@ -912,7 +930,7 @@ onBeforeUnmount(() => {
             distance ; Suppr retire de la carte les créatures sélectionnées.
           </template>
         </p>
-        <DiceTray :result="lastResult" @landed="showImpact" />
+        <DiceTray :result="lastResult" :rolling="rolling" />
       </template>
       <p v-else class="empty">Aucune carte. La créer depuis « Nouvelle carte », dans le rail à gauche.</p>
       <p class="sr-only" aria-live="polite">{{ announcement }}</p>
