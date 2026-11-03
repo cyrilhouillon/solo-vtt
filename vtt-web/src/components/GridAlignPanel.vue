@@ -80,7 +80,7 @@ const unitSymbol = computed(() => (props.unit === 'METRE' ? 'm' : 'ft'))
       </div>
     </template>
     <form v-else class="fields" @submit.prevent="emit('apply')" @keydown.esc.stop="emit('cancel')">
-      <p class="hint">Glisser la carte au bouton du milieu, ou régler au pixel de l'image ; flèches dans les champs.</p>
+      <p class="hint">Glisser la carte au bouton du milieu, ou régler au pixel de l'image ; flèches dans les champs. Au bouton gauche, glisser déplace la vue.</p>
       <label>
         Décalage horizontal
         <span class="field">

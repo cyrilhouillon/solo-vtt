@@ -200,7 +200,8 @@ export class SceneCanvas {
     this.stage.on('touchstart touchmove', (e) => {
       const touches = e.evt.touches
       if (e.type === 'touchstart' && touches.length === 1) this.panned = false
-      if (touches.length !== 2) return
+      // Pendant le glisser d'un jeton, un redessin le détruirait et validerait un déplacement intermédiaire.
+      if (touches.length !== 2 || Konva.isDragging()) return
       // Le toucher qui suit un pincement ne pose ni ne cible rien.
       this.panned = true
       e.evt.preventDefault()
