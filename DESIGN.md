@@ -231,7 +231,7 @@ Grille d'application pleine hauteur : barre en haut, puis rail d'icônes (3.5rem
 - Sous 900px : une colonne ; la page défile, le cadre de la carte prend la forme de la carte (14rem minimum, 70svh maximum), le panneau latéral passe dessous (24rem minimum), le rail se couche à l'horizontale quand le tiroir est fermé.
 - Le tableau tient sans défilement horizontal : sous 1280px, il masque le camp en toutes lettres (la forme de la pastille le dit déjà) ; entre 901 et 1100px et sous 700px, la jauge (le chiffre reste) ; sous 600px, l'état.
 
-Le rythme est en rem : 0.25 entre les entrées d'une liste, 0.4 à 0.6 à l'intérieur d'une ligne, 0.75 à 1 entre blocs, 1 à 1.1 en marge de panneau. Les erreurs se posent par-dessus la carte sans la redimensionner.
+Le rythme est en rem : 0.25 entre les entrées d'une liste, 0.4 à 0.6 à l'intérieur d'une ligne, 0.75 à 1 entre blocs, 1 à 1.1 en marge de panneau. Une erreur prend la place de la barre d'état sous la carte, à sa hauteur réservée : elle ne couvre ni le tableau ni les boutons de zoom, et la carte ne bouge pas. Sans carte, elle ouvre la colonne.
 
 ## Elevation & Depth
 
@@ -239,7 +239,7 @@ Le système est plat et matériel : la profondeur vient des matières (bois plus
 
 ### Shadow Vocabulary
 - **Feutre creusé** (`box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.45), inset 0 0 0 1px var(--felt-rim), 0 0 0 3px var(--rule)`) : la piste à dés, une cuvette de feutre dans son cadre de bois.
-- **Bandeau flottant** (`box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)`) : la bannière d'erreur posée sur la carte.
+- **Bandeau flottant** (`box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)`) : le dialogue de décision posé sur la table.
 - **Soulignement d'onglet** (`box-shadow: inset 0 -3px 0 var(--ink)`) : l'onglet actif ; un trait, pas une élévation.
 
 ### Named Rules
@@ -278,7 +278,7 @@ Du bois en creux, francs et discrets.
 ### Inputs / Fields
 - **Style:** champ numérique en creux (`wood-sunken`), contour 1px `control-border`, 4px, chiffres tabulaires, unité accolée à droite.
 - **Focus:** le contour laiton commun. Radios et cases suivent `accent-color: brass`.
-- **Image de fond (tiroir Nouvelle carte):** après l'unité, un choix de fichier dont le bouton natif prend l'allure d'un bouton standard ; une fois l'image lue, son nom et sa taille en pixels, puis « Retirer l'image ». Avec image, « Cases en largeur » et « Case … px » remplacent Largeur et Hauteur : saisir l'un calcule l'autre (au centième), et une ligne donne les cases et les dimensions de la carte. Refus (type, image illisible, plus de 50 Mo) en `--danger` sous le choix.
+- **Image de fond (tiroir Nouvelle carte):** après l'unité, un choix de fichier dont le bouton natif prend l'allure d'un bouton standard, sans le texte natif (« Aucun fichier choisi » se coupait dans le tiroir) ; une fois l'image lue, son nom et sa taille en pixels, puis « Retirer l'image ». Avec image, « Cases en largeur » et « Case … px » remplacent Largeur et Hauteur : saisir l'un calcule l'autre (au centième), et une ligne donne les cases et les dimensions de la carte. Refus (type, image illisible, plus de 50 Mo) en `--danger` sous le choix.
 
 - **Cartes enregistrées (tiroir):** titre et filet effilé comme Nouvelle carte. Un champ texte « Nom » (en creux, pleine largeur, 80 caractères) et « Enregistrer » ; un nom déjà pris annonce « Remplace la carte enregistrée « … » » en `--danger` ; sans carte, champ et bouton éteints avec une consigne en `ink-muted`. Sous un second filet, une entrée par carte, triée par nom : nom en gras, « 30 m × 20 m · 3 créatures » en `ink-muted`, bouton « Charger ». Avec une carte en cours, Charger ouvre sous l'entrée la même confirmation que Nouvelle carte (« Remplace la carte actuelle… » en `--danger`, « Charger » `danger`, « Annuler »), qui prend le focus ; Annuler ou Échap le rend au bouton. Chargée, la carte ouvre le Catalogue pour poser les personnages.
 - **Caler la grille (tiroir Nouvelle carte, sous le formulaire):** sur une carte avec image seulement, après un filet effilé, le titre « Caler la grille », une consigne en `ink-muted` et le bouton « Caler la grille » ; en combat, la raison en `ink-muted` et le bouton éteint. Le bouton ouvre trois champs numériques en pixels de l'image : « Décalage horizontal », « Décalage vertical » (pas de 1) et « Taille de case » (pas de 0,1), le premier pris au focus. Une ligne donne les cases et les dimensions qui en résultent. « Valider » `primary` et « Annuler » ; Échap annule et rend le focus au bouton, le tiroir reste ouvert. Pendant le calage, la grille d'aperçu s'affiche même masquée, un glisser au bouton du milieu sur la carte, jetons compris, décale la grille au pixel entier de l'image, comme les champs de décalage, et le glisser ordinaire déplace la vue ; les jetons ne réagissent plus, pose, déplacement, ciblage et lancement du combat sont suspendus. Validé, la barre d'état annonce « Grille calée. » et la grille reprend le choix d'affichage d'avant.

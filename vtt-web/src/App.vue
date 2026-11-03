@@ -1171,7 +1171,7 @@ onBeforeUnmount(() => {
     </aside>
 
     <main class="table">
-      <div v-if="error" class="error" role="alert">
+      <div v-if="error && !scene" class="error" role="alert">
         <p>{{ error }}</p>
         <button type="button" @click="error = null">Fermer</button>
       </div>
@@ -1206,7 +1206,12 @@ onBeforeUnmount(() => {
             @token-move="moveToken"
           />
         </div>
-        <p class="status">
+        <!-- L'erreur prend la place de la consigne, sous la carte où l'on vient d'agir : rien ne couvre le tableau. -->
+        <div v-if="error" class="status error" role="alert">
+          <p>{{ error }}</p>
+          <button type="button" @click="error = null">Fermer</button>
+        </div>
+        <p v-else class="status">
           <strong v-if="notice" class="notice">{{ notice }}</strong>
           <template v-if="aligning">
             Calage de la grille : glisser au bouton du milieu pour décaler la grille, ou régler décalages et taille de
@@ -1445,21 +1450,28 @@ onBeforeUnmount(() => {
   font-size: 1.15rem;
   text-align: center;
 }
-/* Par-dessus la carte : l'apparition d'une erreur ne la redimensionne pas. */
+/*
+ * Avec une carte, l'erreur occupe la barre d'état, à sa hauteur réservée : la carte ne bouge pas. Sans carte, elle
+ * ouvre la colonne.
+ */
 .error {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 1rem;
   background: var(--wood-raised);
   border-bottom: 2px solid var(--danger);
   color: var(--danger);
   font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.status.error {
+  border-bottom: 0;
+  box-shadow: inset 0 2px 0 var(--danger);
+  color: var(--danger);
+}
+.error button {
+  flex: none;
 }
 .error p {
   margin: 0;

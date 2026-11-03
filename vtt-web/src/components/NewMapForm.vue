@@ -274,9 +274,13 @@ input[type='number'] {
   align-self: stretch;
   min-width: 0;
 }
+/*
+ * Le texte natif (« Aucun fichier choisi », ou le nom) se coupait dans le tiroir étroit : il est masqué, seul le bouton
+ * reste. Le nom et la taille de l'image se lisent en entier dans la ligne dessous ; le lecteur d'écran garde le texte natif.
+ */
 .image input[type='file'] {
   max-width: 100%;
-  color: var(--ink);
+  color: transparent;
 }
 /* Le bouton natif prend l'allure des autres boutons. */
 .image input[type='file']::file-selector-button {
