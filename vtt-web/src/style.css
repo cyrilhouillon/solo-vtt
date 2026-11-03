@@ -29,7 +29,7 @@
   --map-label: #efe6d2;
   --map-label-ground: rgba(18, 36, 27, 0.88);
   --map-live: #dcb35c;
-  --map-down: #6f6a60;
+  --map-down: #8a857a;
   --token-character: #4f84c4;
   --token-monster: #b5643a;
   --token-rim: #efe6d2;
@@ -53,7 +53,7 @@
   --felt-deep: #b4c6a7;
   --felt-rim: #6f8a64;
   --hp: #3f7a2e;
-  --hp-low: #9a5a12;
+  --hp-low: #8a4e0c;
 
   --map-ground: #b4c6a7;
   --map-grid: rgba(34, 52, 30, 0.41);
@@ -61,7 +61,7 @@
   --map-label: #1f160d;
   --map-label-ground: rgba(226, 234, 218, 0.92);
   --map-live: #7d520c;
-  --map-down: #8d887d;
+  --map-down: #67635a;
   --token-character: #2f5f9a;
   --token-monster: #9a4a1c;
   --token-rim: #fbf3e2;

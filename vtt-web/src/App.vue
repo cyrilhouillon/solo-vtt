@@ -1023,7 +1023,8 @@ function onKey(e: KeyboardEvent) {
     undo()
   } else if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) {
     return
-  } else if (e.key.toLowerCase() === 'f' && combat.value?.activeId && !combatBusy.value) {
+  } else if (e.key.toLowerCase() === 'f' && e.shiftKey && combat.value?.activeId && !combatBusy.value) {
+    // Maj+F, pas F seul : finir un tour ne s'annule pas, une touche égarée ne doit pas le faire.
     e.preventDefault()
     combatAction(api.endTurn)
   } else if (e.key.toLowerCase() === 'd' && !armed.value && !targeting.value) {
@@ -1230,7 +1231,7 @@ onBeforeUnmount(() => {
           </template>
           <template v-else-if="!notice && combat">
             Glisser une créature pour la déplacer (Maj cale sur la case) ; D : déplacer au clavier, 1 à 9 : attaques de la
-            feuille, F : fin du tour.
+            feuille, Maj+F : fin du tour.
           </template>
           <template v-else-if="!notice">
             Glisser une créature pour la déplacer (Maj cale sur la case). Sélectionner deux créatures pour mesurer leur

@@ -12,7 +12,9 @@ const emit = defineEmits<{ answer: [option: string] }>()
 const dialog = ref<HTMLDialogElement | null>(null)
 /**
  * Une nouvelle question (une autre créature qui peut réagir) peut suivre la précédente, dialogue ouvert :
- * il est rouvert pour que les lecteurs d'écran l'annoncent, et le focus revient sur sa première option.
+ * il est rouvert pour que les lecteurs d'écran l'annoncent. Le focus va sur l'option qui ne coûte rien : pour une
+ * réaction, la dernière (« Ne rien faire », que le moteur place toujours en fin), pour qu'une Entrée réflexe ne
+ * dépense pas la réaction ; pour « Qui joue ? », la première.
  */
 async function sync() {
   const el = dialog.value
@@ -25,7 +27,9 @@ async function sync() {
   el.showModal()
   await nextTick()
   // Pas de tableau de refs : dans un v-for, Vue n'en garantit pas l'ordre.
-  el.querySelector<HTMLButtonElement>('.options button')?.focus()
+  const options = el.querySelectorAll<HTMLButtonElement>('.options button')
+  const safe = props.decision.chooserId ? options[options.length - 1] : options[0]
+  safe?.focus()
 }
 
 /**

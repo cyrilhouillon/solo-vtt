@@ -85,8 +85,8 @@ defineExpose({ cancelEnd })
       <button
         type="button"
         :disabled="blocked || !combat.activeId"
-        aria-keyshortcuts="F"
-        title="Touche F"
+        aria-keyshortcuts="Shift+F"
+        title="Maj+F"
         @click="emit('endTurn')"
       >
         Fin du tour
