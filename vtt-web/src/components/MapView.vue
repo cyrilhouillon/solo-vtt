@@ -196,7 +196,18 @@ async function rollDice(attack: RolledDice[], damage: RolledDice[]): Promise<voi
   }
 }
 
-defineExpose({ focus, showImpact, rollDice })
+/** Glisser depuis le catalogue : fantôme sous le pointeur, position visée au relâcher, puis effacement. */
+function dragOver(kind: CreatureKind, clientX: number, clientY: number) {
+  canvas?.dragOver(kind, clientX, clientY)
+}
+function dropTarget(clientX: number, clientY: number): Point | null {
+  return canvas?.dropTarget(clientX, clientY) ?? null
+}
+function endDrag() {
+  canvas?.endDrag()
+}
+
+defineExpose({ focus, showImpact, rollDice, dragOver, dropTarget, endDrag })
 
 onBeforeUnmount(() => {
   observer?.disconnect()

@@ -89,11 +89,17 @@ export class SceneCanvas {
   private pointerInside = false
   /** Maj tenue : la pose et le glisser se calent sur la case. */
   private shiftHeld = false
+  /**
+   * Créature glissée depuis le catalogue et dernière position du pointeur, dans la fenêtre. Le pointeur est capturé
+   * par le catalogue : Konva ne le voit pas, la carte vise donc depuis ces coordonnées.
+   */
+  private drag: { kind: CreatureKind; clientX: number; clientY: number } | null = null
   /** Maj change l'aperçu sans attendre que la souris bouge : tenue, elle cale sur la case. */
   private readonly onShift = (e: KeyboardEvent) => {
     if (e.key !== 'Shift') return
     this.shiftHeld = e.type === 'keydown'
-    if (this.pointerInside) this.drawPointerPreview(!this.shiftHeld)
+    if (this.drag) this.drawDrag()
+    else if (this.pointerInside) this.drawPointerPreview(!this.shiftHeld)
   }
 
   constructor(container: HTMLDivElement, events: SceneCanvasEvents) {
@@ -127,6 +133,25 @@ export class SceneCanvas {
     window.removeEventListener('keydown', this.onShift)
     window.removeEventListener('keyup', this.onShift)
     this.stage.destroy()
+  }
+
+  /** Une créature du catalogue est glissée au-dessus de la page : son fantôme suit le pointeur sur la carte. */
+  dragOver(kind: CreatureKind, clientX: number, clientY: number): void {
+    this.drag = { kind, clientX, clientY }
+    this.drawDrag()
+  }
+
+  /** Position où la créature glissée serait posée, ou `null` hors de la carte : aimantée, ou calée si Maj est tenue. */
+  dropTarget(clientX: number, clientY: number): Point | null {
+    if (!this.state) return null
+    const box = this.container.getBoundingClientRect()
+    return this.targetAt(this.state.scene, { x: clientX - box.left, y: clientY - box.top }, !this.shiftHeld)
+  }
+
+  /** Fin du glisser, posé ou annulé : le fantôme s'efface. */
+  endDrag(): void {
+    this.drag = null
+    this.clearPreview()
   }
 
   private toPixelsX(value: number): number {
@@ -194,15 +219,20 @@ export class SceneCanvas {
     if (this.state.cursor) {
       const moved = this.state.moving ? scene.tokens.find((t) => t.id === this.state!.moving) : undefined
       if (moved) this.drawMovePreview(moved, this.state.cursor, true)
-      else this.drawPreview(this.state.cursor, true)
+      else if (this.state.placing) this.drawPreview(this.state.cursor, true, this.state.placing)
     }
+    if (this.drag) this.drawDrag()
   }
 
   /** Position visée par le pointeur, ou `null` hors de la carte : calée sur la case, ou libre et aimantée au contact. */
   private pointerTarget(scene: SceneView, free: boolean): Point | null {
     const pointer = this.stage.getPointerPosition()
-    if (!pointer) return null
-    const p = this.toUnits(pointer)
+    return pointer ? this.targetAt(scene, pointer, free) : null
+  }
+
+  /** Position visée depuis un point du stage, en pixels ; `null` hors de la carte. */
+  private targetAt(scene: SceneView, pixels: { x: number; y: number }, free: boolean): Point | null {
+    const p = this.toUnits(pixels)
     if (p.x < 0 || p.y < 0 || p.x > scene.width || p.y > scene.height) return null
     return free ? magnet(scene, { x: round(p.x), y: round(p.y) }) : snapToCell(scene, p)
   }
@@ -625,20 +655,28 @@ export class SceneCanvas {
   }
 
   private drawPointerPreview(free: boolean): void {
+    if (this.drag) return
     if (!this.state?.placing) return this.clearPreview()
     const target = this.pointerTarget(this.state.scene, free)
     if (!target) return this.clearPreview()
-    this.drawPreview(target, false)
+    this.drawPreview(target, false, this.state.placing)
+  }
+
+  private drawDrag(): void {
+    if (!this.drag) return
+    const target = this.dropTarget(this.drag.clientX, this.drag.clientY)
+    if (!target) return this.clearPreview()
+    this.drawPreview(target, false, this.drag.kind)
   }
 
   /**
    * Fantôme de la créature à poser. Sur une case prise, un anneau rouge plein, plus large
    * que le jeton, et un curseur d'interdiction. `framed` encadre la case visée au clavier.
    */
-  private drawPreview(target: Point, framed: boolean): void {
+  private drawPreview(target: Point, framed: boolean, placing: CreatureKind): void {
     this.clearPreview()
-    if (!this.state?.placing) return
-    const { scene, placing } = this.state
+    if (!this.state) return
+    const { scene } = this.state
     const radius = this.tokenRadius(scene)
     const x = this.toPixelsX(target.x)
     const y = this.toPixelsY(target.y)
@@ -654,7 +692,8 @@ export class SceneCanvas {
     } else {
       this.preview.add(this.tokenShape(placing, radius, { x, y, opacity: 0.5, stroke: this.colors.live, strokeWidth: 2 }))
     }
-    if (!framed) this.stage.container().style.cursor = taken ? 'not-allowed' : ''
+    // Au glisser depuis le catalogue, le pointeur est capturé : le curseur est celui du catalogue.
+    if (!framed && !this.drag) this.stage.container().style.cursor = taken ? 'not-allowed' : ''
     this.preview.batchDraw()
   }
 
