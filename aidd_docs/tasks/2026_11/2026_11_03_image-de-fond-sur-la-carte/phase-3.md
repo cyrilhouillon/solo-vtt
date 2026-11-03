@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: nouvelle carte depuis une image, fond et bascule de grille dans le navigateur

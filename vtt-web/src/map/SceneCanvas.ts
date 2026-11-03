@@ -1,4 +1,5 @@
 import Konva from 'konva'
+import { imageUrl } from '../api'
 import { formatLength, type CreatureKind, type SceneView, type TokenView } from '../types'
 import { CELL, magnet, occupant, round, snapToCell, type Point } from './grid'
 import { checkMove, moveLabel, snapToLimit, type MoveLimit } from './move'
@@ -84,6 +85,8 @@ export class SceneCanvas {
   /** Couleurs du thème, relues à chaque dessin : le joueur peut changer de thème en cours de partie. */
   private colors: Record<string, string> = {}
   private state: SceneCanvasState | null = null
+  /** L'image de fond chargée, gardée d'un dessin à l'autre ; `ready` faux tant qu'elle charge ou si elle a échoué. */
+  private backdrop: { id: string; image: HTMLImageElement; ready: boolean } | null = null
   private pixelsPerUnit = 1
   private origin = { x: MARGIN, y: MARGIN }
   private pointerInside = false
@@ -254,6 +257,19 @@ export class SceneCanvas {
     })
     this.layer.add(ground)
 
+    const backdrop = this.backdropOf(scene)
+    if (backdrop) {
+      this.layer.add(new Konva.Image({
+        image: backdrop,
+        x: this.toPixelsX(0),
+        y: this.toPixelsY(0),
+        width: scene.width * this.pixelsPerUnit,
+        height: scene.height * this.pixelsPerUnit,
+        listening: false,
+      }))
+    }
+    if (!scene.gridVisible) return
+
     // Au demi-pixel près, pour des traits de 1 px nets et réguliers.
     const crisp = (pixels: number) => Math.round(pixels) + 0.5
     const cell = CELL[scene.unit]
@@ -344,6 +360,25 @@ export class SceneCanvas {
       const verdict = rangeVerdict(targeting, distance)
       return verdict && { ...verdict, distance }
     }
+  }
+
+  /**
+   * L'image de fond prête à dessiner, ou `null` (carte sans image, image qui charge ou introuvable : le sol seul).
+   * Elle n'est chargée qu'une fois ; la carte se redessine quand elle arrive.
+   */
+  private backdropOf(scene: SceneView): HTMLImageElement | null {
+    if (!scene.imageId) return null
+    if (this.backdrop?.id !== scene.imageId) {
+      const image = new Image()
+      const backdrop = { id: scene.imageId, image, ready: false }
+      image.onload = () => {
+        backdrop.ready = true
+        if (this.backdrop === backdrop) this.redraw()
+      }
+      image.src = imageUrl(scene.imageId)
+      this.backdrop = backdrop
+    }
+    return this.backdrop.ready ? this.backdrop.image : null
   }
 
   private gridLine(points: number[]): Konva.Line {

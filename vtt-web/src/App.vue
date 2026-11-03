@@ -80,6 +80,15 @@ const movementLimit = computed<MoveLimit | null>(() => {
 const movable = computed(() => !armed.value && !targeting.value && !decision.value && !moveBusy.value)
 const movingToken = computed(() => scene.value?.tokens.find((t) => t.id === movingId.value) ?? null)
 
+/** Affichage seul : la grille se montre ou se cache, sans toucher aux jetons (dont ceux en attente). */
+function toggleGrid() {
+  const visible = !scene.value?.gridVisible
+  attempt(async () => {
+    const updated = await api.showGrid(visible)
+    if (scene.value) scene.value = { ...scene.value, gridVisible: updated.gridVisible }
+  })
+}
+
 function toggleTheme() {
   theme.value = theme.value === 'dark' ? 'light' : 'dark'
   saveTheme(theme.value)
@@ -277,9 +286,10 @@ onMounted(() =>
   }),
 )
 
-function createScene(width: number, height: number, unit: DistanceUnit) {
+function createScene(width: number, height: number, unit: DistanceUnit, image: File | null) {
   attempt(async () => {
-    const created = await api.createScene(width, height, unit)
+    const imageId = image ? await api.uploadImage(image) : null
+    const created = await api.createScene(width, height, unit, imageId)
     scene.value = created
     armed.value = null
     targeting.value = null
@@ -908,6 +918,17 @@ onBeforeUnmount(() => {
         @end-combat="endCombat"
       />
       <button
+        v-if="scene"
+        type="button"
+        class="icon-button"
+        :aria-pressed="scene.gridVisible"
+        aria-label="Grille"
+        :title="scene.gridVisible ? 'Masquer la grille' : 'Afficher la grille'"
+        @click="toggleGrid"
+      >
+        <AppIcon name="grid" />
+      </button>
+      <button
         type="button"
         class="icon-button"
         :aria-label="theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'"
@@ -1138,6 +1159,10 @@ onBeforeUnmount(() => {
   width: 2.5rem;
   height: 2.5rem;
   padding: 0;
+}
+/* Grille masquée : le bouton s'éteint. */
+.icon-button[aria-pressed='false'] {
+  color: var(--ink-muted);
 }
 .rail {
   grid-area: rail;
