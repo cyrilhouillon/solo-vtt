@@ -4,6 +4,7 @@ import { formatLength, type CreatureKind, type SceneView, type TokenView } from 
 import { CELL, gridOf, magnet, occupant, round, snapToCell, type GridLines, type Point } from './grid'
 import { checkMove, moveLabel, snapToLimit, type MoveLimit } from './move'
 import { rangeVerdict, type RangeVerdict } from './range'
+import { FIT_VIEW, layout, panBy, reveal, sameView, zoomAt, type Frame, type View } from './view'
 
 /** Ce que la carte signale ; les coordonnées sont dans l'unité de la carte. */
 export interface SceneCanvasEvents {
@@ -14,6 +15,8 @@ export interface SceneCanvasEvents {
   onTokenMove(tokenId: string, x: number, y: number): void
   /** Pendant le calage, la carte est glissée de ce déplacement depuis le signal précédent, dans l'unité de la carte. */
   onGridDrag(dx: number, dy: number): void
+  /** La vue a changé de zoom (1 : carte entière). */
+  onZoom(zoom: number): void
 }
 
 export interface SceneCanvasState {
@@ -63,6 +66,10 @@ const HEALTH_HEIGHT = 4
 const IMPACT_HOLD_MS = 1200
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)')
 const FONT = "'Alegreya Sans', system-ui, sans-serif"
+/** Pas de zoom des boutons et du clavier. */
+const ZOOM_STEP = 1.25
+/** La case du curseur clavier reste à cette distance du bord de la vue, en pixels. */
+const REVEAL_PAD = 48
 
 /** Initiales d'un nom, numéro compris : « Gobelin guerrier 2 » donne « GG2 ». */
 function initialsOf(name: string): string {
@@ -96,6 +103,12 @@ export class SceneCanvas {
   private backdrop: { id: string; image: HTMLImageElement; ready: boolean } | null = null
   private pixelsPerUnit = 1
   private origin = { x: MARGIN, y: MARGIN }
+  /** Zoom et point regardé ; `FIT_VIEW` montre la carte entière. */
+  private view: View = FIT_VIEW
+  /** Redessin demandé pour la prochaine image, après un changement de vue. */
+  private frameRequest = 0
+  /** Pincement à deux doigts en cours : écart et milieu précédents, en pixels du stage. */
+  private pinch: { distance: number; x: number; y: number } | null = null
   private pointerInside = false
   /** Maj tenue : la pose et le glisser se calent sur la case. */
   private shiftHeld = false
@@ -141,6 +154,88 @@ export class SceneCanvas {
       if (dx || dy) this.events.onGridDrag(dx / this.pixelsPerUnit, dy / this.pixelsPerUnit)
     })
     this.stage.on('mouseup touchend mouseleave', () => (this.gridDrag = null))
+    this.stage.on('wheel', (e) => {
+      e.evt.preventDefault()
+      const pointer = this.stage.getPointerPosition()
+      if (Konva.isDragging() || !pointer) return
+      // Pavé tactile : le pincement arrive en molette avec Ctrl, par petits pas.
+      const speed = e.evt.ctrlKey ? 0.01 : e.evt.deltaMode === 1 ? 0.05 : 0.002
+      this.zoomAround(Math.exp(-e.evt.deltaY * speed), pointer)
+    })
+    this.stage.on('touchstart touchmove', (e) => {
+      const touches = e.evt.touches
+      if (touches.length !== 2) return
+      e.evt.preventDefault()
+      const box = this.container.getBoundingClientRect()
+      const [a, b] = [touches[0], touches[1]]
+      const now = {
+        distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+        x: (a.clientX + b.clientX) / 2 - box.left,
+        y: (a.clientY + b.clientY) / 2 - box.top,
+      }
+      const before = this.pinch
+      this.pinch = now
+      const frame = this.frame()
+      if (!before || !frame) return
+      const zoomed = before.distance > 0 ? zoomAt(this.view, now.distance / before.distance, now, frame) : this.view
+      this.setView(panBy(zoomed, now.x - before.x, now.y - before.y, frame))
+    })
+    this.stage.on('touchend touchcancel', (e) => {
+      if (e.evt.touches.length < 2) this.pinch = null
+    })
+  }
+
+  /** Le cadre de la carte actuelle, ou `null` sans carte. */
+  private frame(): Frame | null {
+    if (!this.state) return null
+    const { width, height } = this.state.scene
+    return { stage: { width: this.stage.width(), height: this.stage.height() }, map: { width, height }, margin: MARGIN }
+  }
+
+  /** Change la vue et redessine à la prochaine image ; les bulles d'issue, posées en pixels, s'effacent. */
+  private setView(view: View): void {
+    if (sameView(view, this.view)) return
+    const zoomChanged = view.zoom !== this.view.zoom
+    this.view = view
+    this.effects.destroyChildren()
+    this.effects.batchDraw()
+    if (zoomChanged) this.events.onZoom(view.zoom)
+    if (this.frameRequest) return
+    this.frameRequest = requestAnimationFrame(() => {
+      this.frameRequest = 0
+      this.redraw()
+    })
+  }
+
+  private zoomAround(factor: number, at: { x: number; y: number }): void {
+    const frame = this.frame()
+    if (frame) this.setView(zoomAt(this.view, factor, at, frame))
+  }
+
+  private zoomAroundCenter(factor: number): void {
+    if (Konva.isDragging()) return
+    this.zoomAround(factor, { x: this.stage.width() / 2, y: this.stage.height() / 2 })
+  }
+
+  zoomIn(): void {
+    this.zoomAroundCenter(ZOOM_STEP)
+  }
+
+  zoomOut(): void {
+    this.zoomAroundCenter(1 / ZOOM_STEP)
+  }
+
+  /** La carte entière. */
+  fit(): void {
+    this.setView(FIT_VIEW)
+  }
+
+  /** Garde un point de la carte (son unité) en vue, sa case entière et une marge comprises. */
+  reveal(point: Point): void {
+    const frame = this.frame()
+    if (!frame || !this.state) return
+    const halfCell = (CELL[this.state.scene.unit] / 2) * layout(this.view, frame).pixelsPerUnit
+    this.setView(reveal(this.view, point, halfCell + REVEAL_PAD, frame))
   }
 
   resize(width: number, height: number): void {
@@ -154,6 +249,7 @@ export class SceneCanvas {
   }
 
   destroy(): void {
+    cancelAnimationFrame(this.frameRequest)
     window.removeEventListener('keydown', this.onShift)
     window.removeEventListener('keyup', this.onShift)
     this.stage.destroy()
@@ -219,13 +315,10 @@ export class SceneCanvas {
     this.clearPreview()
     if (!this.state) return
     const { scene, selected, placing } = this.state
-    const available = { w: this.stage.width() - 2 * MARGIN, h: this.stage.height() - 2 * MARGIN }
-    this.pixelsPerUnit = Math.max(0.1, Math.min(available.w / scene.width, available.h / scene.height))
-    // Centrée dans la place disponible.
-    this.origin = {
-      x: Math.round((this.stage.width() - scene.width * this.pixelsPerUnit) / 2),
-      y: Math.round((this.stage.height() - scene.height * this.pixelsPerUnit) / 2),
-    }
+    // Carte entière centrée au zoom 1 ; zoomée, le point regardé au centre, sans laisser entrer un bord.
+    const placed = layout(this.view, this.frame()!)
+    this.pixelsPerUnit = placed.pixelsPerUnit
+    this.origin = placed.origin
 
     this.drawGround(scene)
     if (this.state.targeting) this.drawTargeting(scene, this.state.targeting)

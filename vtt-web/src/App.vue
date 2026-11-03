@@ -393,6 +393,7 @@ function startFresh(created: SceneView) {
   targetSheet.value = null
   clearSelection()
   history.length = 0
+  mapView.value?.fit()
   drawer.value = 'catalog'
 }
 
@@ -980,7 +981,17 @@ function onKey(e: KeyboardEvent) {
     aligning.value = null
     return
   }
-  // Pendant le calage, seuls la carte (glisser) et le tiroir agissent.
+  // Le zoom de la carte, partout, calage compris ; Ctrl + et Ctrl − restent au navigateur.
+  if (scene.value && !isTyping(e.target) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const zoom = { '+': 'zoomIn', '=': 'zoomIn', '-': 'zoomOut', '0': 'fit' } as const
+    const action = zoom[e.key as keyof typeof zoom]
+    if (action) {
+      e.preventDefault()
+      mapView.value?.[action]()
+      return
+    }
+  }
+  // Pendant le calage, seuls la carte (glisser), le zoom et le tiroir agissent.
   if (aligning.value && e.key !== 'Escape') return
   if (e.key === 'Escape') {
     // Un pas à la fois : d'abord une fin de combat ou un retrait à confirmer, le ciblage ou le placement, puis la sélection.

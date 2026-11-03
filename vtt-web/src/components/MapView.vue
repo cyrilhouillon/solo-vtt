@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { CELL, cellOf, occupant, snapToCell, type GridLines, type Point } from '../map/grid'
 import { checkMove, moveLabel, type MoveLimit } from '../map/move'
 import { SceneCanvas, type Targeting } from '../map/SceneCanvas'
+import { MAX_ZOOM } from '../map/view'
 import type { DiceRoller } from '../dice/DiceRoller'
 import { formatLength, type CreatureKind, type RolledDice, type SceneView } from '../types'
 
@@ -49,6 +50,8 @@ const label = computed(() => {
 /** Case visée au clavier pendant le placement. */
 const cursor = ref<Point | null>(null)
 const cursorAnnouncement = ref('')
+/** Zoom de la vue : 1 montre la carte entière. */
+const zoom = ref(1)
 
 const container = ref<HTMLDivElement | null>(null)
 const diceCanvas = ref<HTMLCanvasElement | null>(null)
@@ -80,6 +83,7 @@ onMounted(() => {
     onTokenClick: (id) => emit('tokenClick', id),
     onTokenMove: (id, x, y) => emit('tokenMove', id, x, y),
     onGridDrag: (dx, dy) => emit('gridDrag', dx, dy),
+    onZoom: (z) => (zoom.value = z),
   })
   render()
   // Le canvas ne redessine pas seul quand les polices finissent de charger.
@@ -118,6 +122,7 @@ function announce(point: Point) {
 /** Le curseur part de la créature déplacée, ou du centre de la carte pour une pose. */
 function startCursor() {
   cursor.value = snapToCell(props.scene, movingToken.value ?? { x: props.scene.width / 2, y: props.scene.height / 2 })
+  canvas?.reveal(cursor.value)
   announce(cursor.value)
 }
 
@@ -158,6 +163,7 @@ function onKeydown(e: KeyboardEvent) {
       y: Math.min(height, Math.max(0, cursor.value.y + step[1] * cell)),
     }
     cursor.value = snapToCell(props.scene, next)
+    canvas?.reveal(cursor.value)
     announce(cursor.value)
   } else if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault()
@@ -213,7 +219,18 @@ function endDrag() {
   canvas?.endDrag()
 }
 
-defineExpose({ focus, showImpact, rollDice, dragOver, dropTarget, endDrag })
+/** Zoom par paliers autour du centre de la vue, ou retour à la carte entière. */
+function zoomIn() {
+  canvas?.zoomIn()
+}
+function zoomOut() {
+  canvas?.zoomOut()
+}
+function fit() {
+  canvas?.fit()
+}
+
+defineExpose({ focus, showImpact, rollDice, dragOver, dropTarget, endDrag, zoomIn, zoomOut, fit })
 
 onBeforeUnmount(() => {
   observer?.disconnect()
@@ -236,6 +253,15 @@ onBeforeUnmount(() => {
       @keydown="onKeydown"
     />
     <canvas ref="diceCanvas" class="dice" aria-hidden="true" />
+    <div class="zoom" role="group" aria-label="Zoom de la carte">
+      <button type="button" aria-label="Zoom avant" title="Zoom avant (+)" :disabled="zoom >= MAX_ZOOM" @click="zoomIn">+</button>
+      <button type="button" aria-label="Zoom arrière" title="Zoom arrière (−)" :disabled="zoom <= 1" @click="zoomOut">−</button>
+      <button type="button" aria-label="Ajuster : toute la carte" title="Toute la carte (0)" :disabled="zoom <= 1" @click="fit">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
+        </svg>
+      </button>
+    </div>
   </div>
   <p class="sr-only" aria-live="polite">{{ cursorAnnouncement }}</p>
 </template>
@@ -259,6 +285,36 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   min-height: 0;
+  /* Un doigt fait défiler la page ; le pincement reste à la carte, qui zoome. */
+  touch-action: pan-x pan-y;
+}
+/* Au-dessus des dés, qui ne captent pas le pointeur. */
+.zoom {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.zoom button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.zoom svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .map.placing {
   cursor: crosshair;
