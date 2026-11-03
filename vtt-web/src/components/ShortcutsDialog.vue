@@ -24,9 +24,16 @@ function sync(open: boolean) {
 watch(() => props.open, sync)
 onMounted(() => sync(props.open))
 
-/** Un clic sur le voile (hors du panneau) ferme ; un clic dans le panneau, non. */
+/**
+ * Un clic sur le voile (hors du panneau) ferme ; un clic dans le panneau, marges comprises, non. La marge appartient
+ * au `<dialog>` lui-même : la cible ne suffit pas, il faut la position du clic.
+ */
 function onClick(e: MouseEvent) {
-  if (e.target === dialog.value) emit('close')
+  const el = dialog.value
+  if (!el || e.target !== el) return
+  const box = el.getBoundingClientRect()
+  const inside = e.clientX >= box.left && e.clientX <= box.right && e.clientY >= box.top && e.clientY <= box.bottom
+  if (!inside) emit('close')
 }
 
 /** Les touches par moment de jeu ; chaque groupe reste court. Un geste ou un mot de liaison n'est pas une touche. */

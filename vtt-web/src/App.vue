@@ -1111,7 +1111,7 @@ onBeforeUnmount(() => {
       </button>
       <button
         type="button"
-        class="icon-button"
+        class="icon-button shortcuts-button"
         aria-label="Raccourcis"
         aria-keyshortcuts="?"
         title="Raccourcis (?)"
@@ -1388,6 +1388,15 @@ onBeforeUnmount(() => {
   width: 2.5rem;
   height: 2.5rem;
   padding: 0;
+}
+/*
+ * La légende des raccourcis sert au clavier : sur un écran de téléphone, son bouton ferait déborder la barre.
+ * La touche « ? » l'ouvre toujours.
+ */
+@media (max-width: 600px) {
+  .shortcuts-button {
+    display: none;
+  }
 }
 /* Grille masquée : le bouton s'éteint. */
 .icon-button[aria-pressed='false'] {

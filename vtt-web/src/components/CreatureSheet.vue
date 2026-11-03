@@ -81,7 +81,7 @@ function signed(value: number): string {
           :aria-label="aiming === attack.id ? `Annuler l'attaque ${attack.label}` : `Attaquer avec ${attack.label}`"
           @click="emit('attack', attack)"
         >
-          {{ aiming === attack.id ? 'Annuler' : 'Attaquer' }}<kbd v-if="index < 9 && aiming !== attack.id" class="key">{{ index + 1 }}</kbd>
+          {{ aiming === attack.id ? 'Annuler' : 'Attaquer' }}<kbd v-if="index < 9 && aiming !== attack.id">{{ index + 1 }}</kbd>
         </button>
       </li>
     </ul>
