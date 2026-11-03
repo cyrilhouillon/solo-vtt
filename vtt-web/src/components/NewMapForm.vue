@@ -93,7 +93,8 @@ async function chooseImage(e: Event) {
     const size = await readSize(file)
     image.value = { file, ...size }
     // Les cases saisies avant restent : la taille de case suit la nouvelle image.
-    typedField.value === 'cells' ? typeCells() : typeCellPixels()
+    if (typedField.value === 'cells') typeCells()
+    else typeCellPixels()
   } catch {
     imageError.value = 'Image illisible.'
     removeImage(false)

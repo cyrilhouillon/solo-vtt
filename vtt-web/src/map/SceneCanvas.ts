@@ -267,6 +267,16 @@ export class SceneCanvas {
         height: scene.height * this.pixelsPerUnit,
         listening: false,
       }))
+      // Le bord du sol, en partie sous l'image, se redessine par-dessus.
+      this.layer.add(new Konva.Rect({
+        x: this.toPixelsX(0),
+        y: this.toPixelsY(0),
+        width: scene.width * this.pixelsPerUnit,
+        height: scene.height * this.pixelsPerUnit,
+        stroke: this.colors.border,
+        strokeWidth: 1,
+        listening: false,
+      }))
     }
     if (!scene.gridVisible) return
 
