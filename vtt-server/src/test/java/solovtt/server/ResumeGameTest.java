@@ -196,6 +196,65 @@ class ResumeGameTest {
     }
 
     @Test
+    void caler_metLaCarteALEchelle_etSeReprendALIdentique() {
+        var session = new SceneSession(Dice.scripted(), store);
+        session.create(30, 20, DistanceUnit.METRE, "a".repeat(64));
+        session.place(entree("loup"), 3, 4.5);
+
+        session.alignGrid(33, 22, 0.25, 0.5);
+
+        Scene calee = session.scene().orElseThrow();
+        assertEquals(33, calee.width(), 1e-9);
+        assertEquals(22, calee.height(), 1e-9);
+        assertEquals(3.3, calee.token("loup-1").position().x(), 1e-9);
+        assertEquals(4.95, calee.token("loup-1").position().y(), 1e-9);
+        assertEquals(0.25, session.gridOffsetX());
+        assertEquals(0.5, session.gridOffsetY());
+
+        SceneSession apres = new SceneSession(Dice.scripted(), store);
+        assertMemeScene(calee, apres.scene().orElseThrow());
+        assertEquals(0.25, apres.gridOffsetX());
+        assertEquals(0.5, apres.gridOffsetY());
+        assertEquals(0, store.setAsides);
+    }
+
+    @Test
+    void caler_estRefuseEnCombat_pendantUneDecision_etSansImage_sansEtreGarde() {
+        var session = new SceneSession(Dice.scripted(20, 15), store);
+        session.create(30, 20, DistanceUnit.METRE, "a".repeat(64));
+        session.place(entree("guerriere"), 1.5, 1.5);
+        session.place(entree("gobelin"), 12, 1.5);
+        session.startCombat();
+        SavedGame gardee = store.game();
+
+        assertThrows(ActionRefusedException.class, () -> session.alignGrid(33, 22, 0, 0));
+        assertEquals(30, session.scene().orElseThrow().width());
+        assertEquals(gardee, store.game());
+
+        session.endCombat();
+        session.alignGrid(33, 22, 0, 0);
+        assertEquals(33, session.scene().orElseThrow().width(), 1e-9);
+
+        assertThrows(DecisionPendingException.class, () -> partieJusquABouclier().alignGrid(33, 22, 0, 0));
+
+        var sansImage = new SceneSession(Dice.scripted());
+        sansImage.create(30, 20, DistanceUnit.METRE, null);
+        assertThrows(ActionRefusedException.class, () -> sansImage.alignGrid(33, 22, 0, 0));
+    }
+
+    @Test
+    void caler_refuseDesCasesNonCarreesOuUnDecalageHorsDeLaCase() {
+        var session = new SceneSession(Dice.scripted());
+        session.create(30, 20, DistanceUnit.METRE, "a".repeat(64));
+
+        assertThrows(IllegalArgumentException.class, () -> session.alignGrid(33, 20, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> session.alignGrid(33, 22, 1, 0));
+        assertThrows(IllegalArgumentException.class, () -> session.alignGrid(33, 22, 0, -0.1));
+        assertThrows(IllegalArgumentException.class, () -> session.alignGrid(0, 0, 0, 0));
+        assertEquals(30, session.scene().orElseThrow().width());
+    }
+
+    @Test
     void uneImageDisparueDuStockage_neMetPasLaPartieDeCote() {
         // La session ne lit jamais l'image : seule la création en direct (SceneResource) refuse une image inconnue.
         var gardee = new InMemoryGameStore(new SavedGame(List.of(

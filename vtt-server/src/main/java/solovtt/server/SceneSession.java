@@ -69,6 +69,12 @@ public class SceneSession {
     private String mapName;
     /** La grille de la carte s'affiche : un choix d'affichage, sans effet sur les règles. */
     private boolean gridVisible = true;
+    /**
+     * Le décalage de la grille depuis le coin haut gauche de la carte, en fraction de case, dans [0, 1) : de l'affichage
+     * et du calage côté client, sans effet sur les règles.
+     */
+    private double gridOffsetX;
+    private double gridOffsetY;
     private GameState state;
     /** L'entrée du catalogue de chaque créature posée, par id de créature. */
     private final Map<String, CatalogEntry> entries = new HashMap<>();
@@ -165,6 +171,8 @@ public class SceneSession {
         this.imageId = imageId;
         this.mapName = mapName;
         gridVisible = true;
+        gridOffsetX = 0;
+        gridOffsetY = 0;
         state = new GameState();
         engine = new Engine<>(state, StandardRules.create(), sides -> {
             int value = source.roll(sides);
@@ -338,6 +346,48 @@ public class SceneSession {
         recorded(() -> gridVisible = visible, r -> new SavedGame.SavedCommand.ShowGrid(visible, r));
     }
 
+    public synchronized double gridOffsetX() {
+        return gridOffsetX;
+    }
+
+    public synchronized double gridOffsetY() {
+        return gridOffsetY;
+    }
+
+    /** Écart relatif toléré entre les échelles en largeur et en hauteur : les cases restent carrées. */
+    private static final double SQUARE_TOLERANCE = 1e-6;
+
+    /**
+     * Cale la grille sur l'image de fond : la carte prend les dimensions {@code width} × {@code height}, chaque jeton est
+     * mis à la même échelle (il reste au même endroit de l'image), et la grille part du décalage donné, en fraction de case.
+     * Refusé en combat (la vitesse dépensée ne se remet pas à l'échelle), pendant une décision et sans image.
+     *
+     * @throws IllegalArgumentException dimension non positive, décalage hors de [0, 1), ou échelles différentes en largeur
+     *                                  et en hauteur ; la carte ne change pas
+     */
+    public synchronized Scene alignGrid(double width, double height, double offsetX, double offsetY) {
+        if (scene == null) throw new IllegalStateException("aucune carte");
+        requireNoDecision();
+        if (state.combat().isPresent()) throw new ActionRefusedException("Impossible de caler la grille pendant un combat");
+        if (imageId == null) throw new ActionRefusedException("Impossible de caler la grille d'une carte sans image");
+        if (!(width > 0) || !(height > 0) || Double.isInfinite(width) || Double.isInfinite(height)) {
+            throw new IllegalArgumentException("Les dimensions de la carte doivent être positives : %s × %s".formatted(width, height));
+        }
+        if (!(offsetX >= 0 && offsetX < 1) || !(offsetY >= 0 && offsetY < 1)) {
+            throw new IllegalArgumentException("Le décalage de la grille se donne en fraction de case, de 0 à moins de 1");
+        }
+        double factor = width / scene.width();
+        if (Math.abs(height / scene.height() - factor) > SQUARE_TOLERANCE * factor) {
+            throw new IllegalArgumentException("La largeur et la hauteur doivent changer d'échelle ensemble : les cases restent carrées");
+        }
+        return recorded(() -> {
+            scene = scene.rescaled(factor);
+            gridOffsetX = offsetX;
+            gridOffsetY = offsetY;
+            return scene;
+        }, r -> new SavedGame.SavedCommand.AlignGrid(width, height, offsetX, offsetY, r));
+    }
+
     /**
      * Crée une créature depuis le catalogue et pose son jeton ; le jeton porte l'id de la créature.
      * À partir de la deuxième instance d'une entrée, le nom est numéroté (« Loup 2 ») pour rester distinct.
@@ -462,6 +512,7 @@ public class SceneSession {
         switch (command) {
             case SavedGame.SavedCommand.Create c -> create(c.width(), c.height(), c.unit(), c.imageId(), c.mapName());
             case SavedGame.SavedCommand.ShowGrid c -> showGrid(c.visible());
+            case SavedGame.SavedCommand.AlignGrid c -> alignGrid(c.width(), c.height(), c.offsetX(), c.offsetY());
             case SavedGame.SavedCommand.Place c -> place(catalogEntry(c.catalogId())
                     .orElseThrow(() -> new IllegalStateException("Entrée de catalogue inconnue : " + c.catalogId())), c.x(), c.y());
             case SavedGame.SavedCommand.Remove c -> remove(c.tokenId());
@@ -481,6 +532,8 @@ public class SceneSession {
         imageId = null;
         mapName = null;
         gridVisible = true;
+        gridOffsetX = 0;
+        gridOffsetY = 0;
         state = null;
         engine = null;
         journal.clear();
