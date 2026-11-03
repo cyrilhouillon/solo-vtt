@@ -3,6 +3,9 @@ package solovtt.server;
 import jakarta.ws.rs.ClientErrorException;
 import org.junit.jupiter.api.Test;
 import solovtt.engine.Dice;
+import solovtt.scene.DistanceUnit;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -13,6 +16,23 @@ class SceneWithoutMapTest {
 
     private final SceneSession session = new SceneSession(Dice.scripted());
     private final SceneResource resource = new SceneResource(session, ImageStore.inMemory());
+
+    @Test
+    void sansCarte_enregistrerLaCarteRend409() {
+        var e = assertThrows(ClientErrorException.class,
+                () -> new MapResource(session, MapStore.inMemory()).save(new Dtos.MapNameRequest("Crypte")));
+        assertEquals(409, e.getResponse().getStatus());
+    }
+
+    @Test
+    void uneCarteDontUneCreatureAQuitteLeCatalogue_refuseLeChargement() {
+        var maps = MapStore.inMemory();
+        maps.save(new SavedMap("Marais", 30, 20, DistanceUnit.METRE, null, true, List.of(new SavedMap.SavedToken("hydre", 5, 5))));
+
+        var e = assertThrows(ActionRefusedException.class, () -> new MapResource(session, maps).load(new Dtos.MapNameRequest("Marais")));
+        assertTrue(e.getMessage().contains("hydre"));
+        assertTrue(session.scene().isEmpty());
+    }
 
     @Test
     void sansCarte_attaquerRend409() {
