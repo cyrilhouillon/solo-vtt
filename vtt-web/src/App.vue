@@ -10,6 +10,7 @@ import DiceTray, { type TrayResult } from './components/DiceTray.vue'
 import JournalPanel from './components/JournalPanel.vue'
 import MapView from './components/MapView.vue'
 import NewMapForm from './components/NewMapForm.vue'
+import SavedMapsPanel from './components/SavedMapsPanel.vue'
 import TokenBoard from './components/TokenBoard.vue'
 import { CELL, occupant } from './map/grid'
 import { checkMove, type MoveLimit } from './map/move'
@@ -27,6 +28,7 @@ import {
   type DistanceUnit,
   type JournalEntry,
   type RolledDice,
+  type SavedMapView,
   type SceneView,
   type TokenView,
 } from './types'
@@ -38,8 +40,12 @@ const selected = ref<string[]>([])
 const sheet = ref<Sheet | null>(null)
 const error = ref<string | null>(null)
 const journal = ref<JournalEntry[]>([])
-/** Tiroir ouvert depuis le rail : catalogue, nouvelle carte, ou aucun. */
-const drawer = ref<'catalog' | 'map' | null>(null)
+/** Tiroir ouvert depuis le rail : catalogue, nouvelle carte, cartes enregistrées, ou aucun. */
+const drawer = ref<'catalog' | 'map' | 'maps' | null>(null)
+/** Les cartes enregistrées, relues à chaque ouverture de leur tiroir ; `null` tant qu'elles ne sont pas lues. */
+const savedMaps = ref<SavedMapView[] | null>(null)
+/** Un enregistrement ou un chargement de carte est en route. */
+const mapBusy = ref(false)
 /** Onglet du panneau de droite. */
 const tab = ref<'sheet' | 'target' | 'journal'>('sheet')
 /** La créature visée par la dernière attaque, pour l'onglet Cible. */
@@ -122,8 +128,9 @@ function openDefaultDrawer() {
   drawer.value = !scene.value ? 'map' : scene.value.tokens.length ? null : 'catalog'
 }
 
-function toggleDrawer(which: 'catalog' | 'map') {
+function toggleDrawer(which: 'catalog' | 'map' | 'maps') {
   drawer.value = drawer.value === which ? null : which
+  if (drawer.value === 'maps') refreshSavedMaps()
 }
 
 /** Entre 901 et 1280 px, tiroir et panneau latéral ne tiennent pas ensemble à côté de la carte. */
@@ -290,19 +297,63 @@ function createScene(width: number, height: number, unit: DistanceUnit, image: F
   attempt(async () => {
     const imageId = image ? await api.uploadImage(image) : null
     const created = await api.createScene(width, height, unit, imageId)
-    scene.value = created
-    armed.value = null
-    targeting.value = null
-    movingId.value = null
-    journal.value = []
-    lastResult.value = null
-    decision.value = null
-    combat.value = null
-    targetSheet.value = null
-    clearSelection()
-    history.length = 0
-    drawer.value = 'catalog'
+    startFresh(created)
     tell(`Nouvelle carte de ${formatLength(created.width, created.unitSymbol)} sur ${formatLength(created.height, created.unitSymbol)}.`)
+  })
+}
+
+/** La carte vient d'être remplacée (nouvelle ou chargée) : la partie repart de zéro, le catalogue s'ouvre pour poser. */
+function startFresh(created: SceneView) {
+  scene.value = created
+  armed.value = null
+  targeting.value = null
+  movingId.value = null
+  journal.value = []
+  lastResult.value = null
+  decision.value = null
+  combat.value = null
+  targetSheet.value = null
+  clearSelection()
+  history.length = 0
+  drawer.value = 'catalog'
+}
+
+/**
+ * Les cartes enregistrées passent à côté de `attempt` : un 404 (nom inconnu) ou un 409 (aucune carte, créature sortie
+ * du catalogue) n'y signifie pas que la carte affichée a changé ; le message du serveur s'affiche tel quel.
+ */
+async function savedMapCall(call: () => Promise<void>) {
+  error.value = null
+  mapBusy.value = true
+  try {
+    await call()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    mapBusy.value = false
+  }
+}
+
+function refreshSavedMaps() {
+  savedMapCall(async () => {
+    savedMaps.value = await api.savedMaps()
+  })
+}
+
+function saveMap(name: string) {
+  savedMapCall(async () => {
+    const saved = await api.saveMap(name)
+    savedMaps.value = await api.savedMaps()
+    tell(`Carte « ${saved.name} » enregistrée.`)
+  })
+}
+
+function loadMap(name: string) {
+  savedMapCall(async () => {
+    const loaded = await api.loadMap(name)
+    startFresh(loaded)
+    const count = loaded.tokens.length
+    tell(`Carte « ${name} » chargée : ${count} ${count > 1 ? 'créatures' : 'créature'}.`)
   })
 }
 
@@ -902,7 +953,7 @@ onBeforeUnmount(() => {
     <header class="bar">
       <h1 class="app-name">Solo VTT</h1>
       <p v-if="scene" class="map-info">
-        Carte {{ formatLength(scene.width, scene.unitSymbol) }} × {{ formatLength(scene.height, scene.unitSymbol) }} ·
+        <template v-if="scene.mapName">{{ scene.mapName }} · </template>Carte {{ formatLength(scene.width, scene.unitSymbol) }} × {{ formatLength(scene.height, scene.unitSymbol) }} ·
         {{ scene.tokens.length }} {{ scene.tokens.length > 1 ? 'créatures' : 'créature' }}
       </p>
       <strong v-if="mode" class="mode">{{ mode }}</strong>
@@ -964,6 +1015,18 @@ onBeforeUnmount(() => {
       >
         <AppIcon name="map" />
       </button>
+      <button
+        type="button"
+        class="rail-button"
+        :class="{ open: drawer === 'maps' }"
+        :aria-expanded="drawer === 'maps'"
+        aria-controls="drawer"
+        aria-label="Cartes enregistrées"
+        title="Cartes enregistrées"
+        @click="toggleDrawer('maps')"
+      >
+        <AppIcon name="saved" />
+      </button>
     </nav>
 
     <aside v-if="drawer" id="drawer" class="drawer">
@@ -979,7 +1042,21 @@ onBeforeUnmount(() => {
         @drop="onDrop"
         @drag-cancel="onDragCancel"
       />
-      <NewMapForm v-else :token-count="scene ? scene.tokens.length : null" @create="createScene" @cancel="drawer = null" />
+      <NewMapForm
+        v-else-if="drawer === 'map'"
+        :token-count="scene ? scene.tokens.length : null"
+        @create="createScene"
+        @cancel="drawer = null"
+      />
+      <SavedMapsPanel
+        v-else
+        :maps="savedMaps"
+        :token-count="scene ? scene.tokens.length : null"
+        :busy="mapBusy"
+        @save="saveMap"
+        @load="loadMap"
+        @cancel="drawer = null"
+      />
     </aside>
 
     <main class="table">
@@ -1046,7 +1123,7 @@ onBeforeUnmount(() => {
         </p>
         <DiceTray :result="lastResult" :rolling="rolling" />
       </template>
-      <p v-else class="empty">Aucune carte. La créer depuis « Nouvelle carte », dans le rail à gauche.</p>
+      <p v-else class="empty">Aucune carte. La créer depuis « Nouvelle carte », ou en charger une depuis « Cartes enregistrées », dans le rail à gauche.</p>
       <p class="sr-only" aria-live="polite">{{ announcement }}</p>
     </main>
 

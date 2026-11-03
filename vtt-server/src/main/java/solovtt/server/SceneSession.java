@@ -65,6 +65,8 @@ public class SceneSession {
     private Scene scene;
     /** L'empreinte de l'image de fond de la carte ({@link ImageStore}), {@code null} pour une carte sans image. */
     private String imageId;
+    /** Le nom de la carte enregistrée d'où vient la carte, à titre d'information ; {@code null} pour une nouvelle carte. */
+    private String mapName;
     /** La grille de la carte s'affiche : un choix d'affichage, sans effet sur les règles. */
     private boolean gridVisible = true;
     private GameState state;
@@ -151,11 +153,17 @@ public class SceneSession {
 
     /** Crée une carte, avec l'image de fond {@code imageId} ou sans ({@code null}) ; sa grille s'affiche. */
     public synchronized Scene create(double width, double height, DistanceUnit unit, String imageId) {
+        return create(width, height, unit, imageId, null);
+    }
+
+    /** Crée une carte qui vient de la carte enregistrée {@code mapName} ({@code null} pour une nouvelle carte). */
+    private Scene create(double width, double height, DistanceUnit unit, String imageId, String mapName) {
         rolls.clear();
         commands.clear();
         Scene created = new Scene(width, height, unit);
         scene = created;
         this.imageId = imageId;
+        this.mapName = mapName;
         gridVisible = true;
         state = new GameState();
         engine = new Engine<>(state, StandardRules.create(), sides -> {
@@ -175,7 +183,7 @@ public class SceneSession {
         actionTargetId = null;
         entries.clear();
         instanceCounters.clear();
-        record(r -> new SavedGame.SavedCommand.Create(width, height, unit, imageId, r));
+        record(r -> new SavedGame.SavedCommand.Create(width, height, unit, imageId, mapName, r));
         return created;
     }
 
@@ -312,6 +320,11 @@ public class SceneSession {
         return imageId;
     }
 
+    /** Le nom de la carte enregistrée d'où vient la carte, {@code null} pour une nouvelle carte. */
+    public synchronized String mapName() {
+        return mapName;
+    }
+
     public synchronized boolean gridVisible() {
         return gridVisible;
     }
@@ -361,6 +374,39 @@ public class SceneSession {
             entries.remove(token.entityId());
             return token;
         }, r -> new SavedGame.SavedCommand.Remove(tokenId, r));
+    }
+
+    /**
+     * La carte en cours comme modèle à enregistrer sous {@code name} : dimensions, unité, image, grille, et chaque créature
+     * posée (son entrée du catalogue et sa position), dans l'ordre de pose. Ni PV, ni effets, ni combat : la partie ne
+     * change pas.
+     */
+    public synchronized SavedMap snapshot(String name) {
+        if (scene == null) throw new IllegalStateException("aucune carte");
+        var tokens = scene.tokens().stream()
+                .map(t -> new SavedMap.SavedToken(entries.get(t.entityId()).id(), t.position().x(), t.position().y()))
+                .toList();
+        return new SavedMap(name, scene.width(), scene.height(), scene.unit(), imageId, gridVisible, tokens);
+    }
+
+    /**
+     * Remplace la carte en cours par la carte enregistrée, comme une nouvelle carte : la partie repart de zéro, sans
+     * combat, et ses créatures sont neuves, aux positions enregistrées. La partie copie la carte en commandes ordinaires
+     * (création, grille, poses) et n'en garde le nom qu'à titre d'information. Permis en combat et pendant une décision.
+     *
+     * @throws ActionRefusedException si une créature de la carte n'est plus au catalogue ; la carte en cours ne change pas
+     */
+    public synchronized Scene load(SavedMap map) {
+        List<CatalogEntry> toPlace = map.tokens().stream()
+                .map(t -> catalogEntry(t.catalogId()).orElseThrow(() -> new ActionRefusedException(
+                        "Carte « " + map.name() + " » : créature inconnue au catalogue (" + t.catalogId() + ")")))
+                .toList();
+        Scene created = create(map.width(), map.height(), map.unit(), map.imageId(), map.name());
+        if (!map.gridVisible()) showGrid(false);
+        for (int i = 0; i < toPlace.size(); i++) {
+            place(toPlace.get(i), map.tokens().get(i).x(), map.tokens().get(i).y());
+        }
+        return created;
     }
 
     public synchronized Optional<Creature> creature(String id) {
@@ -414,7 +460,7 @@ public class SceneSession {
 
     private void replay(SavedGame.SavedCommand command) {
         switch (command) {
-            case SavedGame.SavedCommand.Create c -> create(c.width(), c.height(), c.unit(), c.imageId());
+            case SavedGame.SavedCommand.Create c -> create(c.width(), c.height(), c.unit(), c.imageId(), c.mapName());
             case SavedGame.SavedCommand.ShowGrid c -> showGrid(c.visible());
             case SavedGame.SavedCommand.Place c -> place(catalogEntry(c.catalogId())
                     .orElseThrow(() -> new IllegalStateException("Entrée de catalogue inconnue : " + c.catalogId())), c.x(), c.y());
@@ -433,6 +479,7 @@ public class SceneSession {
     private void reset() {
         scene = null;
         imageId = null;
+        mapName = null;
         gridVisible = true;
         state = null;
         engine = null;

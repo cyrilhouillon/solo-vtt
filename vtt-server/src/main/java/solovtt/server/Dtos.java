@@ -37,6 +37,16 @@ final class Dtos {
     /** {@code null} si absent de la requête. */
     record GridRequest(Boolean visible) {}
 
+    /** Le nom sous lequel enregistrer la carte en cours, ou celui de la carte à charger ; {@code null} si absent. */
+    record MapNameRequest(String name) {}
+
+    /** Une carte enregistrée, telle que la liste la montre. */
+    record SavedMapDto(String name, double width, double height, String unitSymbol, String imageId, int creatureCount) {
+        static SavedMapDto of(SavedMap map) {
+            return new SavedMapDto(map.name(), map.width(), map.height(), map.unit().symbol(), map.imageId(), map.tokens().size());
+        }
+    }
+
     record PlaceTokenRequest(String catalogId, double x, double y) {}
 
     /** La position d'arrivée, dans l'unité de la carte ; {@code null} si absente de la requête. */
@@ -55,15 +65,16 @@ final class Dtos {
         }
     }
 
-    /** {@code imageId} : l'image de fond, à lire sous {@code /api/images/{id}}, {@code null} sans image. */
+    /** {@code imageId} : l'image de fond, à lire sous {@code /api/images/{id}}, {@code null} sans image.
+     * {@code mapName} : la carte enregistrée d'où vient la carte, à titre d'information ; {@code null} pour une nouvelle carte. */
     record SceneDto(double width, double height, DistanceUnit unit, String unitSymbol, String imageId, boolean gridVisible,
-                    List<TokenDto> tokens) {
+                    String mapName, List<TokenDto> tokens) {
         static SceneDto of(Scene scene, SceneSession session) {
             var tokens = scene.tokens().stream()
                     .map(t -> TokenDto.of(t, session.entryOf(t.entityId()), session.creature(t.entityId()).orElseThrow()))
                     .toList();
             return new SceneDto(scene.width(), scene.height(), scene.unit(), scene.unit().symbol(), session.imageId(),
-                    session.gridVisible(), tokens);
+                    session.gridVisible(), session.mapName(), tokens);
         }
     }
 
