@@ -13,6 +13,7 @@ colors:
   brass: "#dcb35c"
   on-brass: "#24170c"
   rubric: "#ef8070"
+  danger: "#f39a52"
   felt: "#1f3a2e"
   felt-deep: "#183025"
   felt-rim: "#12241b"
@@ -36,6 +37,7 @@ colors:
   brass-light: "#7d520c"
   on-brass-light: "#fbf3e2"
   rubric-light: "#93231d"
+  danger-light: "#772803"
   felt-light: "#93ab88"
   felt-deep-light: "#b4c6a7"
   felt-rim-light: "#6f8a64"
@@ -159,11 +161,11 @@ Une table de D&D posée sur un plateau de feutre bordé de bois : le moteur lanc
 
 La densité est celle d'un outil ouvert toute une session : panneaux serrés, chiffres tabulaires, peu de vide décoratif. Les panneaux se composent comme un bloc de statistiques : titres en petites capitales, filet effilé dessous, chiffres clés en rubrique. L'ornement est permis tant que la carte reste lisible ; un jeu vidéo (néons, effets) et un tableau de bord d'administration interchangeable sont les deux mondes refusés.
 
-Trois couleurs portent du sens, chacune pour un seul rôle : le laiton pour ce qui est vivant maintenant, la rubrique pour ce que le moteur a tranché, l'encre pour le reste.
+Quatre couleurs portent du sens, chacune pour un seul rôle : le laiton pour ce qui est vivant maintenant, la rubrique pour le texte de règle (bloc de statistiques et verdicts du moteur), le vermillon pour les erreurs et ce qui détruit, l'encre pour le reste.
 
 **Key Characteristics:**
 - Bois pour le cadre, feutre pour le jeu ; aucune surface neutre grise.
-- Laiton réservé à l'état vivant, rubrique réservée au verdict du moteur.
+- Laiton réservé à l'état vivant, rubrique réservée au texte de règle, vermillon réservé aux erreurs.
 - Le camp se lit par la forme (disque, carré), jamais par la seule couleur.
 - Petites capitales Alegreya SC pour les titres, Alegreya Sans pour le texte.
 - Un seul mouvement, l'attaque qui se tranche : les dés 3D roulent sur la carte (jet d'attaque, puis dégâts s'il touche), le verdict se pose sur la piste, puis l'issue s'élève au-dessus de la cible et s'efface.
@@ -176,7 +178,8 @@ Une palette de matières (bois, feutre, encre) avec deux pigments de sens, décl
 - **Laiton** (`brass`, `brass-light`) : le seul état vivant. Puce du mode en cours, entrée du catalogue armée (au clavier), attaque visée (ligne cerclée, bouton plein), jeton sélectionné, déplacement en cours (trait, cercle de vitesse restante, puce « Déplacement »), anneau de la cible survolée, cercles d'allonge et de portée, mesure. Sur la carte, il arrive sous l'alias `--map-live`, même valeur. Texte posé dessus : `on-brass`. C'est aussi la couleur du contour de focus et de la sélection de texte.
 
 ### Secondary
-- **Rubrique** (`rubric`, `rubric-light`) : ce que le moteur tranche. Verdict de la piste, issue d'une entrée du journal, chiffres clés du bloc de statistiques (CA, PV), mention « À terre », nom de la créature et intertitres de la feuille, filet effilé. Les erreurs et actions destructrices (`--danger`) ont aujourd'hui la même valeur, sous un nom distinct.
+- **Rubrique** (`rubric`, `rubric-light`) : le texte de règle, comme l'encre rouge d'un bloc de statistiques. Verdict de la piste, issue d'une entrée du journal, mention « À terre », nom de la créature, intertitres et chiffres de la feuille, filet effilé.
+- **Vermillon** (`danger`, `danger-light`) : les erreurs et les actions destructrices. Bandeau d'erreur, refus d'un formulaire, « Retirer ? » et son bouton, bouton « Remplacer la carte », trait et anneau d'un déplacement interdit sur la carte. Une teinte à part pour qu'une erreur ne se lise jamais comme un verdict ; il est proche de l'ambre des PV bas et de la rouille des monstres, si bien qu'une erreur se dit toujours aussi par du texte ou un trait pointillé, jamais par la seule couleur.
 
 ### Tertiary
 - **Bleu de personnage** (`token-character`) et **Rouille de monstre** (`token-monster`) : le remplissage des jetons et de leur pastille de camp, cerclés de `token-rim`.
@@ -195,7 +198,7 @@ Une palette de matières (bois, feutre, encre) avec deux pigments de sens, décl
 ### Named Rules
 **The Brass Is Alive Rule.** Le laiton ne marque que ce qui est vivant à cet instant : un mode, une créature armée, une sélection, une cible, une attaque visée. Un état d'interface (tiroir ouvert, onglet actif) n'est pas un état vivant et reste en bois et encre.
 
-**The Engine Speaks In Rubric Rule.** La rubrique est la voix du moteur : verdicts, issues, chiffres tranchés, « À terre », et les intertitres du bloc de statistiques. Aucune décoration ni appel à l'action n'est en rubrique.
+**The Rules Speak In Rubric Rule.** La rubrique est le texte de règle : le bloc de statistiques (nom, intertitres, chiffres) et ce que le moteur tranche (verdicts, issues, « À terre »). Aucune décoration, aucun appel à l'action ni aucune erreur n'est en rubrique : les erreurs sont en vermillon.
 
 **The Two Lights Rule.** Toute nouvelle couleur se déclare dans les deux thèmes, sous le même nom, dans `style.css` ; la carte lit ces variables au rendu, jamais une valeur en dur.
 
@@ -304,7 +307,8 @@ Zoom : trois boutons de 2rem empilés dans le coin haut droit de la carte, au-de
 
 ### Do:
 - **Do** réserver le laiton à l'état vivant : mode, entrée armée, sélection, cible survolée, attaque visée.
-- **Do** mettre en rubrique ce que le moteur tranche (verdict, issue, chiffres clés, « À terre ») et les intertitres du bloc de statistiques.
+- **Do** mettre en rubrique le texte de règle : ce que le moteur tranche (verdict, issue, « À terre ») et le bloc de statistiques (nom, intertitres, chiffres).
+- **Do** mettre en vermillon (`--danger`) les erreurs et les actions destructrices, jamais en rubrique.
 - **Do** dire le camp par la forme : disque pour un personnage, carré pour un monstre, répété dans une pastille cerclée de `token-rim` partout où la créature est nommée.
 - **Do** marquer une créature à 0 PV par trois signes : jeton gris, croix dessinée, nom barré.
 - **Do** dessiner la portée longue en hachures, pas seulement en couleur.

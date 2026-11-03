@@ -1,6 +1,7 @@
 /*
  * Plateau de dés : feutre et bois. Sombre (noyer, feutre vert) le soir, clair (érable, feutre sauge)
- * en journée. Laiton : le seul état vivant (mode, cible). Rubrique : ce que le moteur tranche.
+ * en journée. Laiton : le seul état vivant (mode, cible). Rubrique : le texte de règle (bloc de
+ * statistiques, verdicts du moteur). Vermillon (--danger) : erreurs et actions destructrices.
  */
 :root,
 :root[data-theme='dark'] {
@@ -32,7 +33,7 @@
   --token-character: #4f84c4;
   --token-monster: #b5643a;
   --token-rim: #efe6d2;
-  --danger: #ef8070;
+  --danger: #f39a52;
 }
 
 :root[data-theme='light'] {
@@ -64,7 +65,7 @@
   --token-character: #2f5f9a;
   --token-monster: #9a4a1c;
   --token-rim: #fbf3e2;
-  --danger: #93231d;
+  --danger: #772803;
 }
 
 :root {
