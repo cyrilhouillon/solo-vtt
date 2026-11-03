@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-02T10:55:05.000Z",
+  "generatedAt": "2026-11-03T23:06:28.261Z",
   "title": "Design System: Solo VTT",
   "extensions": {
     "colorMeta": {
@@ -169,6 +169,21 @@
           "oklch(95.0% 0.068 29.5)"
         ]
       },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Vermillon",
+        "canonical": "#f39a52",
+        "tonalRamp": [
+          "oklch(15.0% 0.073 57.5)",
+          "oklch(26.4% 0.095 57.5)",
+          "oklch(37.9% 0.116 57.5)",
+          "oklch(49.3% 0.138 57.5)",
+          "oklch(60.7% 0.138 57.5)",
+          "oklch(72.1% 0.116 57.5)",
+          "oklch(83.6% 0.095 57.5)",
+          "oklch(95.0% 0.073 57.5)"
+        ]
+      },
       "felt": {
         "role": "neutral",
         "displayName": "Feutre vert bouteille",
@@ -292,16 +307,16 @@
       "map-down": {
         "role": "neutral",
         "displayName": "Gris à terre",
-        "canonical": "#6f6a60",
+        "canonical": "#8a857a",
         "tonalRamp": [
-          "oklch(15.0% 0.008 84.6)",
-          "oklch(26.4% 0.011 84.6)",
-          "oklch(37.9% 0.013 84.6)",
-          "oklch(49.3% 0.015 84.6)",
-          "oklch(60.7% 0.015 84.6)",
-          "oklch(72.1% 0.013 84.6)",
-          "oklch(83.6% 0.011 84.6)",
-          "oklch(95.0% 0.008 84.6)"
+          "oklch(15.0% 0.009 86.5)",
+          "oklch(26.4% 0.012 86.5)",
+          "oklch(37.9% 0.015 86.5)",
+          "oklch(49.3% 0.017 86.5)",
+          "oklch(60.7% 0.017 86.5)",
+          "oklch(72.1% 0.015 86.5)",
+          "oklch(83.6% 0.012 86.5)",
+          "oklch(95.0% 0.009 86.5)"
         ]
       },
       "map-grid": {
@@ -514,6 +529,21 @@
           "oklch(95.0% 0.073 28.1)"
         ]
       },
+      "danger-light": {
+        "role": "secondary",
+        "displayName": "Vermillon (clair)",
+        "canonical": "#772803",
+        "tonalRamp": [
+          "oklch(15.0% 0.063 40.6)",
+          "oklch(26.4% 0.082 40.6)",
+          "oklch(37.9% 0.100 40.6)",
+          "oklch(49.3% 0.119 40.6)",
+          "oklch(60.7% 0.119 40.6)",
+          "oklch(72.1% 0.100 40.6)",
+          "oklch(83.6% 0.082 40.6)",
+          "oklch(95.0% 0.063 40.6)"
+        ]
+      },
       "felt-light": {
         "role": "neutral",
         "displayName": "Feutre sauge (clair)",
@@ -577,16 +607,16 @@
       "hp-low-light": {
         "role": "tertiary",
         "displayName": "Ambre de vie basse (clair)",
-        "canonical": "#9a5a12",
+        "canonical": "#8a4e0c",
         "tonalRamp": [
-          "oklch(15.0% 0.056 61.9)",
-          "oklch(26.4% 0.073 61.9)",
-          "oklch(37.9% 0.090 61.9)",
-          "oklch(49.3% 0.107 61.9)",
-          "oklch(60.7% 0.107 61.9)",
-          "oklch(72.1% 0.090 61.9)",
-          "oklch(83.6% 0.073 61.9)",
-          "oklch(95.0% 0.056 61.9)"
+          "oklch(15.0% 0.057 60.6)",
+          "oklch(26.4% 0.074 60.6)",
+          "oklch(37.9% 0.091 60.6)",
+          "oklch(49.3% 0.108 60.6)",
+          "oklch(60.7% 0.108 60.6)",
+          "oklch(72.1% 0.091 60.6)",
+          "oklch(83.6% 0.074 60.6)",
+          "oklch(95.0% 0.057 60.6)"
         ]
       },
       "token-character-light": {
@@ -637,16 +667,16 @@
       "map-down-light": {
         "role": "neutral",
         "displayName": "Gris à terre (clair)",
-        "canonical": "#8d887d",
+        "canonical": "#67635a",
         "tonalRamp": [
-          "oklch(15.0% 0.008 86.5)",
-          "oklch(26.4% 0.011 86.5)",
-          "oklch(37.9% 0.013 86.5)",
-          "oklch(49.3% 0.016 86.5)",
-          "oklch(60.7% 0.016 86.5)",
-          "oklch(72.1% 0.013 86.5)",
-          "oklch(83.6% 0.011 86.5)",
-          "oklch(95.0% 0.008 86.5)"
+          "oklch(15.0% 0.008 86.9)",
+          "oklch(26.4% 0.010 86.9)",
+          "oklch(37.9% 0.013 86.9)",
+          "oklch(49.3% 0.015 86.9)",
+          "oklch(60.7% 0.015 86.9)",
+          "oklch(72.1% 0.013 86.9)",
+          "oklch(83.6% 0.010 86.9)",
+          "oklch(95.0% 0.008 86.9)"
         ]
       },
       "map-grid-light": {
@@ -734,7 +764,7 @@
       {
         "name": "floating-banner",
         "value": "0 4px 12px rgba(0, 0, 0, 0.3)",
-        "purpose": "Bannière d'erreur posée sur la carte."
+        "purpose": "Dialogues posés sur la table : décision du moteur, légende des raccourcis."
       },
       {
         "name": "tab-underline",
@@ -844,17 +874,25 @@
       "description": "Cuvette de feutre sous la carte : la dernière attaque, que la fin d'un tour n'efface pas ; le verdict en rubrique s'y pose en 320 ms, la réaction et les dégâts dessous.",
       "html": "<div class=\"ds-rim\"><div class=\"ds-tray\"><p class=\"ds-verdict\">Touché : 6 dégâts tranchants</p><p class=\"ds-title\">Guerrier attaque Gobelin guerrier (Épée longue)</p><p class=\"ds-details\">Gobelin guerrier subit 6 dégâts tranchants</p><p class=\"ds-target\"><b>Gobelin guerrier</b><span class=\"ds-g\"><i style=\"width:40%\"></i></span><span>4 / 10 PV</span></p></div></div>",
       "css": ".ds-rim { padding: 0.6rem 0.75rem 0.75rem; background: var(--wood); border-top: 1px solid var(--rule); font: 16px/1.45 'Alegreya Sans', system-ui, sans-serif; } .ds-tray { min-height: 5.25rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto; align-items: center; column-gap: 1.5rem; padding: 0.6rem 1.25rem; border-radius: 8px; background: var(--felt-deep); box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.45), inset 0 0 0 1px var(--felt-rim), 0 0 0 3px var(--rule); color: var(--map-label); } .ds-tray p { margin: 0; } .ds-verdict { grid-column: 1; font: 700 1.5rem/1.2 'Alegreya SC', Georgia, serif; letter-spacing: 0.02em; color: var(--rubric); animation: ds-land 320ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-title { grid-column: 1; font-size: 0.95rem; opacity: 0.85; } .ds-details { grid-column: 1; font-size: 0.95rem; font-weight: 500; } .ds-target { grid-column: 2; grid-row: 1 / 4; display: flex; align-items: center; gap: 0.6rem; font-variant-numeric: tabular-nums; } .ds-g { width: 6rem; height: 0.5rem; border-radius: 3px; background: rgba(0, 0, 0, 0.3); overflow: hidden; } .ds-g i { display: block; height: 100%; background: var(--hp); } @keyframes ds-land { from { opacity: 0; transform: translateY(-0.4rem); } } @media (prefers-reduced-motion: reduce) { .ds-verdict { animation: none; } }"
+    },
+    {
+      "name": "Touche",
+      "kind": "custom",
+      "refersTo": "kbd",
+      "description": "Une touche de la légende des raccourcis : pavé de bois en creux, bord bas épaissi.",
+      "html": "<span class=\"ds-keys\"><kbd class=\"ds-kbd\">Maj</kbd> <kbd class=\"ds-kbd\">F</kbd> <span class=\"ds-keys-text\">fin du tour</span></span>",
+      "css": ".ds-keys { font: 400 16px 'Alegreya Sans', system-ui, sans-serif; color: var(--ink); display: inline-flex; align-items: baseline; gap: 0.25rem; } .ds-kbd { display: inline-block; min-width: 1.6rem; padding: 0.05rem 0.4rem; border: 1px solid var(--control-border); border-bottom-width: 2px; border-radius: 4px; background: var(--wood-sunken); font: inherit; font-size: 0.9rem; font-weight: 500; text-align: center; } .ds-keys-text { margin-left: 0.5rem; }"
     }
   ],
   "narrative": {
     "northStar": "Le Plateau de dés",
-    "overview": "Une table de D&D posée sur un plateau de feutre bordé de bois : le moteur lance sur la piste, le joueur lit le verdict. Le cadre est en bois (barre, rail, tiroir, panneaux), le jeu se passe sur le feutre (carte, piste à dés). Deux heures d'éclairage : le soir, noyer et feutre vert bouteille avec un texte ivoire ; en journée, érable et feutre sauge avec une encre brune. Le thème suit le système, puis le choix du joueur (`data-theme` sur la racine).\n\nLa densité est celle d'un outil ouvert toute une session : panneaux serrés, chiffres tabulaires, peu de vide décoratif. Les panneaux se composent comme un bloc de statistiques : titres en petites capitales, filet effilé dessous, chiffres clés en rubrique. L'ornement est permis tant que la carte reste lisible ; un jeu vidéo (néons, effets) et un tableau de bord d'administration interchangeable sont les deux mondes refusés.\n\nTrois couleurs portent du sens, chacune pour un seul rôle : le laiton pour ce qui est vivant maintenant, la rubrique pour ce que le moteur a tranché, l'encre pour le reste.",
+    "overview": "Une table de D&D posée sur un plateau de feutre bordé de bois : le moteur lance sur la piste, le joueur lit le verdict. Le cadre est en bois (barre, rail, tiroir, panneaux), le jeu se passe sur le feutre (carte, piste à dés). Deux heures d'éclairage : le soir, noyer et feutre vert bouteille avec un texte ivoire ; en journée, érable et feutre sauge avec une encre brune. Le thème suit le système, puis le choix du joueur (`data-theme` sur la racine).\n\nLa densité est celle d'un outil ouvert toute une session : panneaux serrés, chiffres tabulaires, peu de vide décoratif. Les panneaux se composent comme un bloc de statistiques : titres en petites capitales, filet effilé dessous, chiffres clés en rubrique. L'ornement est permis tant que la carte reste lisible ; un jeu vidéo (néons, effets) et un tableau de bord d'administration interchangeable sont les deux mondes refusés.\n\nQuatre couleurs portent du sens, chacune pour un seul rôle : le laiton pour ce qui est vivant maintenant, la rubrique pour le texte de règle (bloc de statistiques et verdicts du moteur), le vermillon pour les erreurs et ce qui détruit, l'encre pour le reste.",
     "keyCharacteristics": [
       "Bois pour le cadre, feutre pour le jeu ; aucune surface neutre grise.",
-      "Laiton réservé à l'état vivant, rubrique réservée au verdict du moteur.",
+      "Laiton réservé à l'état vivant, rubrique réservée au texte de règle, vermillon réservé aux erreurs.",
       "Le camp se lit par la forme (disque, carré), jamais par la seule couleur.",
       "Petites capitales Alegreya SC pour les titres, Alegreya Sans pour le texte.",
-      "Un seul mouvement : le verdict qui se pose sur la piste."
+      "Un seul mouvement, l'attaque qui se tranche : les dés 3D roulent sur la carte (jet d'attaque, puis dégâts s'il touche), le verdict se pose sur la piste, puis l'issue s'élève au-dessus de la cible et s'efface."
     ],
     "rules": [
       {
@@ -863,8 +901,8 @@
         "section": "colors"
       },
       {
-        "name": "The Engine Speaks In Rubric Rule",
-        "body": "La rubrique est la voix du moteur : verdicts, issues, chiffres tranchés, « À terre », et les intertitres du bloc de statistiques. Aucune décoration ni appel à l'action n'est en rubrique.",
+        "name": "The Rules Speak In Rubric Rule",
+        "body": "La rubrique est le texte de règle : le bloc de statistiques (nom, intertitres, chiffres) et ce que le moteur tranche (verdicts, issues, « À terre »). Aucune décoration, aucun appel à l'action ni aucune erreur n'est en rubrique : les erreurs sont en vermillon.",
         "section": "colors"
       },
       {
@@ -878,27 +916,33 @@
         "section": "typography"
       },
       {
+        "name": "The Still Table Rule",
+        "body": "La carte ne change jamais de taille sous le pointeur : ni en entrant en ciblage, ni quand la piste ou la barre d'état changent de contenu. Tout ce qui l'entoure a une hauteur réservée ; ce qui déborde défile ou se coupe, jamais ne pousse.",
+        "section": "layout"
+      },
+      {
         "name": "The Matter Not Shadow Rule",
         "body": "Un élément monte en passant à `wood-raised`, descend en passant à `wood-sunken` ; aucune ombre portée sur les panneaux, boutons ou lignes.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do réserver le laiton à l'état vivant : mode, entrée armée, sélection, cible survolée, attaque visée.",
-      "Do mettre en rubrique ce que le moteur tranche (verdict, issue, chiffres clés, « À terre ») et les intertitres du bloc de statistiques.",
-      "Do dire le camp par la forme : disque pour un personnage, carré pour un monstre, répété dans une pastille cerclée de `token-rim` partout où la créature est nommée.",
-      "Do marquer une créature à 0 PV par trois signes : jeton gris, croix dessinée, nom barré.",
-      "Do dessiner la portée longue en hachures, pas seulement en couleur.",
-      "Do suivre chaque titre de panneau d'un filet effilé rubrique.",
-      "Do déclarer toute couleur dans les deux thèmes et la lire depuis les variables, carte comprise."
+      "**Do** réserver le laiton à l'état vivant : mode, entrée armée, sélection, cible survolée, attaque visée.",
+      "**Do** mettre en rubrique le texte de règle : ce que le moteur tranche (verdict, issue, « À terre ») et le bloc de statistiques (nom, intertitres, chiffres).",
+      "**Do** mettre en vermillon (`--danger`) les erreurs et les actions destructrices, jamais en rubrique.",
+      "**Do** dire le camp par la forme : disque pour un personnage, carré pour un monstre, répété dans une pastille cerclée de `token-rim` partout où la créature est nommée.",
+      "**Do** marquer une créature à 0 PV par trois signes : jeton gris, croix dessinée, nom barré.",
+      "**Do** dessiner la portée longue en hachures, pas seulement en couleur.",
+      "**Do** suivre chaque titre de panneau d'un filet effilé rubrique.",
+      "**Do** déclarer toute couleur dans les deux thèmes et la lire depuis les variables, carte comprise."
     ],
     "donts": [
-      "Don't mettre en laiton un état d'interface : l'onglet actif se souligne d'encre, le bouton de tiroir ouvert reste en `wood-sunken` et encre.",
-      "Don't marquer le camp par une bande latérale colorée : la pastille de forme la remplace.",
-      "Don't ajouter un mouvement autre que la pose du verdict, ni l'animer sous `prefers-reduced-motion`.",
-      "Don't poser d'ombre portée sur un panneau, une ligne ou un bouton ; la profondeur passe par le bois et le feutre.",
-      "Don't introduire de surface grise neutre ni de néon : tout fond est bois ou feutre.",
-      "Don't employer Alegreya SC pour un texte courant."
+      "**Don't** mettre en laiton un état d'interface : l'onglet actif se souligne d'encre, le bouton de tiroir ouvert reste en `wood-sunken` et encre.",
+      "**Don't** marquer le camp par une bande latérale colorée : la pastille de forme la remplace.",
+      "**Don't** ajouter un mouvement hors de la séquence de l'attaque (dés 3D, verdict, bulle d'issue), ni l'animer sous `prefers-reduced-motion`.",
+      "**Don't** poser d'ombre portée sur un panneau, une ligne ou un bouton ; la profondeur passe par le bois et le feutre.",
+      "**Don't** introduire de surface grise neutre ni de néon : tout fond est bois ou feutre.",
+      "**Don't** employer Alegreya SC pour un texte courant."
     ]
   }
 }
