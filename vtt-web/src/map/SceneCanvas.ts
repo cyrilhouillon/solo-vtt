@@ -235,7 +235,9 @@ export class SceneCanvas {
     const ordered = [...scene.tokens].sort((a, b) => Number(selected.includes(a.id)) - Number(selected.includes(b.id)))
     const verdictOf = this.verdicts(scene, this.state.targeting)
     for (const token of ordered) {
-      this.drawToken(scene, token, selected.includes(token.id), token.creatureId === this.state.activeId, placing === null, names, verdictOf(token))
+      // Pendant le calage, les jetons n'écoutent pas : survol et glisser vont à la carte, qui décale la grille.
+      const clickable = placing === null && !this.state.gridPreview
+      this.drawToken(scene, token, selected.includes(token.id), token.creatureId === this.state.activeId, clickable, names, verdictOf(token))
     }
     this.layer.add(names)
     if (measure) this.layer.add(measure)

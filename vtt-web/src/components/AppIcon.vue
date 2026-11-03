@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** Icônes dessinées pour Solo VTT : trait de 1,75, même grille de 24. Décoratives : le bouton porte le nom. */
-export type IconName = 'catalog' | 'map' | 'saved' | 'align' | 'grid' | 'sun' | 'moon' | 'remove'
+export type IconName = 'catalog' | 'map' | 'saved' | 'grid' | 'sun' | 'moon' | 'remove'
 defineProps<{ name: IconName }>()
 </script>
 
@@ -30,10 +30,6 @@ defineProps<{ name: IconName }>()
     <template v-else-if="name === 'saved'">
       <path d="M6.5 3.5h11v17L12 16.5l-5.5 4z" />
       <path d="M9.5 8h5" />
-    </template>
-    <template v-else-if="name === 'align'">
-      <path d="M10 4v16M16 4v16M4 10h16M4 16h16" />
-      <path d="M2.5 4.5V2.5h2M19.5 2.5h2v2M21.5 19.5v2h-2M4.5 21.5h-2v-2" />
     </template>
     <template v-else-if="name === 'grid'">
       <path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18" />
