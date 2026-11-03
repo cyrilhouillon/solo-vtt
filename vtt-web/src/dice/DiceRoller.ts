@@ -32,8 +32,12 @@ const STEP = 1 / 120
 /** Une image enregistrée tous les deux pas : 60 images par seconde. */
 const STEPS_PER_FRAME = 2
 const MAX_FRAMES = 60 * 4
-const HOLD_MS = 800
-const FADE_MS = 400
+/** Les dés arrêtés restent posés, puis s'estompent lentement ; la suite (dégâts, verdict) n'attend pas. */
+const HOLD_MS = 1200
+const FADE_MS = 1600
+/** Un dé dont la pose ne bouge plus de cela est arrêté, même si la physique ne l'a pas encore endormi. */
+const REST_DISTANCE = 0.01
+const REST_ALIGNMENT = 0.99999
 const FONT = "'Alegreya SC', Georgia, serif"
 const TEXTURE_PX = 256
 
@@ -54,6 +58,25 @@ function specsOf(rolls: RolledDice[], damage: boolean): DieSpec[] {
 
 const rotate = (q: THREE.Quaternion, v: Vec3) => new THREE.Vector3(...v).applyQuaternion(q)
 
+/** Un lancer à l'écran : il roule, se pose (sa promesse se résout), reste un instant, puis s'estompe. */
+interface Throw {
+  scene: THREE.Scene
+  dice: Die[]
+  start: number
+  frames: number
+  landed: boolean
+  resolve: () => void
+}
+
+type Pose = Die['frames'][number]
+
+/** Deux poses qu'on ne distingue pas à l'œil. */
+function samePose(a: Pose, b: Pose): boolean {
+  const d = Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1], a.p[2] - b.p[2])
+  const dot = Math.abs(a.q[0] * b.q[0] + a.q[1] * b.q[1] + a.q[2] * b.q[2] + a.q[3] * b.q[3])
+  return d < REST_DISTANCE && dot > REST_ALIGNMENT
+}
+
 export class DiceRoller {
   private readonly renderer: THREE.WebGLRenderer
   private readonly camera = new THREE.PerspectiveCamera(30, 1, 0.1, 1000)
@@ -62,7 +85,7 @@ export class DiceRoller {
   private frame = 0
   /** Numéro du dernier lancer demandé : un lancer dépassé pendant le chargement de la police ne part pas. */
   private generation = 0
-  private finish: (() => void) | null = null
+  private throws: Throw[] = []
 
   /** Lève une erreur si le navigateur n'a pas WebGL : l'appelant pose alors les valeurs d'emblée. */
   constructor(canvas: HTMLCanvasElement) {
@@ -81,37 +104,55 @@ export class DiceRoller {
     this.placeCamera()
   }
 
-  /** Lance les dés ; la promesse se résout quand ils se sont effacés, ou tout de suite si un autre lancer les arrête. */
+  /**
+   * Lance les dés ; la promesse se résout dès qu'ils sont arrêtés (ils restent visibles et s'estompent ensuite), ou
+   * tout de suite si un autre lancer part avant. Les dés d'un lancer précédent encore posés servent d'obstacles.
+   */
   async roll(attack: RolledDice[], damage: RolledDice[]): Promise<void> {
-    this.cancel()
     const generation = ++this.generation
+    this.dropRolling()
     const specs = [...specsOf(attack, false), ...specsOf(damage, true)]
     if (!specs.length) return
     await document.fonts.load(`700 64px ${FONT}`).catch(() => undefined)
     if (generation !== this.generation) return
     return new Promise<void>((resolve) => {
-      const dice = this.simulate(specs)
+      const dice = this.simulate(specs, this.resting())
       const scene = this.stage(dice)
-      this.finish = () => {
-        this.finish = null
-        cancelAnimationFrame(this.frame)
-        this.dispose(scene)
-        this.renderer.clear()
-        resolve()
-      }
-      this.play(scene, dice)
+      const frames = Math.max(...dice.map((d) => d.frames.length))
+      this.throws.push({ scene, dice, start: performance.now(), frames, landed: false, resolve })
+      this.loop()
     })
   }
 
-  /** Arrête le lancer en cours : sa promesse se résout tout de suite. */
+  /** Efface tous les dés : les promesses en attente se résolvent tout de suite. */
   cancel(): void {
     this.generation++
-    this.finish?.()
+    for (const t of this.throws) this.remove(t)
+    this.throws = []
+    cancelAnimationFrame(this.frame)
+    this.frame = 0
+    this.renderer.clear()
   }
 
   destroy(): void {
     this.cancel()
     this.renderer.dispose()
+  }
+
+  /** Un nouveau lancer remplace celui qui roule encore : ce dernier se pose aussitôt (sa promesse se résout). */
+  private dropRolling(): void {
+    for (const t of this.throws.filter((t) => !t.landed)) this.remove(t)
+    this.throws = this.throws.filter((t) => t.landed)
+  }
+
+  private remove(t: Throw): void {
+    t.resolve()
+    this.dispose(t.scene)
+  }
+
+  /** Les dés posés encore visibles, à leur place : le lancer suivant rebondit dessus. */
+  private resting(): { shape: Shape; pose: Pose }[] {
+    return this.throws.flatMap((t) => t.dice.map((d) => ({ shape: d.shape, pose: d.frames[d.frames.length - 1]! })))
   }
 
   /** Caméra droite au-dessus du sol, qui voit exactement la carte. */
@@ -125,7 +166,7 @@ export class DiceRoller {
   }
 
   /** Le lancer entier, hors écran : sol, quatre murs aux bords de la carte, dés lancés depuis le bas. */
-  private simulate(specs: DieSpec[]): Die[] {
+  private simulate(specs: DieSpec[], obstacles: { shape: Shape; pose: Pose }[]): Die[] {
     const w = this.width / DIE_PX
     const h = this.height / DIE_PX
     const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -60, 0), allowSleep: true })
@@ -145,16 +186,18 @@ export class DiceRoller {
       plane.quaternion.setFromEuler(...euler)
       world.addBody(plane)
     }
+    for (const { shape, pose } of obstacles) {
+      const body = new CANNON.Body({ mass: 0, material: bone, shape: polyhedron(shape), position: new CANNON.Vec3(...pose.p) })
+      body.quaternion.set(...pose.q)
+      world.addBody(body)
+    }
 
     const bodies = specs.map((spec, i) => {
       const shape = shapeOf(spec.sides)
       const body = new CANNON.Body({
         mass: 1,
         material: bone,
-        shape: new CANNON.ConvexPolyhedron({
-          vertices: shape.vertices.map((v) => new CANNON.Vec3(...v)),
-          faces: shape.faces.map((f) => f.vertices),
-        }),
+        shape: polyhedron(shape),
         linearDamping: 0.2,
         angularDamping: 0.3,
         allowSleep: true,
@@ -186,6 +229,17 @@ export class DiceRoller {
       })
       if (bodies.every((b) => b.sleepState === CANNON.Body.SLEEPING)) break
     }
+
+    // La physique endort un dé bien après qu'il a cessé de bouger à l'œil : le lancer s'arrête à la dernière image
+    // qui change encore quelque chose.
+    let rest = 0
+    for (const die of dice) {
+      const last = die.frames[die.frames.length - 1]!
+      let i = die.frames.length - 1
+      while (i > 0 && samePose(die.frames[i - 1]!, last)) i--
+      rest = Math.max(rest, i)
+    }
+    for (const die of dice) die.frames.length = Math.min(die.frames.length, rest + 1)
 
     for (const die of dice) this.relabel(die)
     return dice
@@ -229,49 +283,59 @@ export class DiceRoller {
     return scene
   }
 
-  /** Rejoue les images, tient les dés arrêtés, atténue le d20 écarté, puis efface tout. */
-  private play(scene: THREE.Scene, dice: Die[]): void {
-    const frames = Math.max(...dice.map((d) => d.frames.length))
-    const start = performance.now()
-    const landedAt = start + (frames * 1000) / 60
-    let dimmed = false
-    const draw = (now: number) => {
-      // L'horodatage d'une image peut précéder `start` : elle montre alors la première image.
-      const index = Math.max(0, Math.min(frames - 1, Math.floor(((now - start) * 60) / 1000)))
-      for (const die of dice) {
-        const f = die.frames[Math.min(index, die.frames.length - 1)]!
-        die.mesh.position.set(...f.p)
-        die.mesh.quaternion.set(...f.q)
-      }
-      if (now >= landedAt && !dimmed) {
-        dimmed = true
-        for (const die of dice) if (die.spec.dropped) this.setOpacity(die.mesh, 0.45)
-      }
-      const fading = now - landedAt - HOLD_MS
-      if (fading > 0) {
-        const left = Math.max(0, 1 - fading / FADE_MS)
-        scene.traverse((o) => {
-          if (o instanceof THREE.Mesh) {
-            const die = dice.find((d) => d.mesh === o)
-            this.setOpacity(o, left * (die?.spec.dropped ? 0.45 : die ? 1 : 0.35))
-          }
-        })
-      }
-      this.renderer.render(scene, this.camera)
-      return fading >= FADE_MS
-    }
+  /** Une seule boucle d'images pour tous les lancers à l'écran : celui qui roule et ceux qui s'estompent. */
+  private loop(): void {
+    if (this.frame) return
+    this.renderer.autoClear = false
     const tick = (now: number) => {
-      let done = true
-      try {
-        done = draw(now)
-      } catch (e) {
-        // Une image qui échoue ne doit pas laisser la piste attendre : le lancer se termine.
-        console.warn('Dés 3D :', e)
+      this.frame = 0
+      this.renderer.clear()
+      for (const t of [...this.throws]) {
+        let gone = true
+        try {
+          gone = this.draw(t, now)
+        } catch (e) {
+          // Une image qui échoue ne doit pas laisser la piste attendre : le lancer se termine.
+          console.warn('Dés 3D :', e)
+        }
+        if (gone) {
+          this.remove(t)
+          this.throws = this.throws.filter((x) => x !== t)
+        }
       }
-      if (done) this.finish?.()
-      else this.frame = requestAnimationFrame(tick)
+      if (this.throws.length) this.frame = requestAnimationFrame(tick)
+      else this.renderer.clear()
     }
     this.frame = requestAnimationFrame(tick)
+  }
+
+  /** Rejoue les images d'un lancer, le pose (d20 écarté atténué), le tient, puis l'estompe ; vrai quand il a disparu. */
+  private draw(t: Throw, now: number): boolean {
+    const landedAt = t.start + (t.frames * 1000) / 60
+    // L'horodatage d'une image peut précéder `start` : elle montre alors la première image.
+    const index = Math.max(0, Math.min(t.frames - 1, Math.floor(((now - t.start) * 60) / 1000)))
+    for (const die of t.dice) {
+      const f = die.frames[Math.min(index, die.frames.length - 1)]!
+      die.mesh.position.set(...f.p)
+      die.mesh.quaternion.set(...f.q)
+    }
+    if (now >= landedAt && !t.landed) {
+      t.landed = true
+      for (const die of t.dice) if (die.spec.dropped) this.setOpacity(die.mesh, 0.45)
+      t.resolve()
+    }
+    const fading = now - landedAt - HOLD_MS
+    if (fading > 0) {
+      const left = Math.max(0, 1 - fading / FADE_MS)
+      t.scene.traverse((o) => {
+        if (o instanceof THREE.Mesh) {
+          const die = t.dice.find((d) => d.mesh === o)
+          this.setOpacity(o, left * (die?.spec.dropped ? 0.45 : die ? 1 : 0.35))
+        }
+      })
+    }
+    this.renderer.render(t.scene, this.camera)
+    return fading >= FADE_MS
   }
 
   private setOpacity(mesh: THREE.Mesh, opacity: number): void {
@@ -358,6 +422,14 @@ export class DiceRoller {
       }
     })
   }
+}
+
+/** La forme physique d'un dé, tirée des mêmes sommets que son maillage. */
+function polyhedron(shape: Shape): CANNON.ConvexPolyhedron {
+  return new CANNON.ConvexPolyhedron({
+    vertices: shape.vertices.map((v) => new CANNON.Vec3(...v)),
+    faces: shape.faces.map((f) => f.vertices),
+  })
 }
 
 /** Où tombent les sommets d'une face sur sa texture, dans l'ordre de la face. */
