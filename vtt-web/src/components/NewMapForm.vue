@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { mapFromImage } from '../map/backdrop'
 import { CELL } from '../map/grid'
+import { describeLoss } from '../replaceWarning'
 import type { DistanceUnit } from '../types'
 
 /** `tokenCount` : nombre de créatures de la carte actuelle, `null` s'il n'y a pas encore de carte. */
@@ -143,11 +144,6 @@ function submit() {
  */
 function replace() {
   if (form.value?.reportValidity()) submit()
-}
-
-function describeLoss(count: number): string {
-  if (count === 0) return ' et son journal'
-  return count === 1 ? ', sa créature et son journal' : `, ses ${count} créatures et son journal`
 }
 
 const unitSymbol = (u: DistanceUnit) => (u === 'METRE' ? 'm' : 'ft')
