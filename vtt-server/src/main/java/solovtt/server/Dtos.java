@@ -22,6 +22,9 @@ final class Dtos {
 
     record ErrorDto(String message) {}
 
+    /** Une image gardée, par son empreinte ; elle se relit sous `/api/images/{id}`. */
+    record ImageDto(String id) {}
+
     record CatalogEntryDto(String id, String name, CatalogEntry.Kind kind) {
         static CatalogEntryDto of(CatalogEntry e) {
             return new CatalogEntryDto(e.id(), e.name(), e.kind());
