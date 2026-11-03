@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: tiroir « Cartes enregistrées » dans le navigateur
