@@ -14,6 +14,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -121,7 +122,7 @@ class ResumeGameTest {
 
         session.create(10, 10, DistanceUnit.FOOT, null);
 
-        assertEquals(List.of(new SavedCommand.Create(10, 10, DistanceUnit.FOOT, null, List.of())), store.game().commands());
+        assertEquals(List.of(new SavedCommand.Create(10, 10, DistanceUnit.FOOT, null, null, List.of())), store.game().commands());
     }
 
     @Test
@@ -135,7 +136,7 @@ class ResumeGameTest {
     @Test
     void unePartieQuiNeSeRejouePlus_estMiseDeCote_etLaSessionDemarreSansCarte() {
         var divergente = new InMemoryGameStore(new SavedGame(List.of(
-                new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, List.of()),
+                new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, null, List.of()),
                 new SavedCommand.Place("gobelin", 12, 1.5, List.of()),
                 new SavedCommand.StartCombat(List.of(15, 7)))));
 
@@ -150,7 +151,7 @@ class ResumeGameTest {
     @Test
     void uneReponseSansDecisionAuRejeu_estUnEchec() {
         var divergente = new InMemoryGameStore(new SavedGame(List.of(
-                new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, List.of()),
+                new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, null, List.of()),
                 new SavedCommand.Answer("d1", "Ne rien faire", List.of()))));
 
         SceneSession session = new SceneSession(Dice.scripted(), divergente);
@@ -198,13 +199,102 @@ class ResumeGameTest {
     void uneImageDisparueDuStockage_neMetPasLaPartieDeCote() {
         // La session ne lit jamais l'image : seule la création en direct (SceneResource) refuse une image inconnue.
         var gardee = new InMemoryGameStore(new SavedGame(List.of(
-                new SavedCommand.Create(45, 45, DistanceUnit.METRE, "b".repeat(64), List.of()))));
+                new SavedCommand.Create(45, 45, DistanceUnit.METRE, "b".repeat(64), null, List.of()))));
 
         SceneSession session = new SceneSession(Dice.scripted(), gardee);
 
         assertEquals("b".repeat(64), session.imageId());
         assertTrue(session.gridVisible());
         assertEquals(0, gardee.setAsides);
+    }
+
+    /** Crypte : 30 × 20 m sur image, grille masquée, un Gobelin et deux Loups. */
+    private static final SavedMap CRYPTE = new SavedMap("Crypte", 30, 20, DistanceUnit.METRE, "a".repeat(64), false, List.of(
+            new SavedMap.SavedToken("gobelin", 12, 1.5),
+            new SavedMap.SavedToken("loup", 25, 15),
+            new SavedMap.SavedToken("loup", 20.4, 3.7)));
+
+    @Test
+    void laCarteEnCours_devientUnModele_sansToucherLaPartie() {
+        var session = new SceneSession(Dice.scripted(20, 15, 2, 10), store);
+        session.create(30, 20, DistanceUnit.METRE, "a".repeat(64));
+        session.place(entree("gobelin"), 12, 1.5);
+        session.place(entree("loup"), 25, 15);
+        session.place(entree("loup"), 3, 3);
+        session.remove("loup-2");
+        session.place(entree("loup"), 20.4, 3.7);
+        session.showGrid(false);
+        session.startCombat();
+        int saves = store.saves;
+
+        assertEquals(CRYPTE, session.snapshot("Crypte"));
+        assertEquals(saves, store.saves);
+    }
+
+    @Test
+    void charger_donneDesCreaturesNeuves_sansCombatNiJournal_etSeReprendAvecSonNom() {
+        var session = new SceneSession(Dice.scripted(20, 15, 10, 4), store);
+        session.create(10, 10, DistanceUnit.FOOT, null);
+        session.place(entree("guerriere"), 1.5, 1.5);
+        session.place(entree("gobelin"), 3, 1.5);
+        session.startCombat();
+
+        session.load(CRYPTE);
+
+        assertEquals("Crypte", session.mapName());
+        assertEquals("a".repeat(64), session.imageId());
+        assertFalse(session.gridVisible());
+        assertTrue(session.combat().isEmpty());
+        assertTrue(session.journal().isEmpty());
+        assertEquals(List.of("gobelin-1@Position[x=12.0, y=1.5]", "loup-1@Position[x=25.0, y=15.0]", "loup-2@Position[x=20.4, y=3.7]"),
+                session.scene().orElseThrow().tokens().stream().map(t -> t.id() + "@" + t.position()).toList());
+        for (Token token : session.scene().orElseThrow().tokens()) {
+            var creature = session.creature(token.entityId()).orElseThrow();
+            assertEquals(creature.maxHitPoints(), creature.hitPoints());
+        }
+        assertEquals(new SavedCommand.Create(30, 20, DistanceUnit.METRE, "a".repeat(64), "Crypte", List.of()), store.game().commands().getFirst());
+
+        SceneSession apres = new SceneSession(Dice.scripted(), store);
+        assertEquals("Crypte", apres.mapName());
+        assertFalse(apres.gridVisible());
+        assertMemeScene(session.scene().orElseThrow(), apres.scene().orElseThrow());
+    }
+
+    @Test
+    void chargerPendantUneDecision_laJette() {
+        SceneSession session = partieJusquABouclier();
+
+        session.load(CRYPTE);
+
+        assertTrue(session.pendingDecision().isEmpty());
+        assertEquals(3, session.scene().orElseThrow().tokens().size());
+    }
+
+    @Test
+    void uneNouvelleCarteApresUnChargement_n_aPlusDeNom() {
+        var session = new SceneSession(Dice.scripted(), store);
+        session.load(CRYPTE);
+
+        session.create(10, 10, DistanceUnit.FOOT, null);
+
+        assertNull(session.mapName());
+    }
+
+    @Test
+    void uneCreatureSortieDuCatalogue_refuseLeChargement_etLaCarteEnCoursReste() {
+        var session = new SceneSession(Dice.scripted(), store);
+        session.create(10, 10, DistanceUnit.FOOT, null);
+        session.place(entree("gobelin"), 3, 1.5);
+        SavedGame gardee = store.game();
+        var perimee = new SavedMap("Marais", 30, 20, DistanceUnit.METRE, null, true, List.of(
+                new SavedMap.SavedToken("gobelin", 12, 1.5), new SavedMap.SavedToken("hydre", 5, 5)));
+
+        var refus = assertThrows(ActionRefusedException.class, () -> session.load(perimee));
+
+        assertTrue(refus.getMessage().contains("hydre"), refus.getMessage());
+        assertEquals(10, session.scene().orElseThrow().width());
+        assertEquals(1, session.scene().orElseThrow().tokens().size());
+        assertEquals(gardee, store.game());
     }
 
     private static void assertMemeScene(Scene attendue, Scene reprise) {

@@ -20,8 +20,12 @@ public record SavedGame(List<SavedCommand> commands) {
 
         List<Integer> rolls();
 
-        /** {@code imageId} : l'image de fond, {@code null} pour une carte sans image (et dans les parties gardées avant les images). */
-        record Create(double width, double height, DistanceUnit unit, String imageId, List<Integer> rolls) implements SavedCommand {}
+        /**
+         * {@code imageId} : l'image de fond, {@code null} pour une carte sans image (et dans les parties gardées avant les images).
+         * {@code mapName} : le nom de la carte enregistrée chargée, à titre d'information ; {@code null} pour une nouvelle carte
+         * (et dans les parties gardées avant les cartes enregistrées).
+         */
+        record Create(double width, double height, DistanceUnit unit, String imageId, String mapName, List<Integer> rolls) implements SavedCommand {}
 
         record ShowGrid(boolean visible, List<Integer> rolls) implements SavedCommand {}
 
