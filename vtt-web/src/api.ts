@@ -1,4 +1,4 @@
-import type { ActionResult, CatalogEntry, Combat, CreatureSheet, Decision, DistanceUnit, JournalEntry, SavedMapView, SceneView, TokenView } from './types'
+import type { ActionResult, CampaignView, CatalogEntry, Combat, CreatureSheet, Decision, DistanceUnit, JournalEntry, SavedMapView, SceneView, TokenView } from './types'
 
 /** Erreur rendue par le serveur, avec son message lisible. */
 export class ApiError extends Error {
@@ -40,6 +40,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const imageUrl = (id: string) => `/api/images/${encodeURIComponent(id)}`
 
 export const api = {
+  /** Les campagnes, triées par nom. */
+  campaigns: () => request<CampaignView[]>('/api/campaigns'),
+
+  createCampaign: (name: string) => request<CampaignView>('/api/campaigns', { method: 'POST', body: JSON.stringify({ name }) }),
+
+  /** Ouvre la campagne sur le serveur : la carte, le combat et les cartes enregistrées deviennent les siens. */
+  openCampaign: (id: string) => request<CampaignView>(`/api/campaigns/${encodeURIComponent(id)}/open`, { method: 'POST' }),
+
+  /** La campagne ouverte sur le serveur, ou `null` (204). */
+  currentCampaign: async () => (await request<CampaignView | undefined>('/api/campaigns/current')) ?? null,
+
   catalog: () => request<CatalogEntry[]>('/api/catalog'),
 
   scene: () => request<SceneView>('/api/scene'),

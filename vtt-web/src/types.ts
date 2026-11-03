@@ -44,6 +44,12 @@ export interface SceneView {
 }
 
 /** Une carte enregistrée, prête à charger. */
+/** Une campagne : sa partie et ses cartes enregistrées, désignée par son nom. */
+export interface CampaignView {
+  id: string
+  name: string
+}
+
 export interface SavedMapView {
   name: string
   width: number
