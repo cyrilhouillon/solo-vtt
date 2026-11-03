@@ -65,8 +65,8 @@ final class Dtos {
         }
     }
 
-    /** {@code imageId} : l'image de fond, à lire sous {@code /api/images/{id}}, {@code null} sans image. */
-    /** {@code mapName} : la carte enregistrée d'où vient la carte, à titre d'information ; {@code null} pour une nouvelle carte. */
+    /** {@code imageId} : l'image de fond, à lire sous {@code /api/images/{id}}, {@code null} sans image.
+     * {@code mapName} : la carte enregistrée d'où vient la carte, à titre d'information ; {@code null} pour une nouvelle carte. */
     record SceneDto(double width, double height, DistanceUnit unit, String unitSymbol, String imageId, boolean gridVisible,
                     String mapName, List<TokenDto> tokens) {
         static SceneDto of(Scene scene, SceneSession session) {

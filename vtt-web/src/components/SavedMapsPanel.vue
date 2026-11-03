@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { describeLoss } from '../replaceWarning'
 import { formatLength, type SavedMapView } from '../types'
 
@@ -20,8 +20,21 @@ const taken = computed(() => props.maps?.some((m) => m.name === trimmed.value) ?
 /** La carte dont le chargement attend confirmation : il remplacerait la carte actuelle. */
 const confirming = ref<string | null>(null)
 
+/** Le nom envoyé à l'enregistrement : le champ se vide quand la liste relue le contient, pas sur un refus. */
+const saving = ref<string | null>(null)
+watch(
+  () => props.maps,
+  (maps) => {
+    if (saving.value !== null && maps?.some((m) => m.name === saving.value)) {
+      name.value = ''
+      saving.value = null
+    }
+  },
+)
+
 function save() {
   if (!trimmed.value || props.busy) return
+  saving.value = trimmed.value
   emit('save', trimmed.value)
 }
 
