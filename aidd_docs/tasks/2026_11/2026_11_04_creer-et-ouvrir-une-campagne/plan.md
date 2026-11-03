@@ -1,6 +1,6 @@
 ---
 objective: "En ouvrant l'application, le joueur choisit ou crée une campagne nommée ; chacune garde sa propre partie et ses propres cartes enregistrées, la retrouve à l'identique en y revenant, y compris après redémarrage du serveur."
-status: in-progress
+status: implemented
 ---
 
 # Plan: créer et ouvrir une campagne depuis l'accueil
