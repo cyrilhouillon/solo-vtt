@@ -4,6 +4,7 @@ import { formatLength, type CreatureKind, type SceneView, type TokenView } from 
 import { CELL, gridOf, magnet, occupant, round, snapToCell, type GridLines, type Point } from './grid'
 import { checkMove, moveLabel, snapToLimit, type MoveLimit } from './move'
 import { rangeVerdict, type RangeVerdict } from './range'
+import { FIT_VIEW, layout, panBy, reveal, sameView, zoomAt, type Frame, type View } from './view'
 
 /** Ce que la carte signale ; les coordonnées sont dans l'unité de la carte. */
 export interface SceneCanvasEvents {
@@ -14,6 +15,8 @@ export interface SceneCanvasEvents {
   onTokenMove(tokenId: string, x: number, y: number): void
   /** Pendant le calage, la carte est glissée de ce déplacement depuis le signal précédent, dans l'unité de la carte. */
   onGridDrag(dx: number, dy: number): void
+  /** La vue a changé de zoom (1 : carte entière). */
+  onZoom(zoom: number): void
 }
 
 export interface SceneCanvasState {
@@ -63,6 +66,12 @@ const HEALTH_HEIGHT = 4
 const IMPACT_HOLD_MS = 1200
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)')
 const FONT = "'Alegreya Sans', system-ui, sans-serif"
+/** Un appui qui bouge de moins que ces pixels reste un clic ; au-delà, il déplace la vue. */
+const PAN_THRESHOLD = 4
+/** Pas de zoom des boutons et du clavier. */
+const ZOOM_STEP = 1.25
+/** La case du curseur clavier reste à cette distance du bord de la vue, en pixels. */
+const REVEAL_PAD = 48
 
 /** Initiales d'un nom, numéro compris : « Gobelin guerrier 2 » donne « GG2 ». */
 function initialsOf(name: string): string {
@@ -96,6 +105,12 @@ export class SceneCanvas {
   private backdrop: { id: string; image: HTMLImageElement; ready: boolean } | null = null
   private pixelsPerUnit = 1
   private origin = { x: MARGIN, y: MARGIN }
+  /** Zoom et point regardé ; `FIT_VIEW` montre la carte entière. */
+  private view: View = FIT_VIEW
+  /** Redessin demandé pour la prochaine image, après un changement de vue. */
+  private frameRequest = 0
+  /** Pincement à deux doigts en cours : écart et milieu précédents, en pixels du stage. */
+  private pinch: { distance: number; x: number; y: number } | null = null
   private pointerInside = false
   /** Maj tenue : la pose et le glisser se calent sur la case. */
   private shiftHeld = false
@@ -104,8 +119,15 @@ export class SceneCanvas {
    * par le catalogue : Konva ne le voit pas, la carte vise donc depuis ces coordonnées.
    */
   private drag: { kind: CreatureKind; clientX: number; clientY: number } | null = null
-  /** Dernière position du pointeur pendant un glisser de calage, en pixels du stage ; `null` hors glisser. */
+  /** Dernière position du pointeur pendant un glisser de calage (bouton du milieu), en pixels du stage ; `null` hors glisser. */
   private gridDrag: { x: number; y: number } | null = null
+  /**
+   * Glisser du fond à la souris : dernière position du pointeur en pixels du stage, et `moved` une fois le seuil passé ;
+   * `null` hors glisser.
+   */
+  private pan: { x: number; y: number; moved: boolean } | null = null
+  /** Le dernier appui a déplacé la vue : le clic qui suit ne pose ni ne cible rien. */
+  private panned = false
   /** Maj change l'aperçu sans attendre que la souris bouge : tenue, elle cale sur la case. */
   private readonly onShift = (e: KeyboardEvent) => {
     if (e.key !== 'Shift') return
@@ -129,18 +151,131 @@ export class SceneCanvas {
     })
     window.addEventListener('keydown', this.onShift)
     window.addEventListener('keyup', this.onShift)
-    this.stage.on('mousedown touchstart', () => {
+    // Bouton du milieu pendant le calage : décale la grille (sans le défilement automatique du navigateur).
+    // Bouton gauche sur le fond (sol, image, marges ; pas un jeton qui écoute) : déplace la vue au-delà d'un seuil.
+    // Au doigt, un seul doigt fait défiler la page : la vue se déplace à deux doigts.
+    this.stage.on('mousedown', (e) => {
       const pointer = this.stage.getPointerPosition()
-      if (this.state?.gridPreview && pointer) this.gridDrag = { ...pointer }
+      this.panned = false
+      if (!pointer) return
+      if (e.evt.button === 1) {
+        e.evt.preventDefault()
+        if (this.state?.gridPreview) this.gridDrag = { ...pointer }
+        return
+      }
+      const onBackground = e.target === this.stage || e.target.getParent() === this.layer
+      if (e.evt.button === 0 && onBackground) this.pan = { ...pointer, moved: false }
     })
-    this.stage.on('mousemove touchmove', () => {
+    this.stage.on('mousemove', () => {
       const pointer = this.stage.getPointerPosition()
-      if (!this.gridDrag || !pointer || !this.state?.gridPreview) return
-      const [dx, dy] = [pointer.x - this.gridDrag.x, pointer.y - this.gridDrag.y]
-      this.gridDrag = { ...pointer }
-      if (dx || dy) this.events.onGridDrag(dx / this.pixelsPerUnit, dy / this.pixelsPerUnit)
+      if (!pointer) return
+      if (this.gridDrag && this.state?.gridPreview) {
+        const [dx, dy] = [pointer.x - this.gridDrag.x, pointer.y - this.gridDrag.y]
+        this.gridDrag = { ...pointer }
+        if (dx || dy) this.events.onGridDrag(dx / this.pixelsPerUnit, dy / this.pixelsPerUnit)
+        return
+      }
+      if (!this.pan) return
+      const [dx, dy] = [pointer.x - this.pan.x, pointer.y - this.pan.y]
+      if (!this.pan.moved && Math.hypot(dx, dy) < PAN_THRESHOLD) return
+      if (!this.pan.moved) this.stage.container().style.cursor = 'grabbing'
+      this.pan = { ...pointer, moved: true }
+      this.panned = true
+      const frame = this.frame()
+      if (frame) this.setView(panBy(this.view, dx, dy, frame))
     })
-    this.stage.on('mouseup touchend mouseleave', () => (this.gridDrag = null))
+    this.stage.on('mouseup mouseleave', () => {
+      this.gridDrag = null
+      if (this.pan?.moved) this.stage.container().style.cursor = ''
+      this.pan = null
+    })
+    this.stage.on('wheel', (e) => {
+      e.evt.preventDefault()
+      const pointer = this.stage.getPointerPosition()
+      if (Konva.isDragging() || !pointer) return
+      // Pavé tactile : le pincement arrive en molette avec Ctrl, par petits pas.
+      const speed = e.evt.ctrlKey ? 0.01 : e.evt.deltaMode === 1 ? 0.05 : 0.002
+      this.zoomAround(Math.exp(-e.evt.deltaY * speed), pointer)
+    })
+    this.stage.on('touchstart touchmove', (e) => {
+      const touches = e.evt.touches
+      if (e.type === 'touchstart' && touches.length === 1) this.panned = false
+      // Pendant le glisser d'un jeton, un redessin le détruirait et validerait un déplacement intermédiaire.
+      if (touches.length !== 2 || Konva.isDragging()) return
+      // Le toucher qui suit un pincement ne pose ni ne cible rien.
+      this.panned = true
+      e.evt.preventDefault()
+      const box = this.container.getBoundingClientRect()
+      const [a, b] = [touches[0], touches[1]]
+      const now = {
+        distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+        x: (a.clientX + b.clientX) / 2 - box.left,
+        y: (a.clientY + b.clientY) / 2 - box.top,
+      }
+      const before = this.pinch
+      this.pinch = now
+      const frame = this.frame()
+      if (!before || !frame) return
+      const zoomed = before.distance > 0 ? zoomAt(this.view, now.distance / before.distance, now, frame) : this.view
+      this.setView(panBy(zoomed, now.x - before.x, now.y - before.y, frame))
+    })
+    this.stage.on('touchend touchcancel', (e) => {
+      if (e.evt.touches.length < 2) this.pinch = null
+    })
+  }
+
+  /** Le cadre de la carte actuelle, ou `null` sans carte. */
+  private frame(): Frame | null {
+    if (!this.state) return null
+    const { width, height } = this.state.scene
+    return { stage: { width: this.stage.width(), height: this.stage.height() }, map: { width, height }, margin: MARGIN }
+  }
+
+  /** Change la vue et redessine à la prochaine image ; les bulles d'issue, posées en pixels, s'effacent. */
+  private setView(view: View): void {
+    if (sameView(view, this.view)) return
+    const zoomChanged = view.zoom !== this.view.zoom
+    this.view = view
+    this.effects.destroyChildren()
+    this.effects.batchDraw()
+    if (zoomChanged) this.events.onZoom(view.zoom)
+    if (this.frameRequest) return
+    this.frameRequest = requestAnimationFrame(() => {
+      this.frameRequest = 0
+      this.redraw()
+    })
+  }
+
+  private zoomAround(factor: number, at: { x: number; y: number }): void {
+    const frame = this.frame()
+    if (frame) this.setView(zoomAt(this.view, factor, at, frame))
+  }
+
+  private zoomAroundCenter(factor: number): void {
+    if (Konva.isDragging()) return
+    this.zoomAround(factor, { x: this.stage.width() / 2, y: this.stage.height() / 2 })
+  }
+
+  zoomIn(): void {
+    this.zoomAroundCenter(ZOOM_STEP)
+  }
+
+  zoomOut(): void {
+    this.zoomAroundCenter(1 / ZOOM_STEP)
+  }
+
+  /** La carte entière. */
+  fit(): void {
+    if (Konva.isDragging()) return
+    this.setView(FIT_VIEW)
+  }
+
+  /** Garde un point de la carte (son unité) en vue, sa case entière et une marge comprises. */
+  reveal(point: Point): void {
+    const frame = this.frame()
+    if (!frame || !this.state) return
+    const halfCell = (CELL[this.state.scene.unit] / 2) * layout(this.view, frame).pixelsPerUnit
+    this.setView(reveal(this.view, point, halfCell + REVEAL_PAD, frame))
   }
 
   resize(width: number, height: number): void {
@@ -154,6 +289,7 @@ export class SceneCanvas {
   }
 
   destroy(): void {
+    cancelAnimationFrame(this.frameRequest)
     window.removeEventListener('keydown', this.onShift)
     window.removeEventListener('keyup', this.onShift)
     this.stage.destroy()
@@ -219,13 +355,10 @@ export class SceneCanvas {
     this.clearPreview()
     if (!this.state) return
     const { scene, selected, placing } = this.state
-    const available = { w: this.stage.width() - 2 * MARGIN, h: this.stage.height() - 2 * MARGIN }
-    this.pixelsPerUnit = Math.max(0.1, Math.min(available.w / scene.width, available.h / scene.height))
-    // Centrée dans la place disponible.
-    this.origin = {
-      x: Math.round((this.stage.width() - scene.width * this.pixelsPerUnit) / 2),
-      y: Math.round((this.stage.height() - scene.height * this.pixelsPerUnit) / 2),
-    }
+    // Carte entière centrée au zoom 1 ; zoomée, le point regardé au centre, sans laisser entrer un bord.
+    const placed = layout(this.view, this.frame()!)
+    this.pixelsPerUnit = placed.pixelsPerUnit
+    this.origin = placed.origin
 
     this.drawGround(scene)
     if (this.state.targeting) this.drawTargeting(scene, this.state.targeting)
@@ -274,7 +407,8 @@ export class SceneCanvas {
       strokeWidth: 1,
     })
     ground.on('click tap', (e) => {
-      if (this.state?.gridPreview) return
+      if (this.state?.gridPreview || this.panned) return
+      if ('button' in e.evt && e.evt.button !== 0) return
       const free = !('shiftKey' in e.evt && e.evt.shiftKey)
       const target = this.pointerTarget(scene, free)
       if (target) this.events.onBackgroundClick(target.x, target.y, free)
