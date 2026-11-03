@@ -229,7 +229,7 @@ Grille d'application pleine hauteur : barre en haut, puis rail d'icônes (3.5rem
 - Sous 1280px : tiroir et panneau latéral ne partagent plus l'écran. Le tiroir ouvert replie le latéral en une bande de 3rem d'onglets verticaux (l'actif souligné d'un trait d'encre côté table) ; choisir un onglet ferme le tiroir et rouvre le panneau.
 - Sous 1100px : latéral à 20rem.
 - Sous 900px : une colonne ; la page défile, le cadre de la carte prend la forme de la carte (14rem minimum, 70svh maximum), le panneau latéral passe dessous (24rem minimum), le rail se couche à l'horizontale quand le tiroir est fermé.
-- Sous 800px : la barre passe sur deux lignes, le contrôle de combat seul sur la seconde, sur toute la largeur (en combat, une ligne déborderait sous 745px environ).
+- Sous 1000px : la barre passe sur deux lignes, le contrôle de combat seul sur la seconde, sur toute la largeur (en combat, une ligne déborderait sous 745px environ, et sous 1000px pendant la confirmation de fin de combat) ; la confirmation peut passer à la ligne sur un téléphone.
 - Sous 600px : l'info de carte et le bouton Raccourcis se retirent de la barre (le tableau compte les créatures ; « ? » ouvre toujours la légende).
 - Le tableau tient sans défilement horizontal : sous 1280px, il masque le camp en toutes lettres (la forme de la pastille le dit déjà) ; entre 901 et 1100px et sous 700px, la jauge (le chiffre reste) ; sous 600px, l'état.
 

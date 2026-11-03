@@ -1390,13 +1390,13 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 /*
- * En combat, la barre déborde sous 745 px environ (« Round 1 · Tour de Gobelin guerrier 2 », Fin du tour, Terminer).
- * Sous 800 px, elle passe sur deux lignes : le nom, l'info de carte, le mode et les boutons d'affichage, puis le
+ * En combat, la barre déborde sous 745 px environ (« Round 1 · Tour de Gobelin guerrier 2 », Fin du tour, Terminer),
+ * et sous 1000 px quand « Terminer le combat ? » demande confirmation. Sous 1000 px, elle passe sur deux lignes : le nom, l'info de carte, le mode et les boutons d'affichage, puis le
  * contrôle de combat sur toute la largeur. Sur un téléphone, l'info de carte se tait (le tableau compte déjà les
  * créatures), et la légende des raccourcis, qui sert au clavier, perd son bouton : la touche « ? » l'ouvre toujours.
- * Au-dessus de 800 px, la barre tient sur une ligne : l'info de carte se resserre sur plusieurs lignes.
+ * Au-dessus de 1000 px, la barre tient sur une ligne : l'info de carte se resserre sur plusieurs lignes.
  */
-@media (max-width: 800px) {
+@media (max-width: 1000px) {
   .bar {
     flex-wrap: wrap;
     row-gap: 0.5rem;

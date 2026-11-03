@@ -152,6 +152,15 @@ defineExpose({ cancelEnd })
   gap: 0.4rem;
   white-space: nowrap;
 }
+/*
+ * Sous 1000 px, le combat a sa propre ligne dans la barre : sur un écran étroit (320 px), les boutons passent sous la
+ * question. Au-dessus, la confirmation reste sur une ligne, pour que la barre, et donc la carte, ne changent pas de taille.
+ */
+@media (max-width: 1000px) {
+  .confirm {
+    flex-wrap: wrap;
+  }
+}
 .ask {
   font-weight: 700;
   color: var(--danger);
