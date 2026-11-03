@@ -1,6 +1,6 @@
 ---
 objective: "Quand une attaque est tranchée, ses dés 3D (d20 et dés bonus, dés de dégâts) sont lancés sur la carte, roulent physiquement et s'arrêtent sur les valeurs du serveur, puis s'effacent ; la piste, la bulle d'issue et les PV se posent à l'arrêt."
-status: pending
+status: implemented
 ---
 
 # Plan: dés 3D qui roulent sur la carte
