@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Dés 3D lancés sur la carte à la place du roulement de la piste
@@ -27,11 +27,11 @@ vtt-web/
 | Scenario     | Action                  | Observable outcome   | Actor                           |
 | ------------ | ----------------------- | -------------------- | ------------------------------- |
 | Setup        | `npm run build` avant toute modification, puis serveurs de test 8081/5174 (`testing.md`), carte, Guerrière, Squelette et Gobelin posés | build vert ; piste vide, aucun canvas de dés visible | system, browser |
-| Happy path   | Guerrière attaque le Squelette à l'Épée longue (touché) | un d20 et un d8 sont lancés depuis le bas de la carte, rebondissent, s'arrêtent face visible sur les valeurs des entrées `dice` de la réponse réseau, restent un instant puis s'effacent ; alors seulement verdict, dés posés et cible de la piste, jauge du Squelette et bulle « −N » apparaissent | browser |
+| Happy path   | Guerrière attaque le Squelette à l'Épée longue (touché) | le d20 est lancé depuis le bas de la carte, s'arrête sur la valeur de son entrée `dice` et s'efface, puis le d8 de dégâts est lancé de même ; alors seulement verdict, dés posés et cible de la piste, jauge du Squelette et bulle « −N » apparaissent | browser |
 | Edge case    | Raté | seul le d20 est lancé ; « Raté » à l'arrêt | browser |
 | Edge case    | Arc court en portée longue (désavantage) | deux d20 lancés ; à l'arrêt, celui que le serveur écarte est atténué ; la piste le barre | browser |
 | Edge case    | Coup critique | deux dés de dégâts lancés, valeurs du serveur | browser |
-| Edge case    | Bouclier posé pendant l'attaque | rien ne roule pendant la question ; les dés sont lancés après la réponse, avec le d20 tiré avant | browser |
+| Edge case    | Bouclier posé pendant l'attaque | le d20 roule et s'arrête avant que la question s'ouvre ; après la réponse, les dés de dégâts roulent seulement si l'attaque touche encore | browser |
 | Edge case    | Nouvelle attaque pendant un lancer | le lancer en cours s'arrête net, sa cible reçoit ses PV et sa bulle, puis le nouveau lancer part | browser |
 | Edge case    | Clic, survol, glisser sur la carte pendant un lancer | la carte réagit comme sans les dés | browser |
 | Edge case    | Rechargement de la page | aucun dé lancé ; la piste montre la dernière attaque posée | browser |
@@ -98,7 +98,7 @@ vtt-web/
 
 > Verdict, PV et bulle se posent quand les dés 3D s'arrêtent.
 
-1. `App.vue` : pour un résultat `live`, `settleAction` lance le roulement sans l'attendre (`rolling` vrai, `mapView.rollDice(...).then(...)` : PV du jeton et bulle, contenu actuel de `showImpact`, puis `rolling` faux) ; `attacking`, `answering` et le rafraîchissement des feuilles se libèrent comme aujourd'hui. Une nouvelle attaque pendant le lancer l'annule : sa promesse se résout, la précédente se pose, puis le nouveau lancer part.
+1. `App.vue` : deux lancers comme à la table, séparés par l'issue dans les entrées de l'action : le jet d'attaque (d20, dés bonus), puis les dégâts s'il touche (amendement du 2026-11-03, demande de l'utilisateur). Une décision (Bouclier) ne s'ouvre qu'après l'arrêt du jet d'attaque. Pour un résultat `live`, `settleAction` lance le roulement sans l'attendre (`rolling` vrai, `mapView.rollDice(...).then(...)` : PV du jeton et bulle, contenu actuel de `showImpact`, puis `rolling` faux) ; `attacking`, `answering` et le rafraîchissement des feuilles se libèrent comme aujourd'hui. Une nouvelle attaque pendant le lancer l'annule : sa promesse se résout, la précédente se pose, puis le nouveau lancer part.
 2. `DiceTray.vue` : retirer faces de passage, minuterie et émission `landed` ; une prop `rolling` cache verdict, calcul, dés posés et cible à leur place (`waiting`), sans changer la hauteur.
 
 ## Test acceptance criteria
