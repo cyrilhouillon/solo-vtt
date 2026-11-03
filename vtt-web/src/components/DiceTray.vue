@@ -44,10 +44,35 @@ const headline = computed(() => {
   return `${LABELS[roll.outcome]} · ${total} ${total > 1 ? 'dégâts' : 'dégât'}${type}`
 })
 
-/** Le calcul (« 14 contre CA 17 ») et la réaction qui l'a changé, lus juste après le verdict. */
+/**
+ * « 10 + 5 = 15 » : chaque dé, puis ce qui s'y ajoute. Le serveur ne détaille pas les modificateurs : leur somme est le
+ * total moins les dés, si bien que le calcul tombe juste sans connaître les règles. Sans modificateur ni second dé,
+ * le total seul.
+ */
+function sum(dice: number[], total: number): string {
+  const extra = total - dice.reduce((a, b) => a + b, 0)
+  const terms = dice.map(String).join(' + ')
+  if (extra === 0) return dice.length > 1 ? `${terms} = ${total}` : String(total)
+  return `${terms} ${extra > 0 ? '+' : '−'} ${Math.abs(extra)} = ${total}`
+}
+
+/** Les dés qui comptent : le d20 gardé (pas celui écarté), puis les dés bonus ou de dégâts. */
+function counted(rolls: RolledDice[]): number[] {
+  return rolls.flatMap((r) => (r.kept === null ? r.values : [r.kept]))
+}
+
+/**
+ * Le calcul, à vérifier contre les dés posés : « 10 + 5 = 15 contre CA 15 », la réaction qui l'a changé, puis
+ * « dégâts 5 + 5 = 10 ». Relue d'un journal sans dés, l'attaque garde son seul total.
+ */
 const line = computed(() => {
   const r = props.result
-  return r ? [`${r.roll.total} contre CA ${r.roll.armorClass}`, ...r.reactions].join(' · ') : ''
+  if (!r) return ''
+  const attack = r.attackDice.length ? sum(counted(r.attackDice), r.roll.total) : String(r.roll.total)
+  const parts = [`${attack} contre CA ${r.roll.armorClass}`, ...r.reactions]
+  const dealt = r.damage.reduce((total, d) => total + d.amount, 0)
+  if (r.damageDice.length && r.damage.length) parts.push(`dégâts ${sum(counted(r.damageDice), dealt)}`)
+  return parts.join(' · ')
 })
 
 /** Un dé posé sur la piste ; `dropped` : le d20 écarté par l'avantage ou le désavantage. */
@@ -139,7 +164,7 @@ p {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Le calcul et la réaction : ce qui explique le verdict, lu juste après lui. */
+/* Le calcul, la réaction et les dégâts : ce qui explique le verdict, lu juste après lui. */
 .line {
   grid-column: 1;
   font-size: 0.95rem;

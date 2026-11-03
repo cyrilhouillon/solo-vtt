@@ -5,25 +5,34 @@ import type { JournalEntry } from '../types'
 const props = defineProps<{ entries: JournalEntry[] }>()
 
 /**
- * Une action par groupe : l'annonce en titre, l'issue (dernière ligne) juste dessous,
- * et le détail des règles replié entre les deux. Une entrée qui ouvre un round coupe le groupe :
- * elle s'affiche en séparateur, à sa place.
+ * Une action par groupe : l'annonce en titre, ce que le moteur a tranché juste dessous (l'issue d'une attaque, une
+ * réaction, les dégâts, dans l'ordre), et le détail des règles replié. Une action sans issue marquée (lancer le combat)
+ * montre sa dernière ligne. Une entrée qui ouvre un round coupe le groupe : elle s'affiche en séparateur, à sa place.
  */
 type Round = { kind: 'round'; key: string; text: string }
-type Group = Round | { kind: 'action'; key: string; action: number; title: string; lines: string[] }
-type Item = Round | { kind: 'action'; key: string; title: string; outcome: string | null; detail: string[] }
+type Group = Round | { kind: 'action'; key: string; action: number; title: string; lines: JournalEntry[] }
+type Outcome = { text: string; miss: boolean }
+type Item = Round | { kind: 'action'; key: string; title: string; outcomes: Outcome[]; detail: string[] }
+
+function outcomeOf(entry: JournalEntry): Outcome {
+  return { text: entry.text, miss: entry.roll?.outcome === 'MISS' }
+}
 
 const items = computed(() => {
   const groups: Group[] = []
   props.entries.forEach((entry, index) => {
     const last = groups.at(-1)
     if (entry.round) groups.push({ kind: 'round', key: `r${index}`, text: entry.text })
-    else if (last?.kind === 'action' && last.action === entry.action) last.lines.push(entry.text)
+    else if (last?.kind === 'action' && last.action === entry.action) last.lines.push(entry)
     else groups.push({ kind: 'action', key: `a${index}`, action: entry.action, title: entry.text, lines: [] })
   })
-  return groups.map<Item>((g) =>
-    g.kind === 'round' ? g : { kind: 'action', key: g.key, title: g.title, outcome: g.lines.at(-1) ?? null, detail: g.lines.slice(0, -1) },
-  )
+  return groups.map<Item>((g) => {
+    if (g.kind === 'round') return g
+    const marked = g.lines.filter((l) => l.highlight !== null)
+    const outcomes = marked.length ? marked : g.lines.slice(-1)
+    const detail = g.lines.filter((l) => !outcomes.includes(l)).map((l) => l.text)
+    return { kind: 'action', key: g.key, title: g.title, outcomes: outcomes.map(outcomeOf), detail }
+  })
 })
 
 const list = ref<HTMLElement | null>(null)
@@ -45,7 +54,7 @@ watch(
       <p v-if="group.kind === 'round'" class="round">{{ group.text }}</p>
       <template v-else>
       <p class="title">{{ group.title }}</p>
-      <p v-if="group.outcome" class="outcome">{{ group.outcome }}</p>
+      <p v-for="(outcome, index) in group.outcomes" :key="index" class="outcome" :class="{ miss: outcome.miss }">{{ outcome.text }}</p>
       <details v-if="group.detail.length">
         <summary>Détail des règles</summary>
         <ul>
@@ -85,6 +94,11 @@ watch(
   color: var(--rubric);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+/* Un raté se lit comme sur la piste : encre atténuée, maigre. */
+.outcome.miss {
+  color: var(--ink-muted);
+  font-weight: 500;
 }
 details {
   margin-top: 0.2rem;

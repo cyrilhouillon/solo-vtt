@@ -927,6 +927,13 @@ const mode = computed(() => {
   return null
 })
 
+/** Sans carte : le tiroir déjà ouvert dit où agir ; sinon, le rail. */
+const emptyMapText = computed(() => {
+  if (drawer.value === 'map') return 'Aucune carte. La décrire dans « Nouvelle carte », à gauche, ou en charger une depuis « Cartes enregistrées ».'
+  if (drawer.value === 'maps') return 'Aucune carte. En charger une à gauche, ou en créer une depuis « Nouvelle carte ».'
+  return 'Aucune carte. La créer depuis « Nouvelle carte », ou en charger une depuis « Cartes enregistrées », dans le rail à gauche.'
+})
+
 const TABS = [
   { id: 'sheet', label: 'Feuille' },
   { id: 'target', label: 'Cible' },
@@ -1232,7 +1239,7 @@ onBeforeUnmount(() => {
         </p>
         <DiceTray :result="lastResult" :rolling="rolling" />
       </template>
-      <p v-else class="empty">Aucune carte. La créer depuis « Nouvelle carte », ou en charger une depuis « Cartes enregistrées », dans le rail à gauche.</p>
+      <p v-else class="empty">{{ emptyMapText }}</p>
       <p class="sr-only" aria-live="polite">{{ announcement }}</p>
     </main>
 
@@ -1270,12 +1277,14 @@ onBeforeUnmount(() => {
           empty="Sélectionner une créature sur la carte ou dans le tableau pour voir sa feuille."
           @attack="startAttack"
         />
-        <CreatureSheet
-          v-else-if="tab === 'target'"
-          :sheet="targetSheet"
-          :actions="false"
-          empty="Aucune cible pour l'instant : la créature visée par la dernière attaque s'affiche ici."
-        />
+        <template v-else-if="tab === 'target'">
+          <p v-if="targetSheet" class="tab-note">Visée par la dernière attaque tranchée.</p>
+          <CreatureSheet
+            :sheet="targetSheet"
+            :actions="false"
+            empty="Aucune cible pour l'instant : la créature visée par la dernière attaque s'affiche ici."
+          />
+        </template>
         <JournalPanel v-else :entries="journal" />
       </div>
     </aside>
@@ -1493,6 +1502,13 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow-y: auto;
   padding: 1rem 1.1rem 1.5rem;
+}
+/* Ce que montre l'onglet Cible, au-dessus de la feuille : une ligne discrète, pas un titre. */
+.tab-note {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--ink-muted);
 }
 .tab-panel:focus-visible {
   outline-offset: -2px;
