@@ -37,6 +37,12 @@ final class Dtos {
     /** {@code null} si absent de la requête. */
     record GridRequest(Boolean visible) {}
 
+    /**
+     * Le calage de la grille : dimensions de la carte mise à l'échelle (cases carrées) et décalage de la grille, en fraction
+     * de case ; {@code null} si absent.
+     */
+    record AlignmentRequest(Double width, Double height, Double gridOffsetX, Double gridOffsetY) {}
+
     /** Le nom sous lequel enregistrer la carte en cours, ou celui de la carte à charger ; {@code null} si absent. */
     record MapNameRequest(String name) {}
 
@@ -68,13 +74,13 @@ final class Dtos {
     /** {@code imageId} : l'image de fond, à lire sous {@code /api/images/{id}}, {@code null} sans image.
      * {@code mapName} : la carte enregistrée d'où vient la carte, à titre d'information ; {@code null} pour une nouvelle carte. */
     record SceneDto(double width, double height, DistanceUnit unit, String unitSymbol, String imageId, boolean gridVisible,
-                    String mapName, List<TokenDto> tokens) {
+                    double gridOffsetX, double gridOffsetY, String mapName, List<TokenDto> tokens) {
         static SceneDto of(Scene scene, SceneSession session) {
             var tokens = scene.tokens().stream()
                     .map(t -> TokenDto.of(t, session.entryOf(t.entityId()), session.creature(t.entityId()).orElseThrow()))
                     .toList();
             return new SceneDto(scene.width(), scene.height(), scene.unit(), scene.unit().symbol(), session.imageId(),
-                    session.gridVisible(), session.mapName(), tokens);
+                    session.gridVisible(), session.gridOffsetX(), session.gridOffsetY(), session.mapName(), tokens);
         }
     }
 

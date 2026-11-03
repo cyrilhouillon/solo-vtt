@@ -179,6 +179,51 @@ class SceneApiTest {
         nouvelleCarte(30, 20, "METRE").statusCode(201).body("gridVisible", equalTo(true));
     }
 
+    private static io.restassured.response.ValidatableResponse caler(String body) {
+        return given().contentType(ContentType.JSON).body(body).put("/api/scene/alignment").then();
+    }
+
+    private static void carteSurImage() {
+        String imageId = ImageApiTest.envoyer(ImageApiTest.PNG, "image/png");
+        given().contentType(ContentType.JSON)
+                .body("{\"width\":30,\"height\":20,\"unit\":\"METRE\",\"imageId\":\"%s\"}".formatted(imageId))
+                .post("/api/scene").then().statusCode(201)
+                .body("gridOffsetX", equalTo(0.0f))
+                .body("gridOffsetY", equalTo(0.0f));
+    }
+
+    @Test
+    void calerLaGrille_metLaCarteEtSesJetonsALEchelle() {
+        carteSurImage();
+        poser("loup", 3, 4.5).statusCode(201);
+
+        caler("{\"width\":33,\"height\":22,\"gridOffsetX\":0.25,\"gridOffsetY\":0.5}").statusCode(200)
+                .body("width", equalTo(33.0f))
+                .body("height", equalTo(22.0f))
+                .body("gridOffsetX", equalTo(0.25f))
+                .body("gridOffsetY", equalTo(0.5f))
+                .body("tokens[0].x", equalTo(3.3f))
+                .body("tokens[0].y", equalTo(4.95f));
+        given().get("/api/scene").then().body("width", equalTo(33.0f)).body("gridOffsetY", equalTo(0.5f));
+    }
+
+    @Test
+    void calerUneCarteSansImage_estRefuse() {
+        caler("{\"width\":33,\"height\":22,\"gridOffsetX\":0,\"gridOffsetY\":0}").statusCode(409)
+                .body("message", containsString("sans image"));
+    }
+
+    @Test
+    void calerAvecDesCasesNonCarrees_ouUnDecalageHorsDeLaCase_estRefuse_etLaCarteReste() {
+        carteSurImage();
+
+        caler("{\"width\":33,\"height\":20,\"gridOffsetX\":0,\"gridOffsetY\":0}").statusCode(400)
+                .body("message", containsString("carrées"));
+        caler("{\"width\":33,\"height\":22,\"gridOffsetX\":1,\"gridOffsetY\":0}").statusCode(400);
+        caler("{\"width\":33,\"height\":22,\"gridOffsetX\":0}").statusCode(400);
+        given().get("/api/scene").then().body("width", equalTo(30.0f));
+    }
+
     @Test
     void basculerLaGrilleSansDireSiElleSAffiche_estRefuse() {
         grille("{}").statusCode(400);
