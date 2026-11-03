@@ -266,6 +266,7 @@ export class SceneCanvas {
 
   /** La carte entière. */
   fit(): void {
+    if (Konva.isDragging()) return
     this.setView(FIT_VIEW)
   }
 
