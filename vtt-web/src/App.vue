@@ -1201,8 +1201,8 @@ onBeforeUnmount(() => {
         <p class="status">
           <strong v-if="notice" class="notice">{{ notice }}</strong>
           <template v-if="aligning">
-            Calage de la grille : glisser la carte pour décaler la grille, ou régler décalages et taille de case dans le
-            tiroir ; Valider applique, Échap annule.
+            Calage de la grille : glisser au bouton du milieu pour décaler la grille, ou régler décalages et taille de
+            case dans le tiroir ; Valider applique, Échap annule.
           </template>
           <template v-else-if="targeting">
             Ciblage : <strong>{{ targeting.attack.label }}</strong> de {{ targeting.attackerName }}. Cliquer sur la

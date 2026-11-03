@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
     <div
       ref="container"
       class="map"
-      :class="{ placing, targeting: targeting !== null, aligning: gridPreview !== null }"
+      :class="{ placing, targeting: targeting !== null }"
       :role="cursorMode ? 'application' : 'img'"
       :tabindex="cursorMode ? 0 : -1"
       :aria-label="label"
@@ -316,12 +316,12 @@ onBeforeUnmount(() => {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* Le fond se glisse pour déplacer la vue ; en pose et en ciblage, le curseur dit plutôt l'issue du clic. */
+.map:not(.placing, .targeting) {
+  cursor: grab;
+}
 .map.placing {
   cursor: crosshair;
-}
-/* Pendant le calage, la carte se glisse pour décaler la grille. */
-.map.aligning {
-  cursor: move;
 }
 .map:focus-visible {
   outline-offset: -2px;

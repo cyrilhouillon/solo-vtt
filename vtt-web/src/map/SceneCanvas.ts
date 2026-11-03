@@ -66,6 +66,8 @@ const HEALTH_HEIGHT = 4
 const IMPACT_HOLD_MS = 1200
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)')
 const FONT = "'Alegreya Sans', system-ui, sans-serif"
+/** Un appui qui bouge de moins que ces pixels reste un clic ; au-delà, il déplace la vue. */
+const PAN_THRESHOLD = 4
 /** Pas de zoom des boutons et du clavier. */
 const ZOOM_STEP = 1.25
 /** La case du curseur clavier reste à cette distance du bord de la vue, en pixels. */
@@ -117,8 +119,15 @@ export class SceneCanvas {
    * par le catalogue : Konva ne le voit pas, la carte vise donc depuis ces coordonnées.
    */
   private drag: { kind: CreatureKind; clientX: number; clientY: number } | null = null
-  /** Dernière position du pointeur pendant un glisser de calage, en pixels du stage ; `null` hors glisser. */
+  /** Dernière position du pointeur pendant un glisser de calage (bouton du milieu), en pixels du stage ; `null` hors glisser. */
   private gridDrag: { x: number; y: number } | null = null
+  /**
+   * Glisser du fond à la souris : dernière position du pointeur en pixels du stage, et `moved` une fois le seuil passé ;
+   * `null` hors glisser.
+   */
+  private pan: { x: number; y: number; moved: boolean } | null = null
+  /** Le dernier appui a déplacé la vue : le clic qui suit ne pose ni ne cible rien. */
+  private panned = false
   /** Maj change l'aperçu sans attendre que la souris bouge : tenue, elle cale sur la case. */
   private readonly onShift = (e: KeyboardEvent) => {
     if (e.key !== 'Shift') return
@@ -142,18 +151,44 @@ export class SceneCanvas {
     })
     window.addEventListener('keydown', this.onShift)
     window.addEventListener('keyup', this.onShift)
-    this.stage.on('mousedown touchstart', () => {
+    // Bouton du milieu pendant le calage : décale la grille (sans le défilement automatique du navigateur).
+    // Bouton gauche sur le fond (sol, image, marges ; pas un jeton qui écoute) : déplace la vue au-delà d'un seuil.
+    // Au doigt, un seul doigt fait défiler la page : la vue se déplace à deux doigts.
+    this.stage.on('mousedown', (e) => {
       const pointer = this.stage.getPointerPosition()
-      if (this.state?.gridPreview && pointer) this.gridDrag = { ...pointer }
+      this.panned = false
+      if (!pointer) return
+      if (e.evt.button === 1) {
+        e.evt.preventDefault()
+        if (this.state?.gridPreview) this.gridDrag = { ...pointer }
+        return
+      }
+      const onBackground = e.target === this.stage || e.target.getParent() === this.layer
+      if (e.evt.button === 0 && onBackground) this.pan = { ...pointer, moved: false }
     })
-    this.stage.on('mousemove touchmove', () => {
+    this.stage.on('mousemove', () => {
       const pointer = this.stage.getPointerPosition()
-      if (!this.gridDrag || !pointer || !this.state?.gridPreview) return
-      const [dx, dy] = [pointer.x - this.gridDrag.x, pointer.y - this.gridDrag.y]
-      this.gridDrag = { ...pointer }
-      if (dx || dy) this.events.onGridDrag(dx / this.pixelsPerUnit, dy / this.pixelsPerUnit)
+      if (!pointer) return
+      if (this.gridDrag && this.state?.gridPreview) {
+        const [dx, dy] = [pointer.x - this.gridDrag.x, pointer.y - this.gridDrag.y]
+        this.gridDrag = { ...pointer }
+        if (dx || dy) this.events.onGridDrag(dx / this.pixelsPerUnit, dy / this.pixelsPerUnit)
+        return
+      }
+      if (!this.pan) return
+      const [dx, dy] = [pointer.x - this.pan.x, pointer.y - this.pan.y]
+      if (!this.pan.moved && Math.hypot(dx, dy) < PAN_THRESHOLD) return
+      if (!this.pan.moved) this.stage.container().style.cursor = 'grabbing'
+      this.pan = { ...pointer, moved: true }
+      this.panned = true
+      const frame = this.frame()
+      if (frame) this.setView(panBy(this.view, dx, dy, frame))
     })
-    this.stage.on('mouseup touchend mouseleave', () => (this.gridDrag = null))
+    this.stage.on('mouseup mouseleave', () => {
+      this.gridDrag = null
+      if (this.pan?.moved) this.stage.container().style.cursor = ''
+      this.pan = null
+    })
     this.stage.on('wheel', (e) => {
       e.evt.preventDefault()
       const pointer = this.stage.getPointerPosition()
@@ -164,7 +199,10 @@ export class SceneCanvas {
     })
     this.stage.on('touchstart touchmove', (e) => {
       const touches = e.evt.touches
+      if (e.type === 'touchstart' && touches.length === 1) this.panned = false
       if (touches.length !== 2) return
+      // Le toucher qui suit un pincement ne pose ni ne cible rien.
+      this.panned = true
       e.evt.preventDefault()
       const box = this.container.getBoundingClientRect()
       const [a, b] = [touches[0], touches[1]]
@@ -367,7 +405,8 @@ export class SceneCanvas {
       strokeWidth: 1,
     })
     ground.on('click tap', (e) => {
-      if (this.state?.gridPreview) return
+      if (this.state?.gridPreview || this.panned) return
+      if ('button' in e.evt && e.evt.button !== 0) return
       const free = !('shiftKey' in e.evt && e.evt.shiftKey)
       const target = this.pointerTarget(scene, free)
       if (target) this.events.onBackgroundClick(target.x, target.y, free)
