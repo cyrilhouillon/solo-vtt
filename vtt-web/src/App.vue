@@ -26,6 +26,7 @@ import {
   type Decision,
   type DistanceUnit,
   type JournalEntry,
+  type RolledDice,
   type SceneView,
   type TokenView,
 } from './types'
@@ -45,6 +46,10 @@ const tab = ref<'sheet' | 'target' | 'journal'>('sheet')
 const targetSheet = ref<Sheet | null>(null)
 /** Ce que la piste à dés montre : la dernière attaque résolue. */
 const lastResult = ref<TrayResult | null>(null)
+/** Les dés 3D de la dernière attaque roulent sur la carte : la piste attend leur arrêt. */
+const rolling = ref(false)
+/** Numéro du dernier lancer : seul lui libère la piste à son arrêt. */
+let rollId = 0
 const theme = ref<Theme>(initialTheme())
 /** La question du moteur qui suspend l'action en cours ; tant qu'elle attend, aucune autre action. */
 const decision = ref<Decision | null>(null)
@@ -88,12 +93,17 @@ function trayFromJournal(target?: TrayResult['target']): TrayResult | null {
   const outcome = [...journal.value].reverse().find((e) => e.highlight === 'OUTCOME' && e.roll)
   if (!outcome?.roll) return null
   const entries = journal.value.filter((e) => e.action === outcome.action)
+  const thrown = throwsOf(entries)
   return {
     action: outcome.action,
     title: entries[0]?.text ?? '',
     roll: outcome.roll,
     damage: entries.flatMap((e) => (e.damage ? [e.damage] : [])),
     reactions: entries.filter((e) => e.highlight === 'REACTION').map((e) => e.text),
+    attackDice: thrown.attack,
+    damageDice: thrown.damage,
+    // Seule une attaque qui vient d'être tranchée (elle a sa cible) fait rouler les dés ; relue du journal, elle est posée.
+    live: target !== undefined,
     target,
   }
 }
@@ -496,20 +506,30 @@ function attackTarget(targetId: string) {
  */
 async function settleAction(result: ActionResult) {
   journal.value.push(...result.entries)
-  decision.value = result.decision
   combat.value = result.combat
   notice.value = ''
+  const thrown = throwsOf(result.entries)
+  if (result.decision && thrown.attack.length) {
+    // Le jet d'attaque roule avant la question : la réaction (Bouclier) se décide sur un dé arrêté.
+    ++rollId
+    rolling.value = true
+    await rollDice(thrown.attack, [])
+  }
+  decision.value = result.decision
   // La barre annonce le tour (aria-live) et le dialogue la décision : seule l'issue d'une attaque reste à dire.
   if (result.decision || result.targetId === null) return
   if (result.targetHitPoints === null || result.targetMaxHitPoints === null) return
   const target = scene.value?.tokens.find((token) => token.id === result.targetId)
-  if (target) target.hitPoints = result.targetHitPoints
   const tray = trayFromJournal({
+    id: result.targetId,
     name: target?.name ?? result.targetId,
     hitPoints: result.targetHitPoints,
     maxHitPoints: result.targetMaxHitPoints,
   })
   lastResult.value = tray
+  // Les PV de la carte baissent à l'arrêt des dés (`showImpact`) ; sans piste, tout de suite.
+  if (tray) rollThenLand(tray, thrown)
+  else if (target) target.hitPoints = result.targetHitPoints
   announcement.value = tray
     ? journal.value.filter((e) => e.action === tray.action && e.highlight).map((e) => e.text).join('. ')
     : 'Attaque résolue.'
@@ -518,6 +538,49 @@ async function settleAction(result: ActionResult) {
   const fresh = await api.sheet(result.targetId)
   targetSheet.value = fresh
   if (target) target.armorClass = fresh.armorClass
+}
+
+/** Les dés 3D d'un lancer ; la promesse se résout à leur arrêt, ou quand un lancer suivant les interrompt. */
+function rollDice(attack: RolledDice[], damage: RolledDice[]): Promise<void> {
+  return mapView.value?.rollDice(attack, damage) ?? Promise.resolve()
+}
+
+/**
+ * Les dés que des entrées du journal ont tirés, en deux lancers comme à la table : le jet d'attaque (avant l'issue, ou
+ * tous tant que l'issue n'est pas tranchée), puis les dégâts (après l'issue).
+ */
+function throwsOf(entries: JournalEntry[]): { attack: RolledDice[]; damage: RolledDice[] } {
+  const dice = (part: JournalEntry[]) => part.flatMap((e) => (e.dice ? [e.dice] : []))
+  const at = entries.findIndex((e) => e.highlight === 'OUTCOME')
+  return at < 0 ? { attack: dice(entries), damage: [] } : { attack: dice(entries.slice(0, at)), damage: dice(entries.slice(at + 1)) }
+}
+
+/**
+ * Lance les dés 3D sans les attendre (l'action est finie, ses verrous se libèrent) : le jet d'attaque, puis les dégâts
+ * s'il touche ; à leur arrêt, l'issue se pose. Un lancer suivant arrête celui-ci : il se pose aussitôt.
+ */
+function rollThenLand(tray: TrayResult, thrown: { attack: RolledDice[]; damage: RolledDice[] }) {
+  const id = ++rollId
+  rolling.value = true
+  void (async () => {
+    if (thrown.attack.length) await rollDice(thrown.attack, [])
+    if (thrown.damage.length && id === rollId) await rollDice([], thrown.damage)
+    showImpact(tray)
+    if (id === rollId) rolling.value = false
+  })()
+}
+
+/**
+ * Les dés se sont arrêtés : la jauge de la cible baisse et elle porte l'issue (« −11 », « Raté »), là où le regard se
+ * pose après le clic. Avant, ses PV trahiraient le verdict.
+ */
+function showImpact(result: TrayResult) {
+  const targetId = result.target?.id
+  if (!targetId) return
+  const token = scene.value?.tokens.find((t) => t.id === targetId)
+  if (token) token.hitPoints = result.target!.hitPoints
+  const total = result.damage.reduce((sum, d) => sum + d.amount, 0)
+  mapView.value?.showImpact(targetId, result.roll.outcome === 'MISS' ? 'Raté' : `−${total}`)
 }
 
 function endMoving() {
@@ -890,7 +953,7 @@ onBeforeUnmount(() => {
             distance ; Suppr retire de la carte les créatures sélectionnées.
           </template>
         </p>
-        <DiceTray :result="lastResult" />
+        <DiceTray :result="lastResult" :rolling="rolling" />
       </template>
       <p v-else class="empty">Aucune carte. La créer depuis « Nouvelle carte », dans le rail à gauche.</p>
       <p class="sr-only" aria-live="polite">{{ announcement }}</p>

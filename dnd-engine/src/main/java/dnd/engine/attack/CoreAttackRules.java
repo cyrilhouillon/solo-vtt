@@ -93,7 +93,7 @@ public final class CoreAttackRules {
             int total = kept + ctx.weapon().attackBonus();
             for (AttackContext.DiceTerm term : ctx.attackDice()) {
                 List<Integer> values = rollMany(e, term.count(), term.sides());
-                e.emit(new DiceRolled(term.source(), term.notation(), values));
+                e.emit(new DiceRolled(term.source(), term.sides(), values));
                 total += sum(values);
             }
             ctx.setNatural(kept);
@@ -143,7 +143,7 @@ public final class CoreAttackRules {
             var weapon = ctx.weapon();
             int count = weapon.diceCount() * (ctx.critical() ? 2 : 1);
             List<Integer> values = rollMany(e, count, weapon.dieSides());
-            e.emit(new DiceRolled(weapon.name(), count + "d" + weapon.dieSides(), values));
+            e.emit(new DiceRolled(weapon.name(), weapon.dieSides(), values));
             int damage = sum(values) + weapon.damageBonus();
             e.emit(new RuleApplied("Dégâts", "%d (dés) %+d (modificateur) = %d"
                     .formatted(sum(values), weapon.damageBonus(), damage)));

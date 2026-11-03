@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { AttackRoll, Damage } from '../types'
+import type { AttackRoll, Damage, RolledDice } from '../types'
 
 /**
  * La piste à dés, sous la carte : la dernière attaque tranchée par le moteur. Les tours de combat ne l'effacent pas
- * (la barre dit qui joue). Les dés eux-mêmes viendront avec les jets structurés (story « voir les dés rouler »).
- * Muette pour les lecteurs d'écran : l'issue leur est annoncée à part.
+ * (la barre dit qui joue). Ses dés y sont posés, valeurs du serveur, une fois que les dés 3D se sont arrêtés sur la
+ * carte ; le verdict se pose alors. Muette pour les lecteurs d'écran : l'issue leur est annoncée à part.
  */
 export interface TrayResult {
-  /** Numéro de l'action : chaque attaque tranchée en a un nouveau, et le verdict se pose à chacune. */
+  /** Numéro de l'action : chaque attaque tranchée en a un nouveau, et les dés roulent à chacune. */
   action: number
   /** L'annonce de l'attaque (qui, avec quoi, sur qui). */
   title: string
@@ -18,11 +18,18 @@ export interface TrayResult {
   damage: Damage[]
   /** Les réactions qui ont changé le coup, dans le texte du journal. */
   reactions: string[]
+  /** Les dés du jet d'attaque (d20, puis dés bonus), tirés avant l'issue. */
+  attackDice: RolledDice[]
+  /** Les dés de dégâts, tirés après l'issue ; aucun sur un raté. */
+  damageDice: RolledDice[]
+  /** L'attaque vient d'être tranchée : ses dés roulent. Faux quand elle est relue du journal (rechargement). */
+  live: boolean
   /** Absent quand le résultat est relu du journal (rechargement) : la piste n'a alors pas la jauge. */
-  target?: { name: string; hitPoints: number; maxHitPoints: number }
+  target?: { id: string; name: string; hitPoints: number; maxHitPoints: number }
 }
 
-const props = defineProps<{ result: TrayResult | null }>()
+/** `rolling` : les dés 3D roulent sur la carte ; verdict, dés posés et cible attendent leur arrêt, à leur place. */
+const props = defineProps<{ result: TrayResult | null; rolling: boolean }>()
 
 /** L'issue de l'attaque, pas son intérêt pour le joueur : elle se lit à la forme (voir les styles). */
 const LABELS: Record<AttackRoll['outcome'], string> = { CRITICAL: 'Coup critique', HIT: 'Touché', MISS: 'Raté' }
@@ -42,16 +49,46 @@ const line = computed(() => {
   const r = props.result
   return r ? [`${r.roll.total} contre CA ${r.roll.armorClass}`, ...r.reactions].join(' · ') : ''
 })
+
+/** Un dé posé sur la piste ; `dropped` : le d20 écarté par l'avantage ou le désavantage. */
+interface Die {
+  sides: number
+  value: number
+  dropped: boolean
+}
+
+function diceOf(rolls: RolledDice[]): Die[] {
+  return rolls.flatMap((r) => {
+    // Le d20 gardé est le premier qui porte la valeur gardée ; les autres sont écartés.
+    const keptAt = r.kept === null ? -1 : r.values.indexOf(r.kept)
+    return r.values.map((value, i) => ({ sides: r.sides, value, dropped: r.kept !== null && i !== keptAt }))
+  })
+}
+
+const attackDice = computed(() => diceOf(props.result?.attackDice ?? []))
+const damageDice = computed(() => diceOf(props.result?.damageDice ?? []))
+
 </script>
 
 <template>
   <div class="rim" aria-hidden="true">
     <div class="tray">
       <template v-if="result">
-        <p :key="result.action" class="verdict" :class="result.roll.outcome.toLowerCase()">{{ headline }}</p>
-        <p class="line">{{ line }}</p>
+        <p :key="`${result.action}-${rolling}`" class="verdict" :class="[result.roll.outcome.toLowerCase(), { waiting: rolling }]">
+          {{ headline }}
+        </p>
+        <p class="line" :class="{ waiting: rolling }">{{ line }}</p>
         <p class="title">{{ result.title }}</p>
-        <p v-if="result.target" class="target">
+        <div class="dice" :class="{ waiting: rolling }">
+          <span v-for="(die, i) in attackDice" :key="`a${result.action}-${i}`" class="die" :class="{ dropped: die.dropped }">
+            <b>{{ die.value }}</b><small>d{{ die.sides }}</small>
+          </span>
+          <i v-if="damageDice.length" class="split" />
+          <span v-for="(die, i) in damageDice" :key="`d${result.action}-${i}`" class="die">
+            <b>{{ die.value }}</b><small>d{{ die.sides }}</small>
+          </span>
+        </div>
+        <p v-if="result.target" class="target" :class="{ waiting: rolling }">
           <span class="who">{{ result.target.name }}</span>
           <span class="gauge"><i :style="{ width: `${Math.max(0, result.target.hitPoints / result.target.maxHitPoints) * 100}%` }" /></span>
           <span class="hp">{{ result.target.hitPoints === 0 ? 'à terre' : `${result.target.hitPoints} / ${result.target.maxHitPoints} PV` }}</span>
@@ -77,7 +114,7 @@ const line = computed(() => {
   height: calc(1.5rem * 1.2 + 2 * 0.95rem * 1.45 + 1.2rem);
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   grid-template-rows: auto auto auto;
   align-content: center;
   align-items: center;
@@ -148,8 +185,63 @@ p {
     animation: none;
   }
 }
-.target {
+/* Le verdict et le calcul attendent l'arrêt des dés, à leur place : la piste ne bouge pas. */
+.waiting {
+  visibility: hidden;
+}
+/* Les dés : le jet d'attaque, un filet, puis les dégâts. Ils se coupent plutôt que de pousser la piste. */
+.dice {
   grid-column: 2;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow: hidden;
+}
+.die {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.6rem;
+  border-radius: 6px;
+  background: var(--felt);
+  box-shadow:
+    inset 0 0 0 1px var(--felt-rim),
+    0 2px 0 rgba(0, 0, 0, 0.35);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.die b {
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.die small {
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+/* Le d20 écarté par l'avantage ou le désavantage : atténué et barré, la forme le dit autant que la teinte. */
+.die.dropped {
+  opacity: 0.45;
+}
+.die.dropped b {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+.split {
+  flex: none;
+  align-self: stretch;
+  width: 1px;
+  margin: 0.4rem 0.2rem;
+  background: var(--felt-rim);
+}
+.target {
+  grid-column: 3;
   grid-row: 1 / -1;
   display: flex;
   align-items: center;

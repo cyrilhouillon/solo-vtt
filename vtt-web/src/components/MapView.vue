@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { CELL, occupant, snapToCell, type Point } from '../map/grid'
 import { checkMove, moveLabel, type MoveLimit } from '../map/move'
 import { SceneCanvas, type Targeting } from '../map/SceneCanvas'
-import { formatLength, type CreatureKind, type SceneView } from '../types'
+import type { DiceRoller } from '../dice/DiceRoller'
+import { formatLength, type CreatureKind, type RolledDice, type SceneView } from '../types'
 
 const props = defineProps<{
   scene: SceneView
@@ -46,7 +47,11 @@ const cursor = ref<Point | null>(null)
 const cursorAnnouncement = ref('')
 
 const container = ref<HTMLDivElement | null>(null)
+const diceCanvas = ref<HTMLCanvasElement | null>(null)
 let canvas: SceneCanvas | null = null
+/** Les dés 3D, chargés au premier lancer (three et cannon-es restent hors du bundle initial) ; `null` : pas de WebGL. */
+let roller: Promise<DiceRoller | null> | null = null
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)')
 let observer: ResizeObserver | null = null
 
 function render() {
@@ -73,7 +78,10 @@ onMounted(() => {
   render()
   // Le canvas ne redessine pas seul quand les polices finissent de charger.
   void document.fonts.ready.then(render)
-  observer = new ResizeObserver(() => canvas?.resize(el.clientWidth, el.clientHeight))
+  observer = new ResizeObserver(() => {
+    canvas?.resize(el.clientWidth, el.clientHeight)
+    void roller?.then((r) => r?.resize(el.clientWidth, el.clientHeight))
+  })
   observer.observe(el)
 })
 
@@ -156,30 +164,80 @@ function onKeydown(e: KeyboardEvent) {
 function focus() {
   container.value?.focus()
 }
-defineExpose({ focus })
+/** L'issue d'une attaque, brièvement au-dessus de sa cible. */
+function showImpact(tokenId: string, text: string) {
+  canvas?.showImpact(tokenId, text)
+}
+
+function loadRoller(): Promise<DiceRoller | null> {
+  roller ??= import('../dice/DiceRoller')
+    .then(({ DiceRoller }) => {
+      const r = new DiceRoller(diceCanvas.value!)
+      r.resize(container.value!.clientWidth, container.value!.clientHeight)
+      return r
+    })
+    .catch((e: unknown) => {
+      console.warn("Dés 3D indisponibles, valeurs posées d'emblée :", e)
+      return null
+    })
+  return roller
+}
+
+/**
+ * Lance les dés 3D sur la carte ; la promesse se résout quand ils se sont effacés, ou quand un autre lancer les
+ * arrête. Sous `prefers-reduced-motion`, sans WebGL, ou si le lancer échoue, elle se résout tout de suite.
+ */
+async function rollDice(attack: RolledDice[], damage: RolledDice[]): Promise<void> {
+  if (REDUCED_MOTION.matches || !diceCanvas.value || !container.value) return
+  try {
+    await (await loadRoller())?.roll(attack, damage)
+  } catch (e) {
+    console.warn('Lancer de dés interrompu :', e)
+  }
+}
+
+defineExpose({ focus, showImpact, rollDice })
 
 onBeforeUnmount(() => {
   observer?.disconnect()
   canvas?.destroy()
+  void roller?.then((r) => r?.destroy())
 })
 </script>
 
 <template>
-  <div
-    ref="container"
-    class="map"
-    :class="{ placing, targeting: targeting !== null }"
-    :role="cursorMode ? 'application' : 'img'"
-    :tabindex="cursorMode ? 0 : -1"
-    :aria-label="label"
-    @focus="onFocus"
-    @blur="cursor = null"
-    @keydown="onKeydown"
-  />
+  <div class="frame">
+    <div
+      ref="container"
+      class="map"
+      :class="{ placing, targeting: targeting !== null }"
+      :role="cursorMode ? 'application' : 'img'"
+      :tabindex="cursorMode ? 0 : -1"
+      :aria-label="label"
+      @focus="onFocus"
+      @blur="cursor = null"
+      @keydown="onKeydown"
+    />
+    <canvas ref="diceCanvas" class="dice" aria-hidden="true" />
+  </div>
   <p class="sr-only" aria-live="polite">{{ cursorAnnouncement }}</p>
 </template>
 
 <style scoped>
+.frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+/* Les dés roulent au-dessus des jetons sans capter le pointeur : la carte réagit comme sans eux. */
+.dice {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 .map {
   width: 100%;
   height: 100%;
