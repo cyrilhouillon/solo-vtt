@@ -37,7 +37,7 @@ class CombatDeBoutEnBoutTest {
                 18, 4), store);     // Loup → Magicienne : 18 + 4 = 22 contre CA 17, 1d6 = 4
 
         // Préparation : pose et déplacement libre restent hors journal.
-        sansEntree(session, () -> session.create(30, 20, DistanceUnit.METRE));
+        sansEntree(session, () -> session.create(30, 20, DistanceUnit.METRE, null));
         sansEntree(session, () -> session.place(entree("guerriere"), 1.5, 3));
         sansEntree(session, () -> session.place(entree("magicienne"), 3, 6));
         sansEntree(session, () -> session.place(entree("gobelin"), 4.5, 3));

@@ -60,6 +60,15 @@ class CombatApiTest {
     }
 
     @Test
+    void enCombat_laGrilleSeBasculeQuandMeme() {
+        dice.script(10, 15, 4);
+        lancer().statusCode(200);
+
+        given().contentType(ContentType.JSON).body("{\"visible\":false}").put("/api/scene/grid").then()
+                .statusCode(200).body("gridVisible", equalTo(false));
+    }
+
+    @Test
     void lancerLeCombat_rendLOrdreEtLaCreatureActive() {
         dice.script(10, 15, 4);
 

@@ -149,10 +149,6 @@ public class SceneSession {
         restore();
     }
 
-    public synchronized Scene create(double width, double height, DistanceUnit unit) {
-        return create(width, height, unit, null);
-    }
-
     /** Crée une carte, avec l'image de fond {@code imageId} ou sans ({@code null}) ; sa grille s'affiche. */
     public synchronized Scene create(double width, double height, DistanceUnit unit, String imageId) {
         rolls.clear();

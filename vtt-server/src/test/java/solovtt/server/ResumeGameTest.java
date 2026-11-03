@@ -30,7 +30,7 @@ class ResumeGameTest {
     /** Joue jusqu'à la décision Bouclier, en passant par chaque sorte de commande sauf la fin du combat et la réponse. */
     private SceneSession partieJusquABouclier() {
         var session = new SceneSession(Dice.scripted(20, 15, 2, 1, 10), store);
-        session.create(30, 20, DistanceUnit.METRE);
+        session.create(30, 20, DistanceUnit.METRE, null);
         session.place(entree("guerriere"), 1.5, 1.5);
         session.place(entree("gobelin"), 12, 1.5);
         session.place(entree("magicienne"), 12, 3);
@@ -119,7 +119,7 @@ class ResumeGameTest {
     void uneNouvelleCarte_remplaceLaPartieGardee() {
         SceneSession session = partieJusquABouclier();
 
-        session.create(10, 10, DistanceUnit.FOOT);
+        session.create(10, 10, DistanceUnit.FOOT, null);
 
         assertEquals(List.of(new SavedCommand.Create(10, 10, DistanceUnit.FOOT, null, List.of())), store.game().commands());
     }
@@ -172,7 +172,7 @@ class ResumeGameTest {
     @Test
     void uneSessionSansStockage_neGardeRien() {
         var session = new SceneSession(Dice.scripted());
-        session.create(30, 20, DistanceUnit.METRE);
+        session.create(30, 20, DistanceUnit.METRE, null);
         assertFalse(session.scene().isEmpty());
     }
 
