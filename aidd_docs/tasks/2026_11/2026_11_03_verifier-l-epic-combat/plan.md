@@ -1,6 +1,6 @@
 ---
 objective: "Les deux preuves de succès de l'epic sont observées (combat de 2 personnages contre 3 adversaires joué de bout en bout dans le navigateur, journal complet, reprise à l'identique), puis l'epic est close ou ses écarts deviennent des items du backlog."
-status: in-progress
+status: implemented
 ---
 
 # Plan: vérifier l'epic « jouer un combat D&D 2024 en local » de bout en bout
