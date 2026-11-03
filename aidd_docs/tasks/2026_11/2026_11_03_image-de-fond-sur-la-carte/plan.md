@@ -1,6 +1,6 @@
 ---
 objective: "Le joueur crée une carte à partir d'une image de battlemap dont la grille tombe sur celle de la carte, affiche ou masque la grille, et retrouve image et choix de grille après un redémarrage du serveur."
-status: in-progress
+status: implemented
 ---
 
 # Plan: mettre une image de fond sur la carte
