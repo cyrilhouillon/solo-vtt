@@ -1189,7 +1189,11 @@ onBeforeUnmount(() => {
         </div>
         <p class="status">
           <strong v-if="notice" class="notice">{{ notice }}</strong>
-          <template v-if="targeting">
+          <template v-if="aligning">
+            Calage de la grille : glisser la carte pour décaler la grille, ou régler décalages et taille de case dans le
+            tiroir ; Valider applique, Échap annule.
+          </template>
+          <template v-else-if="targeting">
             Ciblage : <strong>{{ targeting.attack.label }}</strong> de {{ targeting.attackerName }}. Cliquer sur la
             cible ou la choisir dans le tableau ; Échap annule.<template v-if="targetingView?.measuredBy === 'range'">
               Hachures : portée longue, avec désavantage.</template>
