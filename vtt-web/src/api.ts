@@ -76,7 +76,16 @@ export function campaignApi(campaignId: string) {
     /** Les pages du Carnet et la dernière page consultée. */
     notebook: () => request<NotebookView>(`${base}/notebook`),
 
-    createPage: (title: string) => request<PageView>(`${base}/notebook/pages`, { method: 'POST', body: JSON.stringify({ title }) }),
+    /** `parentId` : la page sous laquelle la ranger, `null` pour la racine. */
+    createPage: (title: string, parentId: string | null = null) =>
+      request<PageView>(`${base}/notebook/pages`, { method: 'POST', body: JSON.stringify({ title, parentId }) }),
+
+    renamePage: (pageId: string, title: string) =>
+      request<void>(`${base}/notebook/pages/${encodeURIComponent(pageId)}/title`, { method: 'PUT', body: JSON.stringify({ title }) }),
+
+    /** Range la page sous `parentId` (`null` : à la racine) ; ses sous-pages la suivent. */
+    movePage: (pageId: string, parentId: string | null) =>
+      request<void>(`${base}/notebook/pages/${encodeURIComponent(pageId)}/parent`, { method: 'PUT', body: JSON.stringify({ parentId }) }),
 
     page: (pageId: string) => request<PageView>(`${base}/notebook/pages/${encodeURIComponent(pageId)}`),
 

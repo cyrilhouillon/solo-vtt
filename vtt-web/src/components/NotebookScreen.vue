@@ -4,15 +4,16 @@ import { campaignApi } from '../api'
 import AppIcon from './AppIcon.vue'
 import ThemeButton from './ThemeButton.vue'
 import PageEditor from './PageEditor.vue'
+import PageTree from './PageTree.vue'
+import MovePageDialog from './MovePageDialog.vue'
+import { ancestors, buildTree } from '../notebook/tree'
+import { MAX_TITLE_LENGTH } from '../notebook/context'
 import type { CampaignView, NotebookView, PageDocument, PageView } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
 /** Retour à l'accueil, ou passage à l'écran de combat de la campagne. */
 const emit = defineEmits<{ home: []; combat: [] }>()
 const api = campaignApi(props.campaign.id)
-
-/** Même limite que le serveur (`NotebookResource.MAX_TITLE_LENGTH`). */
-const MAX_TITLE_LENGTH = 120
 
 /** Le Carnet, `null` tant qu'il n'est pas lu. */
 const notebook = ref<NotebookView | null>(null)
@@ -24,6 +25,12 @@ const error = ref<string | null>(null)
 const firstTitle = ref<HTMLInputElement | null>(null)
 /** La page ouverte s'édite : vrai pour celle qu'on vient de créer, jusqu'à ce qu'on la quitte ; sinon d'un geste. */
 const unlocked = ref(false)
+/** Les branches dépliées de l'arbre, gardées le temps de l'écran seulement. */
+const expanded = ref<ReadonlySet<string>>(new Set())
+/** La page dont on choisit la destination, `null` hors du dialogue. */
+const moving = ref<string | null>(null)
+/** Le titre en tête de page, éditable une fois la page déverrouillée. */
+const pageTitle = ref('')
 
 /** Attente avant d'envoyer une frappe : assez pour grouper les touches, assez peu pour ne rien perdre. */
 const SAVE_DELAY_MS = 1000
@@ -88,11 +95,31 @@ async function call(action: () => Promise<void>) {
   }
 }
 
+function toggle(pageId: string) {
+  const next = new Set(expanded.value)
+  if (!next.delete(pageId)) next.add(pageId)
+  expanded.value = next
+}
+
+/** Déplie le chemin jusqu'à la page, pour qu'elle soit en vue dans l'arbre. */
+function reveal(pageId: string) {
+  const path = ancestors(notebook.value?.pages ?? [], pageId)
+  if (path.every((id) => expanded.value.has(id))) return
+  expanded.value = new Set([...expanded.value, ...path])
+}
+
+/** Pose la page ouverte, déverrouillée ou non, et la montre dans l'arbre. */
+function display(opened: PageView, editable: boolean) {
+  page.value = opened
+  pageTitle.value = opened.title
+  unlocked.value = editable
+  reveal(opened.id)
+}
+
 /** Ouvre la page et la note comme dernière consultée. */
 async function show(pageId: string) {
   if (!(await saved())) return
-  unlocked.value = false
-  page.value = await api.page(pageId)
+  display(await api.page(pageId), false)
   await api.setLastPage(pageId)
 }
 
@@ -108,7 +135,7 @@ onMounted(() => {
   void call(async () => {
     notebook.value = await api.notebook()
     const { pages, lastPageId } = notebook.value
-    const target = pages.find((p) => p.id === lastPageId) ?? pages[0]
+    const target = pages.find((p) => p.id === lastPageId) ?? buildTree(pages)[0]?.page
     if (target) await show(target.id)
     else {
       await nextTick()
@@ -122,17 +149,76 @@ onBeforeUnmount(() => {
   void flush()
 })
 
-function create() {
-  if (!trimmed.value || busy.value) return
+/** Crée la page, à la racine ou sous `parentId`, et l'ouvre déverrouillée. */
+function createPage(newTitle: string, parentId: string | null, done = () => {}) {
+  if (!newTitle || busy.value) return
   error.value = null
   call(async () => {
     if (!(await saved())) return
-    const created = await api.createPage(trimmed.value)
-    title.value = ''
+    const created = await api.createPage(newTitle, parentId)
+    done()
     notebook.value = await api.notebook()
-    page.value = created
-    unlocked.value = true
+    display(created, true)
     await api.setLastPage(created.id)
+  })
+}
+
+function create() {
+  createPage(trimmed.value, null, () => (title.value = ''))
+}
+
+function rename(pageId: string, newTitle: string) {
+  error.value = null
+  call(async () => {
+    try {
+      await api.renamePage(pageId, newTitle)
+      if (page.value?.id === pageId) page.value.title = newTitle
+    } finally {
+      // Refusé ou non, l'arbre et le titre reprennent ce que garde le serveur.
+      notebook.value = await api.notebook()
+      if (page.value) pageTitle.value = notebook.value.pages.find((p) => p.id === page.value?.id)?.title ?? page.value.title
+    }
+  })
+}
+
+/** Le titre en tête de page : Entrée ou sortie du champ envoie, s'il a changé et n'est pas vide. */
+function submitTitle() {
+  if (!page.value) return
+  const newTitle = pageTitle.value.trim()
+  if (!newTitle || newTitle === page.value.title) {
+    pageTitle.value = page.value.title
+    return
+  }
+  rename(page.value.id, newTitle)
+}
+
+/** Échap rend le titre d'avant ; la sortie du champ qui suit n'a alors rien à envoyer. */
+function cancelTitle(e: KeyboardEvent) {
+  if (page.value) pageTitle.value = page.value.title
+  ;(e.target as HTMLInputElement).blur()
+}
+
+const tree = ref<InstanceType<typeof PageTree> | null>(null)
+
+/** Le dialogue se ferme : le focus revient à la ligne de la page, que l'arbre a pu déplacer. */
+async function closeMove() {
+  const pageId = moving.value
+  moving.value = null
+  if (pageId) await tree.value?.focusPage(pageId)
+}
+
+function move(parentId: string | null) {
+  const pageId = moving.value
+  if (!pageId) return
+  error.value = null
+  call(async () => {
+    try {
+      await api.movePage(pageId, parentId)
+    } finally {
+      notebook.value = await api.notebook()
+      reveal(pageId)
+      await closeMove()
+    }
   })
 }
 
@@ -185,18 +271,18 @@ async function leave(target: 'home' | 'combat') {
       <nav class="pages" aria-labelledby="pages-title">
         <h2 id="pages-title" class="panel-title">Pages</h2>
         <hr class="tapered" />
-        <ul class="list">
-          <li v-for="entry in notebook.pages" :key="entry.id">
-            <button
-              type="button"
-              class="page-link"
-              :aria-current="entry.id === page?.id ? 'page' : undefined"
-              @click="open(entry.id)"
-            >
-              {{ entry.title }}
-            </button>
-          </li>
-        </ul>
+        <PageTree
+          ref="tree"
+          :pages="notebook.pages"
+          :current-id="page?.id ?? null"
+          :expanded="expanded"
+          :busy="busy"
+          @open="open"
+          @toggle="toggle"
+          @create="(t, parentId) => createPage(t, parentId)"
+          @rename="rename"
+          @move="(pageId) => (moving = pageId)"
+        />
         <form class="create new-page" @submit.prevent="create">
           <label>
             Nouvelle page
@@ -209,7 +295,20 @@ async function leave(target: 'home' | 'combat') {
       <main class="page">
         <article v-if="page" :key="page.id" aria-labelledby="page-title">
           <header class="page-head">
-            <h2 id="page-title" class="page-title">{{ page.title }}</h2>
+            <h2 id="page-title" class="page-title">
+              <input
+                v-if="unlocked"
+                v-model="pageTitle"
+                class="title-field"
+                type="text"
+                :maxlength="MAX_TITLE_LENGTH"
+                aria-label="Titre de la page"
+                @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+                @keydown.esc.prevent="cancelTitle($event)"
+                @blur="submitTitle"
+              />
+              <template v-else>{{ page.title }}</template>
+            </h2>
             <button
               type="button"
               class="icon-button"
@@ -225,6 +324,7 @@ async function leave(target: 'home' | 'combat') {
           <PageEditor :content="page.content" :editable="unlocked" :label="`Texte de ${page.title}`" @change="onChange" />
         </article>
       </main>
+      <MovePageDialog :pages="notebook.pages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
     </div>
   </div>
 </template>
@@ -279,26 +379,15 @@ section .tapered,
   padding: 1.25rem 16px;
   align-items: start;
 }
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+/* L'arbre reste en vue quand la page défile, et défile lui-même au-delà de la hauteur de la fenêtre. */
+.pages {
+  position: sticky;
+  top: 1.25rem;
+  max-height: calc(100vh - 2.5rem);
+  box-sizing: border-box;
 }
-.page-link {
-  width: 100%;
-  text-align: left;
-  background: none;
-  border-color: transparent;
-  color: var(--ink-muted);
-  overflow-wrap: anywhere;
-}
-.page-link[aria-current='page'] {
-  color: var(--ink);
-  background: var(--wood-sunken);
-  border-color: var(--rule);
+.pages .new-page {
+  flex: none;
 }
 .create {
   display: flex;
@@ -340,12 +429,33 @@ input[type='text'] {
   color: var(--ink);
   overflow-wrap: anywhere;
 }
+/* Déverrouillé, le titre devient un champ de même police, même taille, même place. */
+.page-title .title-field {
+  width: 100%;
+  box-sizing: border-box;
+  margin: -0.15rem 0 -0.15rem -0.35rem;
+  padding: 0.1rem 0.3rem;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+.page-title .title-field:hover,
+.page-title .title-field:focus {
+  border-color: var(--control-border);
+  background: var(--wood-sunken);
+}
 .page .tapered {
   margin: 0.4rem 0 1rem;
 }
 @media (max-width: 900px) {
   .content {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .pages {
+    position: static;
+    max-height: none;
   }
 }
 </style>
