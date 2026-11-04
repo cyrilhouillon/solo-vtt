@@ -49,6 +49,29 @@ export interface CampaignView {
   name: string
 }
 
+/** Le document d'une page, tel que l'éditeur le produit (JSON de Tiptap) ; le serveur le garde sans l'interpréter. */
+export interface PageDocument {
+  type: 'doc'
+  [key: string]: unknown
+}
+
+/** Une page du Carnet, telle que la liste la montre. */
+export interface PageSummary {
+  id: string
+  title: string
+}
+
+/** Une page ouverte : `content` est `null` pour une page neuve. */
+export interface PageView extends PageSummary {
+  content: PageDocument | null
+}
+
+/** Le Carnet d'une campagne : ses pages triées par titre et la dernière page consultée (`null` si aucune). */
+export interface NotebookView {
+  pages: PageSummary[]
+  lastPageId: string | null
+}
+
 /** Une carte enregistrée, prête à charger. */
 export interface SavedMapView {
   name: string

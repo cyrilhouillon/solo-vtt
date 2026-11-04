@@ -38,8 +38,8 @@ import {
 } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
-/** Retour à l'accueil. */
-const emit = defineEmits<{ home: [] }>()
+/** Retour à l'accueil, ou au Carnet de la campagne. */
+const emit = defineEmits<{ home: []; notebook: [] }>()
 /** Les appels au serveur, sur la partie de cette campagne. */
 const api = campaignApi(props.campaign.id)
 
@@ -1081,6 +1081,9 @@ onBeforeUnmount(() => {
     <header class="bar">
       <button type="button" class="icon-button" aria-label="Accueil" title="Accueil : changer de campagne" @click="emit('home')">
         <AppIcon name="home" />
+      </button>
+      <button type="button" class="icon-button" aria-label="Carnet" title="Carnet de la campagne" @click="emit('notebook')">
+        <AppIcon name="notebook" />
       </button>
       <h1 class="app-name">Solo VTT</h1>
       <p class="campaign-name">{{ campaign.name }}</p>
