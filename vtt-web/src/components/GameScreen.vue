@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { api, ApiError, imageUrl } from '../api'
+import { ApiError, campaignApi, imageUrl } from '../api'
 import AppIcon from './AppIcon.vue'
 import CatalogPanel from './CatalogPanel.vue'
 import CombatControl from './CombatControl.vue'
@@ -38,8 +38,10 @@ import {
 } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
-/** Retour à l'accueil, avec un message s'il n'est pas voulu par le joueur. */
-const emit = defineEmits<{ home: [message?: string] }>()
+/** Retour à l'accueil. */
+const emit = defineEmits<{ home: [] }>()
+/** Les appels au serveur, sur la partie de cette campagne. */
+const api = campaignApi(props.campaign.id)
 
 const catalog = ref<CatalogEntry[]>([])
 const scene = ref<SceneView | null>(null)
@@ -318,22 +320,11 @@ async function loadScene(): Promise<SceneView | null> {
   }
 }
 
-const CAMPAIGN_CLOSED = 'Campagne fermée par le serveur (redémarrage ?) : la rouvrir.'
-
-/** La campagne de cet écran n'est plus ouverte sur le serveur (redémarrage, autre onglet) : retour à l'accueil. */
-async function campaignClosed(): Promise<boolean> {
-  const current = await api.currentCampaign()
-  if (current?.id === props.campaign.id) return false
-  emit('home', CAMPAIGN_CLOSED)
-  return true
-}
-
 /**
  * Un 404 ou un 409 signifie que la carte affichée n'est plus celle du serveur (autre onglet,
  * redémarrage) : on recharge la sienne et on oublie ce qui visait l'ancienne.
  */
 async function resync(): Promise<string> {
-  if (await campaignClosed()) return ''
   const fresh = await loadScene()
   scene.value = fresh
   history.length = 0
@@ -426,7 +417,6 @@ async function savedMapCall(call: () => Promise<void>) {
   try {
     await call()
   } catch (e) {
-    if (e instanceof ApiError && e.status === 409 && (await campaignClosed().catch(() => false))) return
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     mapBusy.value = false

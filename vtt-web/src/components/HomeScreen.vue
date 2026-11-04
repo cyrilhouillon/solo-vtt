@@ -5,8 +5,6 @@ import AppIcon from './AppIcon.vue'
 import { initialTheme, saveTheme, type Theme } from '../theme'
 import type { CampaignView } from '../types'
 
-/** `message` : pourquoi l'on revient à l'accueil sans l'avoir demandé (campagne fermée par le serveur). */
-const props = defineProps<{ message?: string | null }>()
 const emit = defineEmits<{ open: [campaign: CampaignView] }>()
 
 /** Même limite que le serveur (`CampaignResource.MAX_NAME_LENGTH`). */
@@ -17,7 +15,7 @@ const campaigns = ref<CampaignView[] | null>(null)
 const name = ref('')
 const trimmed = computed(() => name.value.trim())
 const busy = ref(false)
-const error = ref<string | null>(props.message ?? null)
+const error = ref<string | null>(null)
 const theme = ref<Theme>(initialTheme())
 
 function toggleTheme() {
@@ -52,12 +50,6 @@ function create() {
   })
 }
 
-function open(campaign: CampaignView) {
-  error.value = null
-  call(async () => {
-    emit('open', await api.openCampaign(campaign.id))
-  })
-}
 </script>
 
 <template>
@@ -89,7 +81,7 @@ function open(campaign: CampaignView) {
         <ul v-else class="list">
           <li v-for="campaign in campaigns" :key="campaign.id">
             <strong class="name">{{ campaign.name }}</strong>
-            <button type="button" :disabled="busy" :aria-label="`Ouvrir ${campaign.name}`" @click="open(campaign)">Ouvrir</button>
+            <button type="button" :disabled="busy" :aria-label="`Ouvrir ${campaign.name}`" @click="emit('open', campaign)">Ouvrir</button>
           </li>
         </ul>
       </section>
