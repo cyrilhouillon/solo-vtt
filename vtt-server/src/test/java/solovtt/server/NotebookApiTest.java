@@ -328,6 +328,21 @@ class NotebookApiTest {
     }
 
     @Test
+    void uneImage_seRelitALIdentique_etLaRechercheVoitLeTexteAutour() {
+        String bertrand = creer("Bertrand");
+        String image = "{\"type\":\"pageImage\",\"attrs\":{\"imageId\":\"abc123\",\"alt\":\"bertrand.png\"}}";
+        enregistrer(bertrand, document(paragraphe(texte("Le forgeron")), image, paragraphe(texte("du village"))), 204);
+
+        given().get(carnet() + "/pages/" + bertrand).then().statusCode(200)
+                .body("content.content[1].type", equalTo("pageImage"))
+                .body("content.content[1].attrs.imageId", equalTo("abc123"))
+                .body("content.content[1].attrs.alt", equalTo("bertrand.png"));
+        given().queryParam("q", "forgeron village").get(recherche()).then().statusCode(200)
+                .body("title", equalTo(List.of("Bertrand")))
+                .body("[0].excerpt.text", equalTo(List.of("Le ", "forgeron", " du ", "village")));
+    }
+
+    @Test
     void chercher_rienATrouver_listeVide_requeteVide_400() {
         creer("Session 1");
         given().queryParam("q", "dragon").get(recherche()).then().statusCode(200).body("$", empty());

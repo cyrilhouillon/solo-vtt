@@ -2,6 +2,9 @@
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { watch } from 'vue'
+import { api } from '../api'
+import { imageRefusal } from '../images'
+import { PageImage } from '../notebook/pageImage'
 import { PageLink } from '../notebook/pageLink'
 import PageLinkBubble from './PageLinkBubble.vue'
 import type { PageDocument, PageSummary } from '../types'
@@ -10,7 +13,7 @@ import type { PageDocument, PageSummary } from '../types'
  * Le corps d'une page, en texte riche : titres, gras, italique, listes, citations, à la frappe (`# `, `- `, `> `, `**…**`)
  * ou au clavier (Ctrl+B, Ctrl+I) ; Ctrl+Z et Ctrl+Y défont et refont. Un éditeur par page : l'historique ne passe pas de
  * l'une à l'autre. Verrouillée, la page se lit avec la même mise en page ; seul le curseur change. `[[` lie une page du
- * Carnet (`pages`), dont le lien suit le titre.
+ * Carnet (`pages`), dont le lien suit le titre. `insertImage` pose une image du disque au curseur.
  */
 const props = defineProps<{ content: PageDocument | null; editable: boolean; label: string; pages: readonly PageSummary[] }>()
 /** Le document après chaque modification du joueur ; `open` : suivre un lien. */
@@ -27,6 +30,7 @@ const editor = useEditor({
       locked: () => !props.editable,
       onOpen: (pageId) => emit('open', pageId),
     }),
+    PageImage,
   ],
   editable: props.editable,
   autofocus: props.editable ? 'end' : false,
@@ -42,6 +46,28 @@ const editor = useEditor({
     if (editor.isEditable) emit('change', editor.getJSON() as PageDocument)
   },
 })
+
+/**
+ * Envoie l'image au serveur, puis l'insère au curseur, en un seul pas d'annulation. Rend la raison d'un refus ou d'un
+ * échec, sans rien insérer ; `null` une fois l'image posée.
+ */
+async function insertImage(file: File): Promise<string | null> {
+  const refusal = imageRefusal(file)
+  if (refusal) return refusal
+  let imageId: string
+  try {
+    imageId = await api.uploadImage(file)
+  } catch (e) {
+    return `Image non envoyée : ${e instanceof Error ? e.message : String(e)}`
+  }
+  const current = editor.value
+  // Verrouillée ou quittée pendant l'envoi : l'image reste sur le serveur, la page ne change pas.
+  if (!current || !current.isEditable) return null
+  current.chain().focus().insertPageImage({ imageId, alt: file.name }).run()
+  return null
+}
+
+defineExpose({ insertImage })
 
 watch(
   () => props.editable,
@@ -135,6 +161,18 @@ watch(
   background: var(--wood-sunken);
   border-radius: 4px;
   overflow-x: auto;
+}
+.page-editor :deep(.page-image) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 0 0.75rem;
+  border-radius: 2px;
+}
+/* En écriture, l'image sélectionnée (clic ou flèches) est cerclée comme un lien sélectionné. */
+.page-editor :deep(.page-text[contenteditable='true'] .page-image.ProseMirror-selectednode) {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
 }
 .page-editor :deep(hr) {
   border: none;

@@ -10,6 +10,7 @@ import CitingPages from './CitingPages.vue'
 import SearchResults from './SearchResults.vue'
 import { ancestors, buildTree } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
+import { IMAGE_TYPES } from '../images'
 import type { CampaignView, NotebookView, PageDocument, PageView, SearchResult } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
@@ -35,6 +36,28 @@ const moving = ref<string | null>(null)
 const pageTitle = ref('')
 /** Les pages qui citent la page ouverte, `null` tant qu'elles ne sont pas lues. */
 const citing = ref<string[] | null>(null)
+/** L'éditeur de la page ouverte, qui insère les images. */
+const editor = ref<InstanceType<typeof PageEditor> | null>(null)
+const imageInput = ref<HTMLInputElement | null>(null)
+/** Vrai pendant l'envoi d'une image : le bouton Image attend. */
+const uploading = ref(false)
+
+/** L'image choisie part au serveur, puis entre dans la page au curseur ; un refus va au bandeau. */
+async function chooseImage(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  // Vidé tout de suite : choisir à nouveau le même fichier redéclenche `change`.
+  input.value = ''
+  if (!file || !editor.value) return
+  error.value = null
+  uploading.value = true
+  try {
+    const refusal = await editor.value.insertImage(file)
+    if (refusal) error.value = refusal
+  } finally {
+    uploading.value = false
+  }
+}
 
 /** La recherche en cours : tant que le champ n'est pas vide, ses résultats remplacent l'arbre. */
 const query = ref('')
@@ -406,19 +429,35 @@ async function leave(target: 'home' | 'combat') {
               />
               <template v-else>{{ page.title }}</template>
             </h2>
-            <button
-              type="button"
-              class="icon-button"
-              aria-label="Page verrouillée"
-              :aria-pressed="!unlocked"
-              :title="unlocked ? 'Verrouiller la page' : 'Déverrouiller la page pour l’écrire'"
-              @click="unlocked = !unlocked"
-            >
-              <AppIcon :name="unlocked ? 'unlock' : 'lock'" />
-            </button>
+            <span class="page-tools">
+              <template v-if="unlocked">
+                <button
+                  type="button"
+                  class="icon-button"
+                  aria-label="Insérer une image"
+                  title="Insérer une image PNG, JPEG ou WebP au curseur"
+                  :disabled="uploading"
+                  @click="imageInput?.click()"
+                >
+                  <AppIcon name="image" />
+                </button>
+                <input ref="imageInput" type="file" hidden :accept="IMAGE_TYPES.join(',')" @change="chooseImage" />
+              </template>
+              <button
+                type="button"
+                class="icon-button"
+                aria-label="Page verrouillée"
+                :aria-pressed="!unlocked"
+                :title="unlocked ? 'Verrouiller la page' : 'Déverrouiller la page pour l’écrire'"
+                @click="unlocked = !unlocked"
+              >
+                <AppIcon :name="unlocked ? 'unlock' : 'lock'" />
+              </button>
+            </span>
           </header>
           <hr class="tapered" />
           <PageEditor
+            ref="editor"
             :content="page.content"
             :editable="unlocked"
             :label="`Texte de ${page.title}`"
@@ -535,6 +574,12 @@ input[type='search']::-webkit-search-cancel-button {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+.page-tools {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 .page-title {
   margin: 0;
