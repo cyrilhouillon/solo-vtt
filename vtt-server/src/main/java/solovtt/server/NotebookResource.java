@@ -29,28 +29,51 @@ public class NotebookResource {
         this.notebook = notebook;
     }
 
+    /** Une page dont le parent est illisible, ou qui boucle sur elle-même, est rendue à la racine. */
     @GET
-    @APIResponse(responseCode = "200", description = "Les pages, triées par titre, et la dernière page consultée",
+    @APIResponse(responseCode = "200", description = "Les pages triées par titre, avec leur parent, et la dernière consultée",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.NotebookDto.class)))
     public Dtos.NotebookDto get() {
-        return new Dtos.NotebookDto(notebook.list().stream().map(Dtos.PageSummaryDto::of).toList(),
+        return new Dtos.NotebookDto(PageTree.rooted(notebook.list()).stream().map(Dtos.PageSummaryDto::of).toList(),
                 notebook.lastPage().orElse(null));
     }
 
-    /** Crée une page vide sous ce titre ; deux pages peuvent porter le même titre. */
+    /** Crée une page vide sous ce titre, à la racine ou sous une page ; deux pages peuvent porter le même titre. */
     @POST
     @Path("/pages")
     @ResponseStatus(201)
     @APIResponse(responseCode = "201", description = "La page créée, sans contenu",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.PageDto.class)))
     @APIResponse(responseCode = "400", description = "Titre absent, vide ou trop long")
-    public Dtos.PageDto create(Dtos.PageTitleRequest request) {
-        String title = request == null || request.title() == null ? "" : request.title().strip();
-        if (title.isEmpty()) throw new IllegalArgumentException("Donner un titre à la page");
-        if (title.length() > MAX_TITLE_LENGTH) {
-            throw new IllegalArgumentException("Titre trop long (" + MAX_TITLE_LENGTH + " caractères au plus)");
-        }
-        return dto(notebook.create(title));
+    @APIResponse(responseCode = "404", description = "Aucune page avec l'id du parent")
+    public Dtos.PageDto create(Dtos.CreatePageRequest request) {
+        String title = title(request == null ? null : request.title());
+        String parentId = request.parentId();
+        if (parentId != null) known(parentId);
+        return dto(notebook.create(title, parentId));
+    }
+
+    @PUT
+    @Path("/pages/{pageId}/title")
+    @APIResponse(responseCode = "204", description = "Page renommée")
+    @APIResponse(responseCode = "400", description = "Titre absent, vide ou trop long")
+    @APIResponse(responseCode = "404", description = "Aucune page avec cet id")
+    public void rename(@PathParam("pageId") String pageId, Dtos.PageTitleRequest request) {
+        known(pageId);
+        notebook.rename(pageId, title(request == null ? null : request.title()));
+    }
+
+    /** Range la page sous une autre, ou à la racine ({@code parentId} absent) ; ses sous-pages la suivent. */
+    @PUT
+    @Path("/pages/{pageId}/parent")
+    @APIResponse(responseCode = "204", description = "Page déplacée, avec ses sous-pages")
+    @APIResponse(responseCode = "400", description = "Le parent est la page elle-même ou l'une de ses sous-pages")
+    @APIResponse(responseCode = "404", description = "Aucune page avec cet id, ou avec l'id du parent")
+    public void move(@PathParam("pageId") String pageId, Dtos.ParentRequest request) {
+        known(pageId);
+        String parentId = request == null ? null : request.parentId();
+        if (parentId != null) known(parentId);
+        notebook.move(pageId, parentId);
     }
 
     @GET
@@ -87,6 +110,16 @@ public class NotebookResource {
         notebook.setLastPage(known(request.pageId()).id());
     }
 
+    /** Le titre nettoyé, à la création comme au renommage. */
+    private static String title(String requested) {
+        String title = requested == null ? "" : requested.strip();
+        if (title.isEmpty()) throw new IllegalArgumentException("Donner un titre à la page");
+        if (title.length() > MAX_TITLE_LENGTH) {
+            throw new IllegalArgumentException("Titre trop long (" + MAX_TITLE_LENGTH + " caractères au plus)");
+        }
+        return title;
+    }
+
     /** {@code ErrorMapper} rend 400 pour une {@code IllegalArgumentException} : une page inconnue se lève ici en 404. */
     private Page known(String pageId) {
         return notebook.find(pageId).orElseThrow(() -> new NotFoundException("Aucune page avec l'id " + pageId));
@@ -94,7 +127,8 @@ public class NotebookResource {
 
     private static Dtos.PageDto dto(Page page) {
         try {
-            return new Dtos.PageDto(page.id(), page.title(), page.content() == null ? null : JSON.readTree(page.content()));
+            JsonNode content = page.content() == null ? null : JSON.readTree(page.content());
+            return new Dtos.PageDto(page.id(), page.title(), page.parentId(), content);
         } catch (JsonProcessingException e) {
             throw new UncheckedIOException("Contenu de page illisible : " + page.id(), e);
         }

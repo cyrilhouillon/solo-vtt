@@ -49,7 +49,7 @@ class CampaignStoreTest {
         var store = CampaignStore.inMemory();
         var a = store.create("A");
         var b = store.create("B");
-        var page = store.notebook(a.id()).create("Session 1");
+        var page = store.notebook(a.id()).create("Session 1", null);
 
         assertEquals(List.of(page), store.notebook(a.id()).list());
         assertEquals(List.of(), store.notebook(b.id()).list());

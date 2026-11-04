@@ -55,10 +55,11 @@ export interface PageDocument {
   [key: string]: unknown
 }
 
-/** Une page du Carnet, telle que la liste la montre. */
+/** Une page du Carnet, telle que l'arbre la montre : `parentId` est `null` à la racine. */
 export interface PageSummary {
   id: string
   title: string
+  parentId: string | null
 }
 
 /** Une page ouverte : `content` est `null` pour une page neuve. */
@@ -66,7 +67,7 @@ export interface PageView extends PageSummary {
   content: PageDocument | null
 }
 
-/** Le Carnet d'une campagne : ses pages triées par titre et la dernière page consultée (`null` si aucune). */
+/** Le Carnet d'une campagne : ses pages (l'arbre se tire de leur parent) et la dernière page consultée (`null` si aucune). */
 export interface NotebookView {
   pages: PageSummary[]
   lastPageId: string | null
