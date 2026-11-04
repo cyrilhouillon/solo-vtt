@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: déplacer une page en la glissant dans l'arbre
@@ -46,7 +46,7 @@ status: pending
 > À la souris ou au stylet, une page se dépose sur une autre ou à la racine.
 
 1. `PageTree.vue` : `pointerdown` sur une ligne (souris ou stylet, bouton principal) arme le glisser ; au-delà de 6 px, capture du pointeur, fantôme (titre) qui suit, classe sur `body` qui coupe la sélection de texte.
-2. Cible : la ligne sous le pointeur (`document.elementFromPoint`) ; refusée si c'est la page, l'un de ses descendants ou son parent actuel (`tree.ts`) ; zone « Racine » en tête de l'arbre, visible pendant le glisser seulement, refusée si la page y est déjà.
+2. Cible : la ligne sous le pointeur (`document.elementFromPoint`) ; refusée si c'est la page, l'un de ses descendants ou son parent actuel (`tree.ts`) ; zone « Racine » posée sur le titre du panneau (pour ne décaler aucune ligne), visible pendant le glisser seulement, refusée si la page y est déjà.
 3. Survol d'une branche repliée plus de 600 ms : elle s'ouvre.
 4. Près du haut ou du bas de l'arbre, celui-ci défile.
 5. Relâcher sur une cible permise émet `move(id, parentId)` ; `NotebookScreen.vue` le traite comme le dialogue (envoi, relecture, ancêtres ouverts). Échap, `pointercancel` ou perte de capture annulent ; le clic qui suit un glisser est ignoré.
