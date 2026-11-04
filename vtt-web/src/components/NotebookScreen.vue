@@ -2,8 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { campaignApi } from '../api'
 import AppIcon from './AppIcon.vue'
+import ThemeButton from './ThemeButton.vue'
 import PageEditor from './PageEditor.vue'
-import { initialTheme, saveTheme, type Theme } from '../theme'
 import type { CampaignView, NotebookView, PageDocument, PageView } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
@@ -21,7 +21,6 @@ const title = ref('')
 const trimmed = computed(() => title.value.trim())
 const busy = ref(false)
 const error = ref<string | null>(null)
-const theme = ref<Theme>(initialTheme())
 const firstTitle = ref<HTMLInputElement | null>(null)
 /** La page ouverte s'édite : vrai pour celle qu'on vient de créer, jusqu'à ce qu'on la quitte ; sinon d'un geste. */
 const unlocked = ref(false)
@@ -76,11 +75,6 @@ function onPageHide() {
   if (!pending || JSON.stringify(pending.content).length > KEEPALIVE_LIMIT) return
   void api.savePageContent(pending.pageId, pending.content, true).catch(() => {})
   pending = null
-}
-
-function toggleTheme() {
-  theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  saveTheme(theme.value)
 }
 
 async function call(action: () => Promise<void>) {
@@ -163,15 +157,7 @@ async function leave(target: 'home' | 'combat') {
         <AppIcon name="combat" />
         Combat
       </button>
-      <button
-        type="button"
-        class="icon-button"
-        :aria-label="theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'"
-        :title="theme === 'dark' ? 'Thème clair' : 'Thème sombre'"
-        @click="toggleTheme"
-      >
-        <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" />
-      </button>
+      <ThemeButton />
     </header>
     <div v-if="error" class="error" role="alert">
       <p>{{ error }}</p>
@@ -249,66 +235,10 @@ async function leave(target: 'home' | 'combat') {
   display: flex;
   flex-direction: column;
 }
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.55rem 1rem 0.55rem 1.1rem;
-  background: var(--wood-raised);
-  border-bottom: 2px solid var(--page);
-}
-.app-name {
-  margin: 0;
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 1.45rem;
-  letter-spacing: 0.03em;
-  color: var(--ink);
-  white-space: nowrap;
-}
-.campaign-name {
-  margin: 0;
-  min-width: 0;
-  max-width: 16rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-title);
-  font-weight: 500;
-  font-size: 1.1rem;
-  color: var(--ink);
-}
-.spacer {
-  flex: 1;
-}
-.icon-button {
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
-}
 .combat-button {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-}
-.error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.45rem 1rem;
-  background: var(--wood-raised);
-  border-bottom: 2px solid var(--danger);
-  color: var(--danger);
-  font-weight: 500;
-}
-.error p {
-  margin: 0;
-}
-.error button {
-  flex: none;
 }
 .loading,
 .hint {

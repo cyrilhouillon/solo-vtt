@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/components/PageEditor.vue"
+        ],
+        "createdAt": "2026-11-04T02:10:44.798Z",
+        "reason": "Claude: L107 est le filet de citation d'un blockquote dans le texte de la page (3px var(--rule), ton du bois, pas d'accent), typographie de citation classique, pas une carte"
+      }
+    ]
+  }
+}

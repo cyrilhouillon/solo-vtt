@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ApiError, campaignApi, imageUrl } from '../api'
 import AppIcon from './AppIcon.vue'
+import ThemeButton from './ThemeButton.vue'
 import CatalogPanel from './CatalogPanel.vue'
 import CombatControl from './CombatControl.vue'
 import CreatureSheet from './CreatureSheet.vue'
@@ -19,7 +20,7 @@ import { CELL, occupant } from '../map/grid'
 import { checkMove, type MoveLimit } from '../map/move'
 import { rangeVerdict, type RangeVerdict } from '../map/range'
 import type { Targeting } from '../map/SceneCanvas'
-import { initialTheme, saveTheme, type Theme } from '../theme'
+import { theme } from '../theme'
 import {
   formatLength,
   type Attack,
@@ -73,7 +74,6 @@ const lastResult = ref<TrayResult | null>(null)
 const rolling = ref(false)
 /** Numéro du dernier lancer : seul lui libère la piste à son arrêt. */
 let rollId = 0
-const theme = ref<Theme>(initialTheme())
 /** La question du moteur qui suspend l'action en cours ; tant qu'elle attend, aucune autre action. */
 const decision = ref<Decision | null>(null)
 /** La réponse est envoyée et pas encore revenue : un second clic ne doit pas en envoyer une autre. */
@@ -114,11 +114,6 @@ function toggleGrid() {
     const updated = await api.showGrid(visible)
     if (scene.value) scene.value = { ...scene.value, gridVisible: updated.gridVisible }
   })
-}
-
-function toggleTheme() {
-  theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  saveTheme(theme.value)
 }
 
 /**
@@ -1114,15 +1109,7 @@ onBeforeUnmount(() => {
       >
         <AppIcon name="grid" />
       </button>
-      <button
-        type="button"
-        class="icon-button"
-        :aria-label="theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'"
-        :title="theme === 'dark' ? 'Thème clair' : 'Thème sombre'"
-        @click="toggleTheme"
-      >
-        <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" />
-      </button>
+      <ThemeButton />
       <button
         type="button"
         class="icon-button shortcuts-button"
@@ -1357,41 +1344,11 @@ onBeforeUnmount(() => {
 }
 .bar {
   grid-area: bar;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.55rem 1rem 0.55rem 1.1rem;
-  background: var(--wood-raised);
-  border-bottom: 2px solid var(--page);
-}
-.app-name {
-  margin: 0;
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 1.45rem;
-  letter-spacing: 0.03em;
-  color: var(--ink);
-  white-space: nowrap;
-}
-.campaign-name {
-  margin: 0;
-  min-width: 0;
-  max-width: 16rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-title);
-  font-weight: 500;
-  font-size: 1.1rem;
-  color: var(--ink);
 }
 .map-info {
   margin: 0;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
-}
-.spacer {
-  flex: 1;
 }
 /*
  * Le mode en cours : l'état vivant, en laiton. Il suit les infos de carte, avant l'espace libre : il apparaît et
@@ -1407,13 +1364,6 @@ onBeforeUnmount(() => {
   background: var(--brass);
   color: var(--on-brass);
   font-weight: 700;
-}
-.icon-button {
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
 }
 /*
  * En combat, la barre déborde sous 745 px environ (« Round 1 · Tour de Gobelin guerrier 2 », Fin du tour, Terminer),
@@ -1533,27 +1483,10 @@ onBeforeUnmount(() => {
  * Avec une carte, l'erreur occupe la barre d'état, à sa hauteur réservée : la carte ne bouge pas. Sans carte, elle
  * ouvre la colonne.
  */
-.error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.45rem 1rem;
-  background: var(--wood-raised);
-  border-bottom: 2px solid var(--danger);
-  color: var(--danger);
-  font-weight: 500;
-}
 .status.error {
   border-bottom: 0;
   box-shadow: inset 0 2px 0 var(--danger);
   color: var(--danger);
-}
-.error button {
-  flex: none;
-}
-.error p {
-  margin: 0;
 }
 .side {
   grid-area: side;

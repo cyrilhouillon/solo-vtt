@@ -161,3 +161,61 @@ input[type='number'] {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Barre d'application et bandeau d'erreur, communs à l'accueil, au Carnet et au combat. */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.55rem 1rem 0.55rem 1.1rem;
+  background: var(--wood-raised);
+  border-bottom: 2px solid var(--page);
+}
+.app-name {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 1.45rem;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.campaign-name {
+  margin: 0;
+  min-width: 0;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-title);
+  font-weight: 500;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.spacer {
+  flex: 1;
+}
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+}
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 1rem;
+  background: var(--wood-raised);
+  border-bottom: 2px solid var(--danger);
+  color: var(--danger);
+  font-weight: 500;
+}
+.error p {
+  margin: 0;
+}
+.error button {
+  flex: none;
+}
