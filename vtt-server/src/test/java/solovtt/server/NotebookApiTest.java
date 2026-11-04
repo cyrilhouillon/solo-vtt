@@ -265,4 +265,81 @@ class NotebookApiTest {
 
         given().get(carnet()).then().body("pages.title", equalTo(List.of("Lore")));
     }
+
+    private static String recherche() {
+        return carnet() + "/search";
+    }
+
+    private static String paragraphe(String... noeuds) {
+        return "{\"type\":\"paragraph\",\"content\":[" + String.join(",", noeuds) + "]}";
+    }
+
+    private static String texte(String text) {
+        return "{\"type\":\"text\",\"text\":\"" + text + "\"}";
+    }
+
+    private static String lienVers(String pageId) {
+        return "{\"type\":\"pageLink\",\"attrs\":{\"pageId\":\"" + pageId + "\",\"label\":null}}";
+    }
+
+    private static String document(String... blocs) {
+        return "{\"type\":\"doc\",\"content\":[" + String.join(",", blocs) + "]}";
+    }
+
+    @Test
+    void chercher_sansCasseNiAccents_titresDAbord_extraitMarque() {
+        String eveque = creer("Évêque Aldric");
+        String pnj = creer("PNJ");
+        String session = creerSous("Session 1", pnj);
+        creer("Lore");
+        enregistrer(eveque, document(paragraphe(texte("Il garde la crypte"))), 204);
+        enregistrer(session, "{\"type\":\"doc\",\"content\":[{\"type\":\"bulletList\",\"content\":[{\"type\":\"listItem\",\"content\":["
+                + paragraphe(texte("Nous rencontrons l'évêque à l'auberge du Gué")) + "]}]}]}", 204);
+
+        given().queryParam("q", "eveque").get(recherche()).then().statusCode(200)
+                .body("title", equalTo(List.of("Évêque Aldric", "Session 1")))
+                .body("id", equalTo(List.of(eveque, session)))
+                .body("parentId", equalTo(Arrays.asList(null, pnj)))
+                .body("[0].excerpt.text", equalTo(List.of("Il garde la crypte")))
+                .body("[1].excerpt.text", equalTo(List.of("Nous rencontrons l'", "évêque", " à l'auberge du Gué")))
+                .body("[1].excerpt.match", equalTo(List.of(false, true, false)));
+
+        given().queryParam("q", "EVEQUE auberge").get(recherche()).then().statusCode(200)
+                .body("title", equalTo(List.of("Session 1")))
+                .body("[0].excerpt.findAll { it.match }.text", equalTo(List.of("évêque", "auberge")));
+
+        given().queryParam("q", "crypte").get(recherche()).then().statusCode(200)
+                .body("title", equalTo(List.of("Évêque Aldric")))
+                .body("[0].excerpt.text", equalTo(List.of("Il garde la ", "crypte")));
+
+        given().queryParam("q", "lore").get(recherche()).then().statusCode(200)
+                .body("title", equalTo(List.of("Lore"))).body("[0].excerpt", empty());
+    }
+
+    @Test
+    void chercher_unLienSeTrouveSousLeTitreDeSaCible() {
+        String eveque = creer("Évêque Aldric");
+        String session = creer("Session 1");
+        enregistrer(session, document(paragraphe(texte("Visite chez "), lienVers(eveque))), 204);
+
+        given().queryParam("q", "aldric").get(recherche()).then().statusCode(200)
+                .body("title", equalTo(List.of("Évêque Aldric", "Session 1")))
+                .body("[1].excerpt.text", equalTo(List.of("Visite chez Évêque ", "Aldric")));
+    }
+
+    @Test
+    void chercher_rienATrouver_listeVide_requeteVide_400() {
+        creer("Session 1");
+        given().queryParam("q", "dragon").get(recherche()).then().statusCode(200).body("$", empty());
+        given().get(recherche()).then().statusCode(400);
+        given().queryParam("q", "   ").get(recherche()).then().statusCode(400);
+    }
+
+    @Test
+    void chercher_neVoitQueLaCampagneOuverte() {
+        creer("Évêque Aldric");
+        Campagnes.creerUneNeuve();
+        creer("Session 1");
+        given().queryParam("q", "eveque").get(recherche()).then().statusCode(200).body("$", empty());
+    }
 }
