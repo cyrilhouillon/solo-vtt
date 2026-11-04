@@ -1,4 +1,19 @@
-import type { ActionResult, CampaignView, CatalogEntry, Combat, CreatureSheet, Decision, DistanceUnit, JournalEntry, SavedMapView, SceneView, TokenView } from './types'
+import type {
+  ActionResult,
+  CampaignView,
+  CatalogEntry,
+  Combat,
+  CreatureSheet,
+  Decision,
+  DistanceUnit,
+  JournalEntry,
+  NotebookView,
+  PageDocument,
+  PageView,
+  SavedMapView,
+  SceneView,
+  TokenView,
+} from './types'
 
 /** Erreur rendue par le serveur, avec son message lisible. */
 export class ApiError extends Error {
@@ -53,11 +68,29 @@ export const api = {
     (await request<{ id: string }>('/api/images', { method: 'POST', body: file, headers: { 'Content-Type': file.type } })).id,
 }
 
-/** La partie d'une campagne : sa carte, son combat, son journal et ses cartes enregistrées, plus ce que donne `api`. */
+/** Une campagne : son Carnet, sa carte, son combat, son journal et ses cartes enregistrées, plus ce que donne `api`. */
 export function campaignApi(campaignId: string) {
   const base = `/api/campaigns/${encodeURIComponent(campaignId)}`
   return {
     ...api,
+    /** Les pages du Carnet et la dernière page consultée. */
+    notebook: () => request<NotebookView>(`${base}/notebook`),
+
+    createPage: (title: string) => request<PageView>(`${base}/notebook/pages`, { method: 'POST', body: JSON.stringify({ title }) }),
+
+    page: (pageId: string) => request<PageView>(`${base}/notebook/pages/${encodeURIComponent(pageId)}`),
+
+    /** Garde le document de la page ; `keepalive` laisse partir l'envoi quand l'onglet se ferme (corps de 64 Kio au plus). */
+    savePageContent: (pageId: string, content: PageDocument, keepalive = false) =>
+      request<void>(`${base}/notebook/pages/${encodeURIComponent(pageId)}/content`, {
+        method: 'PUT',
+        body: JSON.stringify({ content }),
+        keepalive,
+      }),
+
+    /** Note la page consultée, que le Carnet rouvre à la prochaine ouverture de la campagne. */
+    setLastPage: (pageId: string) => request<void>(`${base}/notebook/last-page`, { method: 'PUT', body: JSON.stringify({ pageId }) }),
+
     scene: () => request<SceneView>(`${base}/scene`),
 
     /** `imageId` : image de fond déjà envoyée, ou `null` pour une carte vide. */

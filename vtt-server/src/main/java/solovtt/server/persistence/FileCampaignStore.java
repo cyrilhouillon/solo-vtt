@@ -6,6 +6,7 @@ import solovtt.server.Campaign;
 import solovtt.server.CampaignStore;
 import solovtt.server.GameStore;
 import solovtt.server.MapStore;
+import solovtt.server.NotebookStore;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -14,12 +15,15 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
  * Une campagne par dossier {@code <racine>/<id>/} : {@code campagne.json} (id et nom), {@code partie.json} et
- * {@code cartes.json}. Un dossier sans {@code campagne.json} lisible est ignoré, jamais écrasé.
+ * {@code cartes.json}, et son Carnet dans {@code carnet/}. Un dossier sans {@code campagne.json} lisible est ignoré,
+ * jamais écrasé.
  */
 public final class FileCampaignStore implements CampaignStore {
 
@@ -28,6 +32,8 @@ public final class FileCampaignStore implements CampaignStore {
 
     private final Path root;
     private final ObjectMapper mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    /** Un seul Carnet par campagne, pour que ses écritures se suivent. */
+    private final Map<String, NotebookStore> notebooks = new ConcurrentHashMap<>();
 
     public FileCampaignStore(Path root) {
         this.root = root.toAbsolutePath();
@@ -81,6 +87,12 @@ public final class FileCampaignStore implements CampaignStore {
     @Override
     public MapStore maps(String id) {
         return new JsonFileMapStore(dirOf(id).resolve("cartes.json"));
+    }
+
+    @Override
+    public NotebookStore notebook(String id) {
+        Path dir = dirOf(id);
+        return notebooks.computeIfAbsent(id, key -> new JsonFileNotebookStore(dir.resolve("carnet")));
     }
 
     /** Le dossier d'une campagne connue : aucun chemin ne se construit depuis un id qui n'en est pas un. */

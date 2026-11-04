@@ -16,5 +16,5 @@
 ## Versionnage
 
 - Le projet est en `SNAPSHOT` sans engagement de stabilité : l'API peut casser à chaque refactor tant que `solo-vtt` ne la consomme pas.
-- Aucune des deux librairies n'a de dépendance runtime (hormis `dnd-engine` vers `vtt-engine`), et cela doit rester ainsi. Les dépendances (Quarkus, Jackson, Konva, Vue, three, cannon-es) restent confinées à `vtt-server` et `vtt-web`, aux versions figées. three et cannon-es ne sont chargés qu'au premier lancer de dés (chunk séparé) ; cannon-es n'est plus maintenu depuis 2022, mais n'a aucune dépendance.
+- Aucune des deux librairies n'a de dépendance runtime (hormis `dnd-engine` vers `vtt-engine`), et cela doit rester ainsi. Les dépendances (Quarkus, Jackson, Konva, Vue, three, cannon-es, Tiptap) restent confinées à `vtt-server` et `vtt-web`, aux versions figées. three et cannon-es ne sont chargés qu'au premier lancer de dés (chunk séparé) ; cannon-es n'est plus maintenu depuis 2022, mais n'a aucune dépendance.
 - `vtt-web` reste en TypeScript 6.x : TypeScript 7 (portage natif) risque de casser `vue-tsc`. Monter de version seulement quand `vue-tsc` le prend en charge.

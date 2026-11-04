@@ -8,7 +8,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Où vivent les campagnes. Chacune garde sa partie ({@link GameStore}) et ses cartes enregistrées ({@link MapStore}) ;
+ * Où vivent les campagnes. Chacune garde sa partie ({@link GameStore}), ses cartes enregistrées ({@link MapStore}) et
+ * son Carnet ({@link NotebookStore}) ;
  * les images de fond restent communes ({@link ImageStore}).
  */
 public interface CampaignStore {
@@ -38,11 +39,18 @@ public interface CampaignStore {
      */
     MapStore maps(String id);
 
+    /**
+     * Le Carnet de la campagne.
+     *
+     * @throws IllegalArgumentException si aucune campagne n'a cet id
+     */
+    NotebookStore notebook(String id);
+
     Comparator<Campaign> BY_NAME = Comparator.comparing(Campaign::name, String.CASE_INSENSITIVE_ORDER).thenComparing(Campaign::name);
 
-    /** Garde les campagnes, leurs parties et leurs cartes en mémoire, le temps du processus. */
+    /** Garde les campagnes, leurs parties, leurs cartes et leurs Carnets en mémoire, le temps du processus. */
     static CampaignStore inMemory() {
-        record Content(Campaign campaign, GameStore games, MapStore maps) {}
+        record Content(Campaign campaign, GameStore games, MapStore maps, NotebookStore notebook) {}
         Map<String, Content> campaigns = new ConcurrentHashMap<>();
         return new CampaignStore() {
             @Override
@@ -53,7 +61,7 @@ public interface CampaignStore {
             @Override
             public Campaign create(String name) {
                 var campaign = new Campaign(UUID.randomUUID().toString(), name);
-                campaigns.put(campaign.id(), new Content(campaign, GameStore.inMemory(), MapStore.inMemory()));
+                campaigns.put(campaign.id(), new Content(campaign, GameStore.inMemory(), MapStore.inMemory(), NotebookStore.inMemory()));
                 return campaign;
             }
 
@@ -65,6 +73,11 @@ public interface CampaignStore {
             @Override
             public MapStore maps(String id) {
                 return content(id).maps();
+            }
+
+            @Override
+            public NotebookStore notebook(String id) {
+                return content(id).notebook();
             }
 
             private Content content(String id) {

@@ -1,3 +1,5 @@
+import { ref } from 'vue'
+
 export type Theme = 'dark' | 'light'
 
 const KEY = 'solo-vtt.theme'
@@ -24,4 +26,12 @@ export function saveTheme(theme: Theme): void {
   } catch {
     // Le choix vaut pour cette page seulement.
   }
+}
+
+/** Le thème en cours, le même pour tous les écrans. */
+export const theme = ref<Theme>(initialTheme())
+
+export function toggleTheme(): void {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  saveTheme(theme.value)
 }

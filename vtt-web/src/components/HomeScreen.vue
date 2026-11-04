@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../api'
-import AppIcon from './AppIcon.vue'
-import { initialTheme, saveTheme, type Theme } from '../theme'
+import ThemeButton from './ThemeButton.vue'
 import type { CampaignView } from '../types'
 
 const emit = defineEmits<{ open: [campaign: CampaignView] }>()
@@ -16,12 +15,6 @@ const name = ref('')
 const trimmed = computed(() => name.value.trim())
 const busy = ref(false)
 const error = ref<string | null>(null)
-const theme = ref<Theme>(initialTheme())
-
-function toggleTheme() {
-  theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  saveTheme(theme.value)
-}
 
 async function call(action: () => Promise<void>) {
   busy.value = true
@@ -57,15 +50,7 @@ function create() {
     <header class="bar">
       <h1 class="app-name">Solo VTT</h1>
       <span class="spacer" />
-      <button
-        type="button"
-        class="icon-button"
-        :aria-label="theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'"
-        :title="theme === 'dark' ? 'Thème clair' : 'Thème sombre'"
-        @click="toggleTheme"
-      >
-        <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" />
-      </button>
+      <ThemeButton />
     </header>
     <div v-if="error" class="error" role="alert">
       <p>{{ error }}</p>
@@ -106,50 +91,6 @@ function create() {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.55rem 1rem 0.55rem 1.1rem;
-  background: var(--wood-raised);
-  border-bottom: 2px solid var(--page);
-}
-.app-name {
-  margin: 0;
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 1.45rem;
-  letter-spacing: 0.03em;
-  color: var(--ink);
-  white-space: nowrap;
-}
-.spacer {
-  flex: 1;
-}
-.icon-button {
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
-}
-.error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.45rem 1rem;
-  background: var(--wood-raised);
-  border-bottom: 2px solid var(--danger);
-  color: var(--danger);
-  font-weight: 500;
-}
-.error p {
-  margin: 0;
-}
-.error button {
-  flex: none;
 }
 .content {
   flex: 1;
