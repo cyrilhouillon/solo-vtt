@@ -1,6 +1,6 @@
 ---
 objective: "Ouvrir une campagne mène à son Carnet, où le joueur crée une page titrée et l'écrit en texte riche, verrouillée ou non, enregistrée toute seule ; il passe au combat et revient sur la même page, retrouvée aussi après un redémarrage du serveur."
-status: approved
+status: implemented
 ---
 
 # Plan: écrire une page dans le Carnet
