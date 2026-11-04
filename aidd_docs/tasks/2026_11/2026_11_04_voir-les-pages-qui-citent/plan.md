@@ -1,6 +1,6 @@
 ---
 objective: "Sous le texte d'une page du Carnet, le joueur voit, par leur titre actuel, les pages qui contiennent un lien vers elle, en ouvre une au clic, et lit « Aucune page ne renvoie ici. » quand rien ne la cite."
-status: in-progress
+status: implemented
 ---
 
 # Plan: voir les pages qui citent une page
