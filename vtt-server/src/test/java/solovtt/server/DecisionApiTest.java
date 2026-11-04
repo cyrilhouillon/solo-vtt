@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static solovtt.server.Campagnes.campagne;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
@@ -32,6 +33,7 @@ class DecisionApiTest {
 
     @BeforeEach
     void scene() {
+        Campagnes.creerUneNeuve();
         nouvelleCarte();
         poser("guerriere", 1.5, 1.5);
         poser("gobelin", 12, 1.5);
@@ -40,27 +42,27 @@ class DecisionApiTest {
 
     private static void nouvelleCarte() {
         given().contentType(ContentType.JSON).body("{\"width\":30,\"height\":20,\"unit\":\"METRE\"}")
-                .post("/api/scene").then().statusCode(201);
+                .post(campagne() + "/scene").then().statusCode(201);
     }
 
     private static ValidatableResponse poser(String catalogId, double x, double y) {
         return given().contentType(ContentType.JSON).body("{\"catalogId\":\"%s\",\"x\":%s,\"y\":%s}".formatted(catalogId, x, y))
-                .post("/api/scene/tokens").then();
+                .post(campagne() + "/scene/tokens").then();
     }
 
     private static ValidatableResponse leGobelinFrappeLaMagicienne() {
         return given().contentType(ContentType.JSON)
                 .body("{\"attackerId\":\"gobelin-1\",\"attackId\":\"melee:Cimeterre\",\"targetId\":\"magicienne-1\"}")
-                .post("/api/attacks").then();
+                .post(campagne() + "/attacks").then();
     }
 
     private static ValidatableResponse repondre(String decisionId, String option) {
         return given().contentType(ContentType.JSON).body("{\"option\":\"%s\"}".formatted(option))
-                .post("/api/decisions/" + decisionId).then();
+                .post(campagne() + "/decisions/" + decisionId).then();
     }
 
     private static List<String> journal() {
-        return given().get("/api/journal").then().statusCode(200).extract().jsonPath().getList("text", String.class);
+        return given().get(campagne() + "/journal").then().statusCode(200).extract().jsonPath().getList("text", String.class);
     }
 
     /** Lance l'attaque qui pose la décision Bouclier ; rend l'id de la décision. */
@@ -92,13 +94,13 @@ class DecisionApiTest {
     void laDecisionEnAttenteSeRelit_puisDisparaitApresLaReponse() {
         String id = bouclierPropose();
 
-        given().get("/api/decisions/pending").then().statusCode(200)
+        given().get(campagne() + "/decisions/pending").then().statusCode(200)
                 .body("id", equalTo(id))
                 .body("options", hasItem("Ne rien faire"));
 
         repondre(id, "Lancer Bouclier").statusCode(200);
 
-        given().get("/api/decisions/pending").then().statusCode(204);
+        given().get(campagne() + "/decisions/pending").then().statusCode(204);
     }
 
     @Test
@@ -116,7 +118,7 @@ class DecisionApiTest {
                 .body("targetHitPoints", equalTo(7))
                 .body("targetMaxHitPoints", equalTo(7));
 
-        given().get("/api/creatures/magicienne-1").then().body("hitPoints", equalTo(7)).body("armorClass", equalTo(17));
+        given().get(campagne() + "/creatures/magicienne-1").then().body("hitPoints", equalTo(7)).body("armorClass", equalTo(17));
     }
 
     @Test
@@ -136,10 +138,10 @@ class DecisionApiTest {
 
         leGobelinFrappeLaMagicienne().statusCode(409).body("message", containsString("Une décision attend une réponse"));
         poser("loup", 20, 10).statusCode(409).body("message", containsString("Une décision attend une réponse"));
-        given().delete("/api/scene/tokens/guerriere-1").then().statusCode(409);
+        given().delete(campagne() + "/scene/tokens/guerriere-1").then().statusCode(409);
 
         assertEquals(avant, journal());
-        given().get("/api/scene").then().statusCode(200).body("tokens.id", equalTo(List.of("guerriere-1", "gobelin-1", "magicienne-1")));
+        given().get(campagne() + "/scene").then().statusCode(200).body("tokens.id", equalTo(List.of("guerriere-1", "gobelin-1", "magicienne-1")));
     }
 
     @Test
@@ -148,8 +150,8 @@ class DecisionApiTest {
 
         nouvelleCarte();
 
-        given().get("/api/decisions/pending").then().statusCode(204);
-        given().get("/api/journal").then().body("$", empty());
+        given().get(campagne() + "/decisions/pending").then().statusCode(204);
+        given().get(campagne() + "/journal").then().body("$", empty());
     }
 
     @Test
@@ -166,14 +168,14 @@ class DecisionApiTest {
 
         repondre(id, "Fuir").statusCode(400).body("message", containsString("Fuir"));
 
-        given().get("/api/decisions/pending").then().statusCode(200).body("id", equalTo(id));
+        given().get(campagne() + "/decisions/pending").then().statusCode(200).body("id", equalTo(id));
     }
 
     @Test
     void pendantUneDecision_laGrilleSeBasculeQuandMeme() {
         bouclierPropose();
 
-        given().contentType(ContentType.JSON).body("{\"visible\":false}").put("/api/scene/grid").then()
+        given().contentType(ContentType.JSON).body("{\"visible\":false}").put(campagne() + "/scene/grid").then()
                 .statusCode(200).body("gridVisible", equalTo(false));
     }
 }

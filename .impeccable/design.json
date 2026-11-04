@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-03T23:34:12.260Z",
+  "generatedAt": "2026-11-04T00:02:36.018Z",
   "title": "Design System: Solo VTT",
   "extensions": {
     "colorMeta": {
@@ -882,6 +882,14 @@
       "description": "Une touche de la légende des raccourcis : pavé de bois en creux, bord bas épaissi.",
       "html": "<span class=\"ds-keys\"><kbd class=\"ds-kbd\">Maj</kbd> <kbd class=\"ds-kbd\">F</kbd> <span class=\"ds-keys-text\">fin du tour</span></span>",
       "css": ".ds-keys { font: 400 16px 'Alegreya Sans', system-ui, sans-serif; color: var(--ink); display: inline-flex; align-items: baseline; gap: 0.25rem; } .ds-kbd { display: inline-block; min-width: 1.6rem; padding: 0.05rem 0.4rem; border: 1px solid var(--control-border); border-bottom-width: 2px; border-radius: 4px; background: var(--wood-sunken); font: inherit; font-size: 0.9rem; font-weight: 500; text-align: center; } .ds-keys-text { margin-left: 0.5rem; }"
+    },
+    {
+      "name": "Panneau de campagnes",
+      "kind": "card",
+      "refersTo": "button",
+      "description": "Accueil : panneau de bois cerclé de page, titre en petites capitales et filet effilé, une ligne par campagne avec « Ouvrir ».",
+      "html": "<section class=\"ds-campaigns\"><h2 class=\"ds-title\">Campagnes</h2><hr class=\"ds-tapered\" /><ul class=\"ds-list\"><li><strong class=\"ds-cname\">Phandelver</strong><button class=\"ds-open\">Ouvrir</button></li><li><strong class=\"ds-cname\">Strahd</strong><button class=\"ds-open\">Ouvrir</button></li></ul></section>",
+      "css": ".ds-campaigns { display: flex; flex-direction: column; gap: 0.9rem; max-width: 34rem; padding: 1.1rem 1.25rem 1.25rem; background: var(--wood); border: 2px solid var(--page); border-radius: 6px; color: var(--ink); font: 16px/1.45 'Alegreya Sans', system-ui, sans-serif; } .ds-title { margin: 0; font: 700 1.2rem 'Alegreya SC', Georgia, serif; letter-spacing: 0.03em; color: var(--ink); } .ds-tapered { height: 2px; border: 0; margin: -0.5rem 0 0; background: linear-gradient(90deg, var(--rubric), transparent); } .ds-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; } .ds-list li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; } .ds-cname { min-width: 0; font-size: 1.1rem; overflow-wrap: anywhere; } .ds-open { flex: none; font: 500 16px 'Alegreya Sans', system-ui, sans-serif; color: var(--ink); padding: 0.35rem 0.8rem; border: 1px solid var(--control-border); border-radius: 4px; background: var(--wood-sunken); cursor: pointer; } .ds-open:hover { background: var(--wood-raised); border-color: var(--ink-muted); } .ds-open:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }"
     }
   ],
   "narrative": {

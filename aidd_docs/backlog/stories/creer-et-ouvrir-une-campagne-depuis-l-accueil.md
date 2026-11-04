@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 parent: aidd_docs/backlog/epics/ranger-ses-parties-dans-des-campagnes.md
 order: 1
 ---

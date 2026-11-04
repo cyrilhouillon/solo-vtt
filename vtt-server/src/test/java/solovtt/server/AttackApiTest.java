@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.List;
 
+import static solovtt.server.Campagnes.campagne;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
@@ -32,6 +33,7 @@ class AttackApiTest {
 
     @BeforeEach
     void scene() {
+        Campagnes.creerUneNeuve();
         nouvelleCarte(30, 20, "METRE");
         poser("guerriere", 1.5, 1.5);
         poser("squelette", 3, 1.5);
@@ -41,22 +43,22 @@ class AttackApiTest {
 
     private static void nouvelleCarte(double w, double h, String unit) {
         given().contentType(ContentType.JSON).body("{\"width\":%s,\"height\":%s,\"unit\":\"%s\"}".formatted(w, h, unit))
-                .post("/api/scene").then().statusCode(201);
+                .post(campagne() + "/scene").then().statusCode(201);
     }
 
     private static void poser(String catalogId, double x, double y) {
         given().contentType(ContentType.JSON).body("{\"catalogId\":\"%s\",\"x\":%s,\"y\":%s}".formatted(catalogId, x, y))
-                .post("/api/scene/tokens").then().statusCode(201);
+                .post(campagne() + "/scene/tokens").then().statusCode(201);
     }
 
     private static ValidatableResponse attaquer(String attackerId, String attackId, String targetId) {
         return given().contentType(ContentType.JSON)
                 .body("{\"attackerId\":\"%s\",\"attackId\":\"%s\",\"targetId\":\"%s\"}".formatted(attackerId, attackId, targetId))
-                .post("/api/attacks").then();
+                .post(campagne() + "/attacks").then();
     }
 
     private static List<String> journal() {
-        return given().get("/api/journal").then().statusCode(200).extract().jsonPath().getList("text", String.class);
+        return given().get(campagne() + "/journal").then().statusCode(200).extract().jsonPath().getList("text", String.class);
     }
 
     @Test
@@ -80,7 +82,7 @@ class AttackApiTest {
                 .body("targetId", equalTo("squelette-1"))
                 .body("targetHitPoints", equalTo(2));
 
-        given().get("/api/creatures/squelette-1").then().body("hitPoints", equalTo(2));
+        given().get(campagne() + "/creatures/squelette-1").then().body("hitPoints", equalTo(2));
         assertTrue(journal().contains("Squelette subit 11 dégâts tranchants (PV 2/13)"), journal().toString());
     }
 
@@ -98,7 +100,7 @@ class AttackApiTest {
         dice.script(17, 5);
 
         // Gobelin (29 ; 1,5) : 27,5 m de la Guerrière, au-delà de la portée normale de l'Arc court (24 m).
-        given().contentType(ContentType.JSON).body("{\"x\":29,\"y\":1.5}").post("/api/scene/tokens/gobelin-1/move").then().statusCode(200);
+        given().contentType(ContentType.JSON).body("{\"x\":29,\"y\":1.5}").post(campagne() + "/scene/tokens/gobelin-1/move").then().statusCode(200);
         attaquer("gobelin-1", "ranged:Arc court", "guerriere-1").statusCode(200)
                 .body("entries.findAll { it.dice != null }", hasSize(1))
                 .body("entries.find { it.dice != null }.dice.sides", equalTo(20))
@@ -122,7 +124,7 @@ class AttackApiTest {
         dice.script(15, 3);
 
         // Gobelin (12 ; 1,5) et Magicienne (13,5 ; 3) : 2,12 m de centre à centre, dans l'allonge + demi-case.
-        given().contentType(ContentType.JSON).body("{\"x\":13.5,\"y\":3}").post("/api/scene/tokens/magicienne-1/move").then().statusCode(200);
+        given().contentType(ContentType.JSON).body("{\"x\":13.5,\"y\":3}").post(campagne() + "/scene/tokens/magicienne-1/move").then().statusCode(200);
         attaquer("gobelin-1", "melee:Cimeterre", "magicienne-1").statusCode(200)
                 .body("entries.text", hasItem("Gobelin guerrier attaque Magicienne (Cimeterre)"));
     }
@@ -164,7 +166,7 @@ class AttackApiTest {
 
         nouvelleCarte(10, 10, "METRE");
 
-        given().get("/api/journal").then().statusCode(200).body("$", empty());
+        given().get(campagne() + "/journal").then().statusCode(200).body("$", empty());
     }
 
     @Test
@@ -172,7 +174,7 @@ class AttackApiTest {
         nouvelleCarte(100, 100, "FOOT");
         poser("magicienne", 5, 5);
 
-        given().get("/api/creatures/magicienne-1").then().statusCode(200)
+        given().get(campagne() + "/creatures/magicienne-1").then().statusCode(200)
                 .body("attacks", hasSize(2))
                 .body("attacks[0].label", equalTo("Dague"))
                 .body("attacks[0].reach.value", equalTo(5.0f))

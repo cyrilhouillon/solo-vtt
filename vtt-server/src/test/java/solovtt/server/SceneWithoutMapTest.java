@@ -20,16 +20,15 @@ class SceneWithoutMapTest {
     @Test
     void sansCarte_enregistrerLaCarteRend409() {
         var e = assertThrows(ClientErrorException.class,
-                () -> new MapResource(session, MapStore.inMemory()).save(new Dtos.MapNameRequest("Crypte")));
+                () -> new MapResource(session).save(new Dtos.MapNameRequest("Crypte")));
         assertEquals(409, e.getResponse().getStatus());
     }
 
     @Test
     void uneCarteDontUneCreatureAQuitteLeCatalogue_refuseLeChargement() {
-        var maps = MapStore.inMemory();
-        maps.save(new SavedMap("Marais", 30, 20, DistanceUnit.METRE, null, true, 0, 0, List.of(new SavedMap.SavedToken("hydre", 5, 5))));
+        session.maps().save(new SavedMap("Marais", 30, 20, DistanceUnit.METRE, null, true, 0, 0, List.of(new SavedMap.SavedToken("hydre", 5, 5))));
 
-        var e = assertThrows(ActionRefusedException.class, () -> new MapResource(session, maps).load(new Dtos.MapNameRequest("Marais")));
+        var e = assertThrows(ActionRefusedException.class, () -> new MapResource(session).load(new Dtos.MapNameRequest("Marais")));
         assertTrue(e.getMessage().contains("hydre"));
         assertTrue(session.scene().isEmpty());
     }

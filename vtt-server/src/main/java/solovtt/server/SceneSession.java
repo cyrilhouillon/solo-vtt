@@ -14,8 +14,6 @@ import dnd.engine.rules.StandardRules;
 import dnd.engine.state.Combat;
 import dnd.engine.state.Creature;
 import dnd.engine.state.GameState;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import solovtt.engine.Decision;
 import solovtt.engine.Dice;
 import solovtt.engine.Engine;
@@ -38,8 +36,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * La scène en préparation et l'état D&D qui l'accompagne. Une seule session, en mémoire :
- * le jeu est local et solo.
+ * La partie d'une campagne : sa scène, l'état D&D qui l'accompagne et ses cartes enregistrées. Une instance par
+ * campagne, en mémoire ({@link CampaignSessions}).
  *
  * <p>La préparation construit l'état initial : elle ne passe pas par le journal du moteur.
  * Les actions (attaques) passent par le moteur, et chaque événement émis est décrit dans le journal
@@ -59,7 +57,6 @@ import java.util.function.Supplier;
  * avec ces dés : scène, état, journal et décision en attente reviennent à l'identique. Un rejeu qui échoue (règles
  * changées depuis la sauvegarde, partie illisible) laisse la session sans carte et met la partie de côté.</p>
  */
-@ApplicationScoped
 public class SceneSession {
 
     private Scene scene;
@@ -81,6 +78,8 @@ public class SceneSession {
     private final Map<String, Integer> instanceCounters = new HashMap<>();
     private final Dice dice;
     private final GameStore store;
+    /** Les cartes enregistrées de la campagne. */
+    private final MapStore maps;
     /** D'où viennent les dés : ceux du jeu, ou ceux de la commande rejouée. */
     private Dice source;
     /** Les dés tirés pendant l'appel en cours, gardés avec sa commande. */
@@ -143,18 +142,28 @@ public class SceneSession {
 
     private static final System.Logger LOG = System.getLogger(SceneSession.class.getName());
 
-    /** Une session qui ne garde pas sa partie. */
+    /** Une session qui ne garde pas sa partie ; ses cartes enregistrées vivent en mémoire. */
     public SceneSession(Dice dice) {
         this(dice, GameStore.none());
     }
 
-    /** Une session qui reprend la partie gardée par {@code store}, puis l'y sauve après chaque commande réussie. */
-    @Inject
+    /** Une session qui reprend la partie gardée par {@code store} ; ses cartes enregistrées vivent en mémoire. */
     public SceneSession(Dice dice, GameStore store) {
+        this(dice, store, MapStore.inMemory());
+    }
+
+    /** Une session qui reprend la partie gardée par {@code store}, puis l'y sauve après chaque commande réussie. */
+    public SceneSession(Dice dice, GameStore store, MapStore maps) {
         this.dice = dice;
         this.source = dice;
         this.store = store;
+        this.maps = maps;
         restore();
+    }
+
+    /** Les cartes enregistrées de la campagne. */
+    public MapStore maps() {
+        return maps;
     }
 
     /** Crée une carte, avec l'image de fond {@code imageId} ou sans ({@code null}) ; sa grille s'affiche. */

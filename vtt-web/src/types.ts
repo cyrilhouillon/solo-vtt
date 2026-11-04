@@ -43,6 +43,12 @@ export interface SceneView {
   tokens: TokenView[]
 }
 
+/** Une campagne : sa partie et ses cartes enregistrées, désignée par son nom. */
+export interface CampaignView {
+  id: string
+  name: string
+}
+
 /** Une carte enregistrée, prête à charger. */
 export interface SavedMapView {
   name: string

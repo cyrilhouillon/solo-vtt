@@ -13,24 +13,21 @@ import org.jboss.resteasy.reactive.ResponseStatus;
 
 import java.util.List;
 
-/** Les cartes enregistrées : enregistrer la carte en cours sous un nom, les lister, en charger une. */
-@Path("/api/maps")
+/** Les cartes enregistrées d'une campagne : enregistrer la carte en cours sous un nom, les lister, en charger une. */
 public class MapResource {
 
     static final int MAX_NAME_LENGTH = 80;
 
     private final SceneSession session;
-    private final MapStore maps;
 
-    public MapResource(SceneSession session, MapStore maps) {
+    public MapResource(SceneSession session) {
         this.session = session;
-        this.maps = maps;
     }
 
     @GET
-    @APIResponse(responseCode = "200", description = "Les cartes enregistrées, triées par nom")
+    @APIResponse(responseCode = "200", description = "Les cartes enregistrées de la campagne, triées par nom")
     public List<Dtos.SavedMapDto> list() {
-        return maps.list().stream().map(Dtos.SavedMapDto::of).toList();
+        return session.maps().list().stream().map(Dtos.SavedMapDto::of).toList();
     }
 
     /** Enregistre la carte en cours sous un nom ; une carte du même nom est remplacée. La partie ne change pas. */
@@ -49,7 +46,7 @@ public class MapResource {
             throw new ClientErrorException("Aucune carte : créer d'abord une carte", Response.Status.CONFLICT);
         }
         SavedMap map = session.snapshot(name);
-        maps.save(map);
+        session.maps().save(map);
         return Dtos.SavedMapDto.of(map);
     }
 
@@ -66,7 +63,7 @@ public class MapResource {
     @APIResponse(responseCode = "409", description = "Une créature de la carte n'est plus au catalogue")
     public Dtos.SceneDto load(Dtos.MapNameRequest request) {
         String name = nameOf(request);
-        SavedMap map = maps.find(name)
+        SavedMap map = session.maps().find(name)
                 .orElseThrow(() -> new NotFoundException("Aucune carte enregistrée sous le nom « " + name + " »"));
         return Dtos.SceneDto.of(session.load(map), session);
     }
