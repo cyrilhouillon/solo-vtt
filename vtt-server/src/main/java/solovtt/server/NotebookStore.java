@@ -8,7 +8,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Où vit le Carnet d'une campagne : ses pages et la dernière page consultée. */
+/**
+ * Où vit le Carnet d'une campagne : ses pages, rangées en arbre par leur parent, et la dernière page consultée. Un
+ * déplacement ne touche que la page déplacée : ses sous-pages la suivent.
+ */
 public interface NotebookStore {
 
     /**
@@ -23,8 +26,13 @@ public interface NotebookStore {
         return list().stream().filter(p -> p.id().equals(id)).findFirst();
     }
 
-    /** Crée une page vide sous ce titre ; deux pages peuvent porter le même titre. */
-    Page create(String title);
+    /**
+     * Crée une page vide sous ce titre, sous {@code parentId} ({@code null} : à la racine) ; deux pages peuvent porter le
+     * même titre.
+     *
+     * @throws IllegalArgumentException si aucune page n'a l'id du parent
+     */
+    Page create(String title, String parentId);
 
     /**
      * Remplace le contenu de la page.
@@ -32,6 +40,21 @@ public interface NotebookStore {
      * @throws IllegalArgumentException si aucune page n'a cet id
      */
     void saveContent(String id, String content);
+
+    /**
+     * Renomme la page.
+     *
+     * @throws IllegalArgumentException si aucune page n'a cet id
+     */
+    void rename(String id, String title);
+
+    /**
+     * Range la page sous {@code parentId} ({@code null} : à la racine), avec ses sous-pages.
+     *
+     * @throws IllegalArgumentException si la page ou le parent est inconnu, ou si le parent est la page elle-même ou
+     *     l'une de ses sous-pages
+     */
+    void move(String id, String parentId);
 
     /** L'id de la dernière page consultée, vide si aucune. */
     Optional<String> lastPage();
@@ -45,6 +68,13 @@ public interface NotebookStore {
 
     Comparator<Page> BY_TITLE = Comparator.comparing(Page::title, String.CASE_INSENSITIVE_ORDER).thenComparing(Page::title);
 
+    /** Refuse un parent qui mettrait la page sous elle-même : l'appelant tient le verrou du Carnet. */
+    static void checkMove(List<Page> pages, String id, String parentId) {
+        if (parentId != null && PageTree.isWithin(pages, parentId, id)) {
+            throw new IllegalArgumentException("Une page ne peut pas aller sous elle-même ni sous l'une de ses sous-pages");
+        }
+    }
+
     /** Garde le Carnet en mémoire, le temps du processus. */
     static NotebookStore inMemory() {
         Map<String, Page> pages = new ConcurrentHashMap<>();
@@ -56,16 +86,31 @@ public interface NotebookStore {
             }
 
             @Override
-            public Page create(String title) {
-                var page = new Page(UUID.randomUUID().toString(), title, null);
+            public synchronized Page create(String title, String parentId) {
+                if (parentId != null) known(parentId);
+                var page = new Page(UUID.randomUUID().toString(), title, parentId, null);
                 pages.put(page.id(), page);
                 return page;
             }
 
             @Override
-            public void saveContent(String id, String content) {
+            public synchronized void saveContent(String id, String content) {
                 Page page = known(id);
-                pages.put(id, new Page(id, page.title(), content));
+                pages.put(id, new Page(id, page.title(), page.parentId(), content));
+            }
+
+            @Override
+            public synchronized void rename(String id, String title) {
+                Page page = known(id);
+                pages.put(id, new Page(id, title, page.parentId(), page.content()));
+            }
+
+            @Override
+            public synchronized void move(String id, String parentId) {
+                Page page = known(id);
+                if (parentId != null) known(parentId);
+                checkMove(list(), id, parentId);
+                pages.put(id, new Page(id, page.title(), parentId, page.content()));
             }
 
             @Override

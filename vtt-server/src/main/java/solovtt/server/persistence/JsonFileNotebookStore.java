@@ -18,7 +18,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 /**
- * Le Carnet d'une campagne, dans un dossier : une fiche par page ({@code <id>.json} : id, titre, contenu en JSON
+ * Le Carnet d'une campagne, dans un dossier : une fiche par page ({@code <id>.json} : id, titre, parent, contenu en JSON
  * imbriqué) et {@code carnet.json} pour la dernière page consultée. Chaque écriture passe par un fichier voisin et un
  * déplacement atomique. Une fiche illisible est ignorée, jamais écrasée.
  */
@@ -28,7 +28,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
     private static final String EXTENSION = ".json";
     private static final System.Logger LOG = System.getLogger(JsonFileNotebookStore.class.getName());
 
-    private record PageFile(String id, String title, JsonNode content) {}
+    private record PageFile(String id, String title, String parentId, JsonNode content) {}
 
     private record NotebookFile(String lastPageId) {}
 
@@ -62,8 +62,9 @@ public final class JsonFileNotebookStore implements NotebookStore {
     }
 
     @Override
-    public synchronized Page create(String title) {
-        var page = new Page(UUID.randomUUID().toString(), title, null);
+    public synchronized Page create(String title, String parentId) {
+        if (parentId != null) known(parentId);
+        var page = new Page(UUID.randomUUID().toString(), title, parentId, null);
         write(page);
         return page;
     }
@@ -71,7 +72,21 @@ public final class JsonFileNotebookStore implements NotebookStore {
     @Override
     public synchronized void saveContent(String id, String content) {
         Page page = known(id);
-        write(new Page(page.id(), page.title(), content));
+        write(new Page(page.id(), page.title(), page.parentId(), content));
+    }
+
+    @Override
+    public synchronized void rename(String id, String title) {
+        Page page = known(id);
+        write(new Page(page.id(), title, page.parentId(), page.content()));
+    }
+
+    @Override
+    public synchronized void move(String id, String parentId) {
+        Page page = known(id);
+        if (parentId != null) known(parentId);
+        NotebookStore.checkMove(list(), id, parentId);
+        write(new Page(page.id(), page.title(), parentId, page.content()));
     }
 
     @Override
@@ -121,7 +136,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
             }
             String content = page.content() == null || page.content().isNull() ? null : mapper.writer()
                     .without(SerializationFeature.INDENT_OUTPUT).writeValueAsString(page.content());
-            return Optional.of(new Page(page.id(), page.title(), content));
+            return Optional.of(new Page(page.id(), page.title(), page.parentId(), content));
         } catch (IOException e) {
             LOG.log(System.Logger.Level.WARNING, "Page ignorée, fiche illisible : " + file, e);
             return Optional.empty();
@@ -131,7 +146,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
     private void write(Page page) {
         try {
             JsonNode content = page.content() == null ? null : mapper.readTree(page.content());
-            writeAtomically(dir.resolve(page.id() + EXTENSION), new PageFile(page.id(), page.title(), content));
+            writeAtomically(dir.resolve(page.id() + EXTENSION), new PageFile(page.id(), page.title(), page.parentId(), content));
         } catch (IOException e) {
             throw new UncheckedIOException("Contenu de page illisible : " + page.id(), e);
         }

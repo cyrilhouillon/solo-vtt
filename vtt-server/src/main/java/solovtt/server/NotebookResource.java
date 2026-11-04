@@ -50,7 +50,7 @@ public class NotebookResource {
         if (title.length() > MAX_TITLE_LENGTH) {
             throw new IllegalArgumentException("Titre trop long (" + MAX_TITLE_LENGTH + " caractères au plus)");
         }
-        return dto(notebook.create(title));
+        return dto(notebook.create(title, null));
     }
 
     @GET

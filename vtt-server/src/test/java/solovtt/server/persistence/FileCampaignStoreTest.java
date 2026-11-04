@@ -59,7 +59,7 @@ class FileCampaignStoreTest {
         var store = new FileCampaignStore(root);
         var strahd = store.create("Strahd");
         var phandelver = store.create("Phandelver");
-        var page = store.notebook(strahd.id()).create("Session 1");
+        var page = store.notebook(strahd.id()).create("Session 1", null);
 
         var relu = new FileCampaignStore(root);
         assertEquals(List.of(page), relu.notebook(strahd.id()).list());
