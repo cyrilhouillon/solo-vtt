@@ -50,8 +50,14 @@ final class Dtos {
     /** Le nom d'une campagne à créer. */
     record CampaignNameRequest(String name) {}
 
-    /** Le titre d'une page à créer ; {@code null} si absent. */
+    /** Le nouveau titre d'une page ; {@code null} si absent. */
     record PageTitleRequest(String title) {}
+
+    /** Une page à créer : son titre et la page sous laquelle la ranger, {@code null} pour la racine. */
+    record CreatePageRequest(String title, String parentId) {}
+
+    /** La page sous laquelle ranger une page, {@code null} pour la racine. */
+    record ParentRequest(String parentId) {}
 
     /** Le document de l'éditeur à garder pour une page ; {@code null} si absent. */
     record PageContentRequest(JsonNode content) {}
@@ -59,15 +65,15 @@ final class Dtos {
     /** La page consultée ; {@code null} si absent. */
     record LastPageRequest(String pageId) {}
 
-    /** Une page, telle que la liste du Carnet la montre. */
-    record PageSummaryDto(String id, String title) {
+    /** Une page, telle que l'arbre du Carnet la montre ; {@code parentId} : {@code null} à la racine. */
+    record PageSummaryDto(String id, String title, String parentId) {
         static PageSummaryDto of(Page page) {
-            return new PageSummaryDto(page.id(), page.title());
+            return new PageSummaryDto(page.id(), page.title(), page.parentId());
         }
     }
 
-    /** {@code content} : le document de l'éditeur, {@code null} pour une page neuve. */
-    record PageDto(String id, String title, JsonNode content) {}
+    /** {@code parentId} : {@code null} à la racine ; {@code content} : le document de l'éditeur, {@code null} si neuve. */
+    record PageDto(String id, String title, String parentId, JsonNode content) {}
 
     /** {@code lastPageId} : la dernière page consultée, {@code null} si aucune. */
     record NotebookDto(List<PageSummaryDto> pages, String lastPageId) {}
