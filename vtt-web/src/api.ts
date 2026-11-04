@@ -9,6 +9,7 @@ import type {
   JournalEntry,
   NotebookView,
   PageDocument,
+  PageSummary,
   PageView,
   SavedMapView,
   SceneView,
@@ -88,6 +89,9 @@ export function campaignApi(campaignId: string) {
       request<void>(`${base}/notebook/pages/${encodeURIComponent(pageId)}/parent`, { method: 'PUT', body: JSON.stringify({ parentId }) }),
 
     page: (pageId: string) => request<PageView>(`${base}/notebook/pages/${encodeURIComponent(pageId)}`),
+
+    /** Les pages dont le texte a un lien vers celle-ci, sans elle-même. */
+    citingPages: (pageId: string) => request<PageSummary[]>(`${base}/notebook/pages/${encodeURIComponent(pageId)}/citing`),
 
     /** Garde le document de la page ; `keepalive` laisse partir l'envoi quand l'onglet se ferme (corps de 64 Kio au plus). */
     savePageContent: (pageId: string, content: PageDocument, keepalive = false) =>
