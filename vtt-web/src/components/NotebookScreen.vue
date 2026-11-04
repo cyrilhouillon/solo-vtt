@@ -339,7 +339,14 @@ async function leave(target: 'home' | 'combat') {
             </button>
           </header>
           <hr class="tapered" />
-          <PageEditor :content="page.content" :editable="unlocked" :label="`Texte de ${page.title}`" @change="onChange" />
+          <PageEditor
+            :content="page.content"
+            :editable="unlocked"
+            :label="`Texte de ${page.title}`"
+            :pages="notebook.pages"
+            @change="onChange"
+            @open="open"
+          />
         </article>
       </main>
       <MovePageDialog :pages="notebook.pages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />

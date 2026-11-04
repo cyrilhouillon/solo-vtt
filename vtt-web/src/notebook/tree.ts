@@ -9,7 +9,7 @@ export interface PageNode {
 /** Ordre des sœurs : par titre, sans casse ni accents, les nombres par valeur (« Session 2 » avant « Session 10 »). */
 const collator = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' })
 
-function byTitle(a: PageSummary, b: PageSummary): number {
+export function byTitle(a: PageSummary, b: PageSummary): number {
   return collator.compare(a.title, b.title) || a.title.localeCompare(b.title) || a.id.localeCompare(b.id)
 }
 

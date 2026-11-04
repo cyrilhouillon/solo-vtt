@@ -2,26 +2,38 @@
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { watch } from 'vue'
-import type { PageDocument } from '../types'
+import { PageLink } from '../notebook/pageLink'
+import PageLinkBubble from './PageLinkBubble.vue'
+import type { PageDocument, PageSummary } from '../types'
 
 /**
  * Le corps d'une page, en texte riche : titres, gras, italique, listes, citations, à la frappe (`# `, `- `, `> `, `**…**`)
  * ou au clavier (Ctrl+B, Ctrl+I) ; Ctrl+Z et Ctrl+Y défont et refont. Un éditeur par page : l'historique ne passe pas de
- * l'une à l'autre. Verrouillée, la page se lit avec la même mise en page ; seul le curseur change.
+ * l'une à l'autre. Verrouillée, la page se lit avec la même mise en page ; seul le curseur change. `[[` lie une page du
+ * Carnet (`pages`), dont le lien suit le titre.
  */
-const props = defineProps<{ content: PageDocument | null; editable: boolean; label: string }>()
-/** Le document après chaque modification du joueur. */
-const emit = defineEmits<{ change: [content: PageDocument] }>()
+const props = defineProps<{ content: PageDocument | null; editable: boolean; label: string; pages: readonly PageSummary[] }>()
+/** Le document après chaque modification du joueur ; `open` : suivre un lien. */
+const emit = defineEmits<{ change: [content: PageDocument]; open: [pageId: string] }>()
 
 const editor = useEditor({
   content: props.content ?? '',
-  // Pas de liens dans cette story : les liens vers une page viendront avec leur propre extension.
-  extensions: [StarterKit.configure({ link: false })],
+  // Les liens web ne sont pas demandés : seuls les liens vers une page du Carnet.
+  extensions: [
+    StarterKit.configure({ link: false }),
+    // La liste suit le Carnet, relu à chaque geste : un lien affiche le titre actuel de sa cible.
+    PageLink.configure({
+      pages: () => props.pages,
+      locked: () => !props.editable,
+      onOpen: (pageId) => emit('open', pageId),
+    }),
+  ],
   editable: props.editable,
   autofocus: props.editable ? 'end' : false,
   editorProps: {
     attributes: { class: 'page-text', 'aria-label': props.label },
-    // Verrouillée, aucune touche (Ctrl+Z compris) ni aucun collage ne modifie la page.
+    // Verrouillée, aucune touche (Ctrl+Z compris) ni aucun collage ne modifie la page. ProseMirror n'appelle déjà aucun
+    // de ces gestionnaires sur une vue non éditable : c'est une garde, qui laisse Entrée ouvrir un lien.
     handleKeyDown: (view) => !view.editable,
     handlePaste: (view) => !view.editable,
     handleDrop: (view) => !view.editable,
@@ -43,6 +55,7 @@ watch(
 
 <template>
   <EditorContent :editor="editor" class="page-editor" />
+  <PageLinkBubble v-if="editor" :editor="editor" :pages="pages" @open="(pageId) => emit('open', pageId)" />
 </template>
 
 <style scoped>
