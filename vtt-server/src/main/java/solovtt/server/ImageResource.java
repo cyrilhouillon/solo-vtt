@@ -17,7 +17,7 @@ import org.jboss.resteasy.reactive.ResponseStatus;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-/** Les images de fond des cartes : envoyées une fois, puis relues par leur empreinte. */
+/** Les images des cartes (fond) et des pages du Carnet : envoyées une fois, puis relues par leur empreinte. */
 @Path("/api/images")
 public class ImageResource {
 

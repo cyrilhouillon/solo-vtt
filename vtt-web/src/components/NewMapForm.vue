@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { mapFromImage } from '../map/backdrop'
 import { CELL } from '../map/grid'
 import { describeLoss } from '../replaceWarning'
+import { IMAGE_TYPES, imageRefusal } from '../images'
 import type { DistanceUnit } from '../types'
 
 /** `tokenCount` : nombre de créatures de la carte actuelle, `null` s'il n'y a pas encore de carte. */
@@ -38,12 +39,6 @@ onMounted(() => {
   if (props.tokenCount !== null) firstField.value?.focus()
 })
 
-const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
-/**
- * La limite du serveur (`quarkus.http.limits.max-body-size`). Au-delà, il coupe la connexion avant la fin de l'envoi :
- * le navigateur ne voit qu'une erreur réseau, d'où ce refus avant d'envoyer.
- */
-const MAX_IMAGE_BYTES = 50 * 1024 * 1024
 
 /** L'image choisie et sa taille en pixels, lue par le navigateur. */
 const image = ref<{ file: File; width: number; height: number } | null>(null)
@@ -80,13 +75,9 @@ async function chooseImage(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   imageError.value = null
   if (!file) return
-  if (!IMAGE_TYPES.includes(file.type)) {
-    imageError.value = 'Choisir une image PNG, JPEG ou WebP.'
-    removeImage(false)
-    return
-  }
-  if (file.size > MAX_IMAGE_BYTES) {
-    imageError.value = 'Image trop lourde (50 Mo au plus).'
+  const refusal = imageRefusal(file)
+  if (refusal) {
+    imageError.value = refusal
     removeImage(false)
     return
   }
@@ -161,7 +152,7 @@ const unitSymbol = (u: DistanceUnit) => (u === 'METRE' ? 'm' : 'ft')
     <div class="image">
       <label>
         Image de fond (facultative)
-        <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" @change="chooseImage" />
+        <input ref="fileInput" type="file" :accept="IMAGE_TYPES.join(',')" @change="chooseImage" />
       </label>
       <p v-if="image" class="image-info">{{ image.file.name }} · {{ image.width }} × {{ image.height }} px</p>
       <p v-if="imageError" class="warning" role="alert">{{ imageError }}</p>

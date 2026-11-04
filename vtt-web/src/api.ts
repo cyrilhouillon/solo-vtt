@@ -53,7 +53,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
-/** L'adresse d'une image de fond gardée par le serveur. */
+/** L'adresse d'une image gardée par le serveur : fond de carte ou image d'une page du Carnet. */
 export const imageUrl = (id: string) => `/api/images/${encodeURIComponent(id)}`
 
 /** Ce qui ne dépend d'aucune campagne : les campagnes elles-mêmes, le catalogue, les images. */
@@ -65,7 +65,7 @@ export const api = {
 
   catalog: () => request<CatalogEntry[]>('/api/catalog'),
 
-  /** Garde une image de fond sur le serveur ; rend son empreinte. */
+  /** Garde une image (fond de carte ou image de page) sur le serveur ; rend son empreinte. */
   uploadImage: async (file: File) =>
     (await request<{ id: string }>('/api/images', { method: 'POST', body: file, headers: { 'Content-Type': file.type } })).id,
 }
