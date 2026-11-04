@@ -207,6 +207,52 @@ class NotebookApiTest {
         assertEquals(lore, parentDe(villes));
     }
 
+    private static String citant(String... pageIds) {
+        StringBuilder liens = new StringBuilder();
+        for (String pageId : pageIds) {
+            if (!liens.isEmpty()) liens.append(',');
+            liens.append("{\"type\":\"pageLink\",\"attrs\":{\"pageId\":\"").append(pageId).append("\",\"label\":null}}");
+        }
+        return "{\"type\":\"doc\",\"content\":[{\"type\":\"bulletList\",\"content\":[{\"type\":\"listItem\",\"content\":["
+                + "{\"type\":\"paragraph\",\"content\":[" + liens + "]}]}]}]}";
+    }
+
+    private static String citantes(String pageId) {
+        return carnet() + "/pages/" + pageId + "/citing";
+    }
+
+    @Test
+    void lesPagesQuiCitent_unePageChacune_parTitre_sansLaPageElleMeme() {
+        String bertrand = creer("Bertrand");
+        String pnj = creer("PNJ");
+        String session5 = creerSous("Session 5", pnj);
+        String session1 = creer("Session 1");
+        String lore = creer("Lore");
+        enregistrer(session5, citant(bertrand, bertrand), 204);
+        enregistrer(session1, citant(bertrand), 204);
+        enregistrer(lore, citant(session1), 204);
+        enregistrer(bertrand, citant(bertrand), 204);
+
+        given().get(citantes(bertrand)).then().statusCode(200)
+                .body("title", equalTo(List.of("Session 1", "Session 5")))
+                .body("id", equalTo(List.of(session1, session5)))
+                .body("parentId", equalTo(Arrays.asList(null, pnj)));
+
+        enregistrer(session1, ARRIVEE, 204);
+        given().get(citantes(bertrand)).then().statusCode(200).body("title", equalTo(List.of("Session 5")));
+    }
+
+    @Test
+    void unePageQueRienNeCite_listeVide_etPageInconnue_404() {
+        String bertrand = creer("Bertrand");
+        String session = creer("Session 1");
+        enregistrer(session, ARRIVEE, 204);
+
+        given().get(citantes(bertrand)).then().statusCode(200).body("$", empty());
+        given().get(citantes(session)).then().statusCode(200).body("$", empty());
+        given().get(citantes("inconnue")).then().statusCode(404);
+    }
+
     @Test
     void parentOuPageInconnus_404() {
         String lore = creer("Lore");

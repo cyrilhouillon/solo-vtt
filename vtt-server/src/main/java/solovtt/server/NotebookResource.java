@@ -9,12 +9,14 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.jboss.resteasy.reactive.ResponseStatus;
 
 import java.io.UncheckedIOException;
+import java.util.List;
 
 /** Le Carnet d'une campagne : ses pages, leur contenu et la dernière page consultée. */
 public class NotebookResource {
@@ -83,6 +85,18 @@ public class NotebookResource {
     @APIResponse(responseCode = "404", description = "Aucune page avec cet id")
     public Dtos.PageDto page(@PathParam("pageId") String pageId) {
         return dto(known(pageId));
+    }
+
+    /** Les pages dont le contenu a un lien vers celle-ci, triées par titre ; une page qui se cite n'y est pas. */
+    @GET
+    @Path("/pages/{pageId}/citing")
+    @APIResponse(responseCode = "200", description = "Les pages qui renvoient à celle-ci, vide si aucune",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = SchemaType.ARRAY, implementation = Dtos.PageSummaryDto.class)))
+    @APIResponse(responseCode = "404", description = "Aucune page avec cet id")
+    public List<Dtos.PageSummaryDto> citing(@PathParam("pageId") String pageId) {
+        known(pageId);
+        return PageLinks.citing(notebook.list(), pageId).stream().map(Dtos.PageSummaryDto::of).toList();
     }
 
     /** Remplace le contenu de la page par le document de l'éditeur, gardé tel quel. */

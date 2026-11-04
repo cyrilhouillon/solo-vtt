@@ -6,6 +6,7 @@ import ThemeButton from './ThemeButton.vue'
 import PageEditor from './PageEditor.vue'
 import PageTree from './PageTree.vue'
 import MovePageDialog from './MovePageDialog.vue'
+import CitingPages from './CitingPages.vue'
 import { ancestors, buildTree } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import type { CampaignView, NotebookView, PageDocument, PageView } from '../types'
@@ -31,6 +32,8 @@ const expanded = ref<ReadonlySet<string>>(new Set())
 const moving = ref<string | null>(null)
 /** Le titre en tête de page, éditable une fois la page déverrouillée. */
 const pageTitle = ref('')
+/** Les pages qui citent la page ouverte, `null` tant qu'elles ne sont pas lues. */
+const citing = ref<string[] | null>(null)
 
 /** Attente avant d'envoyer une frappe : assez pour grouper les touches, assez peu pour ne rien perdre. */
 const SAVE_DELAY_MS = 1000
@@ -122,11 +125,24 @@ function display(opened: PageView, editable: boolean) {
   reveal(opened.id)
 }
 
-/** Ouvre la page et la note comme dernière consultée. */
+/** Ouvre la page et la note comme dernière consultée, puis lit les pages qui la citent. */
 async function show(pageId: string) {
   if (!(await saved())) return
-  display(await api.page(pageId), false)
+  const opened = await api.page(pageId)
+  // Vidée avant d'afficher : la liste de la page précédente ne passe jamais sous celle-ci.
+  citing.value = null
+  display(opened, false)
   await api.setLastPage(pageId)
+  await readCiting(pageId)
+}
+
+/** Un échec laisse la liste absente, sans fermer la page. */
+async function readCiting(pageId: string) {
+  try {
+    citing.value = (await api.citingPages(pageId)).map((p) => p.id)
+  } catch (e) {
+    error.value = `Pages qui renvoient ici illisibles : ${e instanceof Error ? e.message : String(e)}`
+  }
 }
 
 /**
@@ -170,6 +186,8 @@ function createPage(newTitle: string, parentId: string | null, done = () => {}) 
     done()
     notebook.value = await api.notebook()
     display(created, true)
+    // Une page neuve : rien ne peut encore la citer.
+    citing.value = []
     await api.setLastPage(created.id)
   })
 }
@@ -347,6 +365,7 @@ async function leave(target: 'home' | 'combat') {
             @change="onChange"
             @open="open"
           />
+          <CitingPages v-if="citing" :page-ids="citing" :pages="notebook.pages" @open="open" />
         </article>
       </main>
       <MovePageDialog :pages="notebook.pages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
