@@ -321,6 +321,17 @@ function moveTo(pageId: string, parentId: string | null) {
   })
 }
 
+/**
+ * Un fichier lâché hors du texte éditable (marge, arbre, page verrouillée) ne remplace jamais l'application : le
+ * navigateur l'ouvrirait. Le texte éditable prend le sien en main avant.
+ */
+function keepFiles(e: DragEvent) {
+  if (!e.dataTransfer?.types.includes('Files')) return
+  // Au-dessus du texte éditable, ProseMirror a déjà accepté le dépôt ; ailleurs, le curseur dit qu'on ne dépose rien.
+  if (e.type === 'dragover' && !e.defaultPrevented) e.dataTransfer.dropEffect = 'none'
+  e.preventDefault()
+}
+
 async function leave(target: 'home' | 'combat') {
   // Une frappe qui n'a pas pu partir reste à l'écran, avec l'erreur : on ne quitte pas en la perdant.
   if (!(await saved())) return
@@ -330,7 +341,7 @@ async function leave(target: 'home' | 'combat') {
 </script>
 
 <template>
-  <div class="notebook">
+  <div class="notebook" @dragover="keepFiles" @drop="keepFiles">
     <header class="bar">
       <button type="button" class="icon-button" aria-label="Accueil" title="Accueil : changer de campagne" @click="leave('home')">
         <AppIcon name="home" />
@@ -464,6 +475,7 @@ async function leave(target: 'home' | 'combat') {
             :pages="notebook.pages"
             @change="onChange"
             @open="open"
+            @refuse="(reason) => (error = reason)"
           />
           <CitingPages v-if="citing" :page-ids="citing" :pages="notebook.pages" @open="open" />
         </article>
