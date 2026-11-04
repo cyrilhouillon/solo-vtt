@@ -1,6 +1,6 @@
 ---
 objective: "Les pages du Carnet forment un arbre que le joueur construit : il crée une page à la racine ou sous une autre, la renomme, la déplace avec ses sous-pages (glisser-déposer ou menu), sans jamais créer de boucle, ouvre et replie les branches, et retrouve l'arbre après un redémarrage du serveur."
-status: pending
+status: implemented
 ---
 
 # Plan: ranger les pages du Carnet dans un arbre
