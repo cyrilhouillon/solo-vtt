@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { campaignApi } from '../api'
 import AppIcon from './AppIcon.vue'
 import ThemeButton from './ThemeButton.vue'
@@ -7,9 +7,10 @@ import PageEditor from './PageEditor.vue'
 import PageTree from './PageTree.vue'
 import MovePageDialog from './MovePageDialog.vue'
 import CitingPages from './CitingPages.vue'
+import SearchResults from './SearchResults.vue'
 import { ancestors, buildTree } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
-import type { CampaignView, NotebookView, PageDocument, PageView } from '../types'
+import type { CampaignView, NotebookView, PageDocument, PageView, SearchResult } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
 /** Retour à l'accueil, ou passage à l'écran de combat de la campagne. */
@@ -34,6 +35,44 @@ const moving = ref<string | null>(null)
 const pageTitle = ref('')
 /** Les pages qui citent la page ouverte, `null` tant qu'elles ne sont pas lues. */
 const citing = ref<string[] | null>(null)
+
+/** La recherche en cours : tant que le champ n'est pas vide, ses résultats remplacent l'arbre. */
+const query = ref('')
+const searching = computed(() => query.value.trim() !== '')
+/** Les derniers résultats reçus et la requête qui les a produits ; `null` avant la première réponse. */
+const found = ref<{ query: string; results: SearchResult[] } | null>(null)
+/** Attente après la dernière frappe dans le champ de recherche. */
+const SEARCH_DELAY_MS = 250
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+/** Numéro de la dernière recherche lancée : une réponse plus ancienne est ignorée. */
+let searchRun = 0
+
+watch(query, () => {
+  clearTimeout(searchTimer)
+  if (!searching.value) {
+    searchRun++
+    found.value = null
+    return
+  }
+  searchTimer = setTimeout(() => void search(), SEARCH_DELAY_MS)
+})
+
+/** La frappe en attente part d'abord, pour que la recherche la trouve ; si elle échoue, rien ne part. */
+async function search() {
+  const run = ++searchRun
+  const wanted = query.value.trim()
+  if (!(await saved()) || run !== searchRun) return
+  try {
+    const results = await api.searchPages(wanted)
+    if (run === searchRun) found.value = { query: wanted, results }
+  } catch (e) {
+    if (run === searchRun) error.value = `Recherche impossible : ${e instanceof Error ? e.message : String(e)}`
+  }
+}
+
+function clearSearch() {
+  query.value = ''
+}
 
 /** Attente avant d'envoyer une frappe : assez pour grouper les touches, assez peu pour ne rien perdre. */
 const SAVE_DELAY_MS = 1000
@@ -306,7 +345,26 @@ async function leave(target: 'home' | 'combat') {
       <nav class="pages" aria-labelledby="pages-title">
         <h2 id="pages-title" class="panel-title">Pages</h2>
         <hr class="tapered" />
+        <div class="search">
+          <input
+            v-model="query"
+            type="search"
+            placeholder="Chercher"
+            aria-label="Chercher dans le Carnet"
+            @keydown.esc.prevent="clearSearch"
+          />
+          <button v-if="query" type="button" class="icon-button" aria-label="Effacer la recherche" title="Effacer la recherche" @click="clearSearch">
+            <AppIcon name="remove" />
+          </button>
+        </div>
+        <SearchResults
+          v-if="searching"
+          :results="found?.results ?? null"
+          :query="found?.query ?? query"
+          @open="open"
+        />
         <PageTree
+          v-else
           ref="tree"
           :pages="notebook.pages"
           :current-id="page?.id ?? null"
@@ -450,9 +508,20 @@ label {
   gap: 0.25rem;
   color: var(--ink-muted);
 }
-input[type='text'] {
+input[type='text'],
+input[type='search'] {
   width: 100%;
   box-sizing: border-box;
+}
+.search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+/* Le bouton Effacer remplace celui du navigateur, absent de Firefox. */
+input[type='search']::-webkit-search-cancel-button {
+  appearance: none;
 }
 .page {
   min-width: 0;
