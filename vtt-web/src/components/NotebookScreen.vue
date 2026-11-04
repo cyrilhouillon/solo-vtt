@@ -210,6 +210,8 @@ onMounted(() => {
   })
 })
 onBeforeUnmount(() => {
+  clearTimeout(searchTimer)
+  searchRun++
   document.removeEventListener('visibilitychange', onVisibilityChange)
   window.removeEventListener('pagehide', onPageHide)
   void flush()
@@ -361,6 +363,7 @@ async function leave(target: 'home' | 'combat') {
           v-if="searching"
           :results="found?.results ?? null"
           :query="found?.query ?? query"
+          :pages="notebook.pages"
           @open="open"
         />
         <PageTree

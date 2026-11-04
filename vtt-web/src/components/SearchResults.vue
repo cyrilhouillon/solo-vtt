@@ -1,34 +1,41 @@
 <script setup lang="ts">
-import type { SearchResult } from '../types'
+import { computed } from 'vue'
+import type { PageSummary, SearchResult } from '../types'
 
 /**
  * `results` : les pages trouvées, dans l'ordre du serveur ; `null` pendant la première lecture. L'extrait arrive découpé :
- * le client surligne ce que le serveur a trouvé, sans rien comparer lui-même.
+ * le client surligne ce que le serveur a trouvé, sans rien comparer lui-même. Le titre vient de `pages`, que le Carnet
+ * relit à chaque geste : un renommage s'y voit sans relancer la recherche.
  */
-defineProps<{ results: readonly SearchResult[] | null; query: string }>()
+const props = defineProps<{ results: readonly SearchResult[] | null; query: string; pages: readonly PageSummary[] }>()
 const emit = defineEmits<{ open: [pageId: string] }>()
+
+const titles = computed(() => new Map(props.pages.map((p) => [p.id, p.title])))
+const status = computed(() => {
+  if (props.results === null) return 'Recherche…'
+  const n = props.results.length
+  if (n === 0) return `Aucune page ne contient « ${props.query.trim()} ».`
+  return `${n} ${n > 1 ? 'pages' : 'page'}`
+})
 </script>
 
 <template>
-  <div class="results" role="region" aria-label="Résultats de la recherche" aria-live="polite">
-    <p v-if="results === null" class="count">Recherche…</p>
-    <template v-else-if="results.length">
-      <p class="count">{{ results.length }} {{ results.length > 1 ? 'pages' : 'page' }}</p>
-      <ul>
-        <li v-for="r in results" :key="r.id">
-          <button type="button" class="result" @click="emit('open', r.id)">
-            <span class="result-title">{{ r.title }}</span>
-            <span v-if="r.excerpt.length" class="excerpt">
-              <template v-for="(f, i) in r.excerpt" :key="i">
-                <mark v-if="f.match">{{ f.text }}</mark>
-                <template v-else>{{ f.text }}</template>
-              </template>
-            </span>
-          </button>
-        </li>
-      </ul>
-    </template>
-    <p v-else class="none">Aucune page ne contient « {{ query.trim() }} ».</p>
+  <div class="results" role="region" aria-label="Résultats de la recherche">
+    <!-- Un seul message annoncé, toujours présent : la liste elle-même n'est pas relue à chaque réponse. -->
+    <p class="count" :class="{ none: results?.length === 0 }" aria-live="polite">{{ status }}</p>
+    <ul v-if="results?.length">
+      <li v-for="r in results" :key="r.id">
+        <button type="button" class="result" @click="emit('open', r.id)">
+          <span class="result-title">{{ titles.get(r.id) ?? r.title }}</span>
+          <span v-if="r.excerpt.length" class="excerpt">
+            <template v-for="(f, i) in r.excerpt" :key="i">
+              <mark v-if="f.match">{{ f.text }}</mark>
+              <template v-else>{{ f.text }}</template>
+            </template>
+          </span>
+        </button>
+      </li>
+    </ul>
   </div>
 </template>
 
@@ -40,8 +47,7 @@ const emit = defineEmits<{ open: [pageId: string] }>()
   flex-direction: column;
   gap: 0.5rem;
 }
-.count,
-.none {
+.count {
   margin: 0;
   color: var(--ink-muted);
 }
