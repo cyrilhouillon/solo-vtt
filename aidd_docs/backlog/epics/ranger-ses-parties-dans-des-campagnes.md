@@ -1,6 +1,6 @@
 ---
 type: epic
-status: proposed
+status: done
 source: aidd_docs/tasks/2026_11/2026_11_01-solo-vtt-prd.md
 depends_on:
   - aidd_docs/backlog/epics/jouer-un-combat-dnd-2024-en-local.md

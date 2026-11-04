@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 parent: aidd_docs/backlog/epics/ranger-ses-parties-dans-des-campagnes.md
 depends_on:
   - aidd_docs/backlog/stories/creer-et-ouvrir-une-campagne-depuis-l-accueil.md
@@ -20,3 +20,7 @@ order: 2
 - Les lancements suivants ne recréent pas cette campagne.
 - Sans partie ni carte existante, l'accueil n'a aucune campagne.
 - Une partie d'avant illisible est mise de côté comme aujourd'hui ; les cartes enregistrées sont quand même reprises.
+
+## Note
+
+Reprise faite à la main (seule installation existante) : `partie.json` et `cartes.json` déplacés dans `~/.solo-vtt/campagnes/<id>/` avec une fiche « Ma campagne ». Aucun code.
