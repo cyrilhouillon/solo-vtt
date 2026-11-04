@@ -180,13 +180,15 @@ async function toggleMenu(pageId: string) {
   const button = root.value?.querySelector<HTMLElement>(`.row[data-page-id="${CSS.escape(pageId)}"] .more`)
   if (!button) return
   const rect = button.getBoundingClientRect()
-  const right = window.innerWidth - rect.right
+  // Un élément fixe se place dans la fenêtre sans ses barres de défilement, que `innerWidth` compterait.
+  const { clientWidth, clientHeight } = document.documentElement
+  const right = clientWidth - rect.right
   menuId.value = pageId
   menuPlace.value = { top: rect.bottom + MENU_GAP, right }
   await nextTick()
   const menu = root.value?.querySelector<HTMLElement>('.menu')
-  if (menu && menu.getBoundingClientRect().bottom > window.innerHeight && rect.top > menu.offsetHeight + MENU_GAP) {
-    menuPlace.value = { bottom: window.innerHeight - rect.top + MENU_GAP, right }
+  if (menu && menu.getBoundingClientRect().bottom > clientHeight && rect.top > menu.offsetHeight + MENU_GAP) {
+    menuPlace.value = { bottom: clientHeight - rect.top + MENU_GAP, right }
   }
   menu?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true })
 }
