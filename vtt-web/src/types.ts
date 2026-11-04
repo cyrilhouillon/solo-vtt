@@ -67,6 +67,11 @@ export interface PageView extends PageSummary {
   content: PageDocument | null
 }
 
+/** Une page trouvée par la recherche : `excerpt`, l'extrait découpé par le serveur, `match` pour un mot trouvé. */
+export interface SearchResult extends PageSummary {
+  excerpt: { text: string; match: boolean }[]
+}
+
 /** Le Carnet d'une campagne : ses pages (l'arbre se tire de leur parent) et la dernière page consultée (`null` si aucune). */
 export interface NotebookView {
   pages: PageSummary[]

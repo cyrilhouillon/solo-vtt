@@ -13,6 +13,7 @@ import type {
   PageView,
   SavedMapView,
   SceneView,
+  SearchResult,
   TokenView,
 } from './types'
 
@@ -92,6 +93,8 @@ export function campaignApi(campaignId: string) {
 
     /** Les pages dont le texte a un lien vers celle-ci, sans elle-même. */
     citingPages: (pageId: string) => request<PageSummary[]>(`${base}/notebook/pages/${encodeURIComponent(pageId)}/citing`),
+    /** Les pages qui contiennent chaque mot, celles au titre trouvé d'abord, avec un extrait. */
+    searchPages: (query: string) => request<SearchResult[]>(`${base}/notebook/search?q=${encodeURIComponent(query)}`),
 
     /** Garde le document de la page ; `keepalive` laisse partir l'envoi quand l'onglet se ferme (corps de 64 Kio au plus). */
     savePageContent: (pageId: string, content: PageDocument, keepalive = false) =>
