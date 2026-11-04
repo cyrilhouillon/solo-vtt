@@ -75,6 +75,18 @@ final class Dtos {
     /** {@code parentId} : {@code null} à la racine ; {@code content} : le document de l'éditeur, {@code null} si neuve. */
     record PageDto(String id, String title, String parentId, JsonNode content) {}
 
+    /** Un morceau d'extrait ; {@code match} : un mot de la recherche, à surligner. */
+    record FragmentDto(String text, boolean match) {}
+
+    /** Une page trouvée ; {@code excerpt} : l'extrait en morceaux, vide pour une page sans texte. */
+    record SearchResultDto(String id, String title, String parentId, List<FragmentDto> excerpt) {
+        static SearchResultDto of(NotebookStore.SearchHit hit) {
+            Page page = hit.page();
+            return new SearchResultDto(page.id(), page.title(), page.parentId(),
+                    hit.excerpt().stream().map(f -> new FragmentDto(f.text(), f.match())).toList());
+        }
+    }
+
     /** {@code lastPageId} : la dernière page consultée, {@code null} si aucune. */
     record NotebookDto(List<PageSummaryDto> pages, String lastPageId) {}
 

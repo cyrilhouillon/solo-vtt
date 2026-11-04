@@ -66,6 +66,22 @@ public interface NotebookStore {
      */
     void setLastPage(String id);
 
+    /**
+     * Les pages dont le titre ou le texte contient chaque mot de la requête, sans casse ni accents : celles dont le titre
+     * en contient un d'abord. Chacune vient avec un extrait autour du premier mot trouvé dans son texte (son début si seul
+     * le titre le contient), où les mots trouvés sont marqués. Boîte noire : l'implémentation par défaut relit toutes les
+     * pages à chaque appel ({@link PageSearch}) ; un adaptateur peut la remplacer par un index ou une base.
+     */
+    default List<SearchHit> search(String query) {
+        return PageSearch.search(list(), query);
+    }
+
+    /** Une page trouvée et son extrait, découpé en morceaux. */
+    record SearchHit(Page page, List<Fragment> excerpt) {}
+
+    /** Un morceau d'extrait ; {@code match} : un mot de la requête. */
+    record Fragment(String text, boolean match) {}
+
     Comparator<Page> BY_TITLE = Comparator.comparing(Page::title, String.CASE_INSENSITIVE_ORDER).thenComparing(Page::title);
 
     /** Refuse un parent qui mettrait la page sous elle-même : l'appelant tient le verrou du Carnet. */

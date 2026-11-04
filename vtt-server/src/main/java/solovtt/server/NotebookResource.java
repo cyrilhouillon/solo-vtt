@@ -9,6 +9,7 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -97,6 +98,21 @@ public class NotebookResource {
     public List<Dtos.PageSummaryDto> citing(@PathParam("pageId") String pageId) {
         known(pageId);
         return PageLinks.citing(notebook.list(), pageId).stream().map(Dtos.PageSummaryDto::of).toList();
+    }
+
+    /**
+     * Les pages dont le titre ou le texte contient chaque mot, sans casse ni accents, celles au titre trouvé d'abord,
+     * avec un extrait. Le mécanisme appartient au Carnet ({@link NotebookStore#search}).
+     */
+    @GET
+    @Path("/search")
+    @APIResponse(responseCode = "200", description = "Les pages trouvées, vide si aucune",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = SchemaType.ARRAY, implementation = Dtos.SearchResultDto.class)))
+    @APIResponse(responseCode = "400", description = "Aucun mot à chercher")
+    public List<Dtos.SearchResultDto> search(@QueryParam("q") String query) {
+        if (query == null || query.isBlank()) throw new IllegalArgumentException("Donner un mot à chercher");
+        return notebook.search(query).stream().map(Dtos.SearchResultDto::of).toList();
     }
 
     /** Remplace le contenu de la page par le document de l'éditeur, gardé tel quel. */
