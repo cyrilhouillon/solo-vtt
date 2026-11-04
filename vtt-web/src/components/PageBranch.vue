@@ -30,6 +30,17 @@ function onKey(e: KeyboardEvent) {
   }
 }
 
+/** Pendant un glisser : la page glissée s'estompe, la ligne visée dit si elle l'accepte. */
+function dropClass(pageId: string) {
+  const drag = tree.drag.value
+  if (!drag) return undefined
+  return {
+    dragged: drag.pageId === pageId,
+    'drop-ok': drag.target === pageId && drag.allowed,
+    'drop-refused': drag.target === pageId && !drag.allowed,
+  }
+}
+
 const isEditing = (kind: 'rename' | 'child', pageId: string) =>
   tree.edit.value?.kind === kind && tree.edit.value.pageId === pageId
 </script>
@@ -37,7 +48,7 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
 <template>
   <ul class="branch" :class="{ root: depth === 0 }">
     <li v-for="node in nodes" :key="node.page.id">
-      <div class="row" :data-page-id="node.page.id" :style="{ '--depth': depth }">
+      <div class="row" :class="dropClass(node.page.id)" :data-page-id="node.page.id" :style="{ '--depth': depth }">
         <button
           v-if="node.children.length"
           type="button"
@@ -157,6 +168,18 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
   color: var(--ink);
   background: var(--wood-sunken);
   border-color: var(--rule);
+}
+.row.dragged .page-link {
+  opacity: 0.5;
+}
+.row.drop-ok .page-link {
+  color: var(--ink);
+  background: var(--wood-raised);
+  border-color: var(--brass);
+}
+.row.drop-refused .page-link {
+  border-color: var(--danger);
+  border-style: dashed;
 }
 .title-field {
   flex: 1;

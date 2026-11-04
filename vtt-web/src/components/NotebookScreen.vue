@@ -207,9 +207,14 @@ async function closeMove() {
   if (pageId) await tree.value?.focusPage(pageId)
 }
 
+/** Le choix du dialogue Déplacer. */
 function move(parentId: string | null) {
-  const pageId = moving.value
-  if (!pageId) return
+  if (moving.value) moveTo(moving.value, parentId)
+}
+
+/** Range la page sous `parentId` (`null` : la racine), depuis le dialogue ou au bout d'un glisser dans l'arbre. */
+function moveTo(pageId: string, parentId: string | null) {
+  if (busy.value) return
   error.value = null
   call(async () => {
     try {
@@ -282,6 +287,7 @@ async function leave(target: 'home' | 'combat') {
           @create="(t, parentId) => createPage(t, parentId)"
           @rename="rename"
           @move="(pageId) => (moving = pageId)"
+          @drop="moveTo"
         />
         <form class="create new-page" @submit.prevent="create">
           <label>

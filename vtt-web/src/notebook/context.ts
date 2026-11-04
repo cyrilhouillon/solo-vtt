@@ -6,6 +6,13 @@ export interface TreeEdit {
   pageId: string
 }
 
+/** Un glisser en cours : la page glissée, la ligne visée (`null` : la racine, `undefined` : aucune) et si elle l'accepte. */
+export interface TreeDrag {
+  pageId: string
+  target: string | null | undefined
+  allowed: boolean
+}
+
 /** Ce que chaque branche de l'arbre partage avec `PageTree`, qui tient l'état et parle au Carnet. */
 export interface TreeContext {
   currentId: Ref<string | null>
@@ -14,6 +21,7 @@ export interface TreeContext {
   /** La ligne dont le menu est ouvert. */
   menuId: Ref<string | null>
   edit: Ref<TreeEdit | null>
+  drag: Ref<TreeDrag | null>
   draft: Ref<string>
   open: (pageId: string) => void
   toggle: (pageId: string) => void
