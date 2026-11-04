@@ -128,17 +128,18 @@ function display(opened: PageView, editable: boolean) {
 /** Ouvre la page et la note comme dernière consultée, puis lit les pages qui la citent. */
 async function show(pageId: string) {
   if (!(await saved())) return
-  display(await api.page(pageId), false)
+  const opened = await api.page(pageId)
+  // Vidée avant d'afficher : la liste de la page précédente ne passe jamais sous celle-ci.
+  citing.value = null
+  display(opened, false)
   await api.setLastPage(pageId)
   await readCiting(pageId)
 }
 
 /** Un échec laisse la liste absente, sans fermer la page. */
 async function readCiting(pageId: string) {
-  citing.value = null
   try {
-    const pages = await api.citingPages(pageId)
-    if (page.value?.id === pageId) citing.value = pages.map((p) => p.id)
+    citing.value = (await api.citingPages(pageId)).map((p) => p.id)
   } catch (e) {
     error.value = `Pages qui renvoient ici illisibles : ${e instanceof Error ? e.message : String(e)}`
   }
