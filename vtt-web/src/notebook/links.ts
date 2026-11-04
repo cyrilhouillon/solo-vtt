@@ -1,9 +1,9 @@
 import type { PageSummary } from '../types'
 import { byTitle } from './tree'
 
-/** Ce qu'affiche un lien : son texte choisi, sinon le titre actuel de sa cible ; `null` pour une cible absente sans texte. */
-export function linkText(pages: readonly PageSummary[], pageId: string, label: string | null): string | null {
-  return label ?? pages.find((p) => p.id === pageId)?.title ?? null
+/** Ce qu'affiche un lien : son texte choisi, sinon le titre actuel de sa cible, sinon « page introuvable » (lien mort). */
+export function linkText(pages: readonly PageSummary[], pageId: string, label: string | null): string {
+  return label ?? pages.find((p) => p.id === pageId)?.title ?? 'page introuvable'
 }
 
 /** Sans casse ni accents : « eve » trouve « Ève ». */

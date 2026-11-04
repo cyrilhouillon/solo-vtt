@@ -17,7 +17,7 @@ const label = computed(() => props.node.attrs.label as string | null)
 const target = computed(() => options.value.pages().find((p) => p.id === pageId.value))
 /** En écriture, Tab va du texte à la bulle sans s'arrêter sur le lien. */
 const locked = computed(() => options.value.locked())
-const text = computed(() => linkText(options.value.pages(), pageId.value, label.value) ?? 'page introuvable')
+const text = computed(() => linkText(options.value.pages(), pageId.value, label.value))
 
 function onClick(event: MouseEvent) {
   // Le nœud n'est pas éditable : sans cela, le navigateur suivrait l'ancre.

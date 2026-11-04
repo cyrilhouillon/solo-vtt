@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node } from '@tiptap/core'
 import { PluginKey } from '@tiptap/pm/state'
 import Suggestion from '@tiptap/suggestion'
 import { VueNodeViewRenderer, VueRenderer } from '@tiptap/vue-3'
@@ -62,12 +62,11 @@ export const PageLink = Node.create<PageLinkOptions>({
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    const text = linkText(this.options.pages(), node.attrs.pageId, node.attrs.label) ?? 'page introuvable'
-    return ['a', mergeAttributes(HTMLAttributes), text]
+    return ['a', HTMLAttributes, linkText(this.options.pages(), node.attrs.pageId, node.attrs.label)]
   },
 
   renderText({ node }) {
-    return linkText(this.options.pages(), node.attrs.pageId, node.attrs.label) ?? 'page introuvable'
+    return linkText(this.options.pages(), node.attrs.pageId, node.attrs.label)
   },
 
   addNodeView() {
