@@ -19,6 +19,8 @@ export interface PageLinkOptions {
    * Tiptap copie les options en profondeur, ce qui perdrait la valeur d'une `Ref` ; lue dans un `computed`, elle suit.
    */
   pages: () => readonly PageSummary[]
+  /** Vrai quand la page est verrouillée, lu de même : le lien n'est atteignable au Tab et ne s'ouvre au clic qu'alors. */
+  locked: () => boolean
   /** Ouvre la page visée. */
   onOpen: (pageId: string) => void
 }
@@ -37,7 +39,7 @@ export const PageLink = Node.create<PageLinkOptions>({
   selectable: true,
 
   addOptions() {
-    return { pages: () => [], onOpen: () => {} }
+    return { pages: () => [], locked: () => true, onOpen: () => {} }
   },
 
   addAttributes() {

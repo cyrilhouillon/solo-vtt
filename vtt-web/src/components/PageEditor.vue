@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { watch } from 'vue'
 import { PageLink } from '../notebook/pageLink'
+import PageLinkBubble from './PageLinkBubble.vue'
 import type { PageDocument, PageSummary } from '../types'
 
 /**
@@ -21,7 +22,11 @@ const editor = useEditor({
   extensions: [
     StarterKit.configure({ link: false }),
     // La liste suit le Carnet, relu à chaque geste : un lien affiche le titre actuel de sa cible.
-    PageLink.configure({ pages: () => props.pages, onOpen: (pageId) => emit('open', pageId) }),
+    PageLink.configure({
+      pages: () => props.pages,
+      locked: () => !props.editable,
+      onOpen: (pageId) => emit('open', pageId),
+    }),
   ],
   editable: props.editable,
   autofocus: props.editable ? 'end' : false,
@@ -50,6 +55,7 @@ watch(
 
 <template>
   <EditorContent :editor="editor" class="page-editor" />
+  <PageLinkBubble v-if="editor" :editor="editor" :pages="pages" @open="(pageId) => emit('open', pageId)" />
 </template>
 
 <style scoped>
