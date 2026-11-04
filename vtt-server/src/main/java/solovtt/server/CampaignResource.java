@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * Les campagnes : les lister, en créer une, et jouer dans chacune. Tout ce qui touche une partie vit sous
- * {@code /api/campaigns/{id}/…} ; un id inconnu rend 404.
+ * {@code /api/campaigns/{campaignId}/…} ; un id inconnu rend 404.
  */
 @Path("/api/campaigns")
 public class CampaignResource {
@@ -51,38 +51,38 @@ public class CampaignResource {
         return Dtos.CampaignDto.of(campaigns.create(name));
     }
 
-    @Path("/{id}/scene")
-    public SceneResource scene(@PathParam("id") String id) {
-        return new SceneResource(sessions.of(id), images);
+    @Path("/{campaignId}/scene")
+    public SceneResource scene(@PathParam("campaignId") String campaignId) {
+        return new SceneResource(sessions.of(campaignId), images);
     }
 
-    @Path("/{id}/maps")
-    public MapResource maps(@PathParam("id") String id) {
-        return new MapResource(sessions.of(id));
+    @Path("/{campaignId}/maps")
+    public MapResource maps(@PathParam("campaignId") String campaignId) {
+        return new MapResource(sessions.of(campaignId));
     }
 
-    @Path("/{id}/creatures")
-    public CreatureResource creatures(@PathParam("id") String id) {
-        return new CreatureResource(sessions.of(id));
+    @Path("/{campaignId}/creatures")
+    public CreatureResource creatures(@PathParam("campaignId") String campaignId) {
+        return new CreatureResource(sessions.of(campaignId));
     }
 
-    @Path("/{id}/attacks")
-    public AttackResource attacks(@PathParam("id") String id) {
-        return new AttackResource(sessions.of(id));
+    @Path("/{campaignId}/attacks")
+    public AttackResource attacks(@PathParam("campaignId") String campaignId) {
+        return new AttackResource(sessions.of(campaignId));
     }
 
-    @Path("/{id}/journal")
-    public JournalResource journal(@PathParam("id") String id) {
-        return new JournalResource(sessions.of(id));
+    @Path("/{campaignId}/journal")
+    public JournalResource journal(@PathParam("campaignId") String campaignId) {
+        return new JournalResource(sessions.of(campaignId));
     }
 
-    @Path("/{id}/decisions")
-    public DecisionResource decisions(@PathParam("id") String id) {
-        return new DecisionResource(sessions.of(id));
+    @Path("/{campaignId}/decisions")
+    public DecisionResource decisions(@PathParam("campaignId") String campaignId) {
+        return new DecisionResource(sessions.of(campaignId));
     }
 
-    @Path("/{id}/combat")
-    public CombatResource combat(@PathParam("id") String id) {
-        return new CombatResource(sessions.of(id));
+    @Path("/{campaignId}/combat")
+    public CombatResource combat(@PathParam("campaignId") String campaignId) {
+        return new CombatResource(sessions.of(campaignId));
     }
 }
