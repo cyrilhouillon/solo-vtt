@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: afficher et ranger l'arbre dans le Carnet
