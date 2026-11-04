@@ -1,5 +1,6 @@
 package solovtt.server;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import dnd.engine.catalog.CatalogEntry;
 import dnd.engine.state.Attack;
 import dnd.engine.state.Combat;
@@ -48,6 +49,28 @@ final class Dtos {
 
     /** Le nom d'une campagne à créer. */
     record CampaignNameRequest(String name) {}
+
+    /** Le titre d'une page à créer ; {@code null} si absent. */
+    record PageTitleRequest(String title) {}
+
+    /** Le document de l'éditeur à garder pour une page ; {@code null} si absent. */
+    record PageContentRequest(JsonNode content) {}
+
+    /** La page consultée ; {@code null} si absent. */
+    record LastPageRequest(String pageId) {}
+
+    /** Une page, telle que la liste du Carnet la montre. */
+    record PageSummaryDto(String id, String title) {
+        static PageSummaryDto of(Page page) {
+            return new PageSummaryDto(page.id(), page.title());
+        }
+    }
+
+    /** {@code content} : le document de l'éditeur, {@code null} pour une page neuve. */
+    record PageDto(String id, String title, JsonNode content) {}
+
+    /** {@code lastPageId} : la dernière page consultée, {@code null} si aucune. */
+    record NotebookDto(List<PageSummaryDto> pages, String lastPageId) {}
 
     record CampaignDto(String id, String name) {
         static CampaignDto of(Campaign campaign) {

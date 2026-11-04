@@ -1,6 +1,7 @@
 package solovtt.server;
 
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -79,6 +80,13 @@ public class CampaignResource {
     @Path("/{campaignId}/decisions")
     public DecisionResource decisions(@PathParam("campaignId") String campaignId) {
         return new DecisionResource(sessions.of(campaignId));
+    }
+
+    /** Le Carnet ne touche pas la partie : il ne fait pas rejouer la session de la campagne. */
+    @Path("/{campaignId}/notebook")
+    public NotebookResource notebook(@PathParam("campaignId") String campaignId) {
+        if (campaigns.find(campaignId).isEmpty()) throw new NotFoundException("Campagne inconnue : " + campaignId);
+        return new NotebookResource(campaigns.notebook(campaignId));
     }
 
     @Path("/{campaignId}/combat")
