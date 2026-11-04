@@ -1,6 +1,6 @@
 ---
 objective: "Dans une page déverrouillée du Carnet, le joueur insère une image PNG, JPEG ou WebP depuis son disque, qui s'affiche à sa place dans le texte et survit au redémarrage ; un autre type ou un fichier de plus de 50 Mo est refusé avec la raison ; il retire l'image, et Ctrl+Z la remet."
-status: pending
+status: implemented
 ---
 
 # Plan: mettre une image dans une page du Carnet
