@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +29,7 @@ public final class PageSearch {
     static final int START = 120;
     static final String ELLIPSIS = "…";
 
+    private static final Pattern MARKS = Pattern.compile("\\p{M}");
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final System.Logger LOG = System.getLogger(PageSearch.class.getName());
 
@@ -70,7 +72,12 @@ public final class PageSearch {
         StringBuilder folded = new StringBuilder(text.length());
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            String f = Normalizer.normalize(String.valueOf(c), Normalizer.Form.NFD).replaceAll("\\p{M}", "")
+            if (c < 0x80) {
+                // L'ASCII n'a pas d'accent : le gros du texte se plie sans normaliser.
+                folded.append(Character.toLowerCase(c));
+                continue;
+            }
+            String f = MARKS.matcher(Normalizer.normalize(String.valueOf(c), Normalizer.Form.NFD)).replaceAll("")
                     .toLowerCase(Locale.ROOT);
             folded.append(f.length() == 1 ? f.charAt(0) : Character.toLowerCase(c));
         }
