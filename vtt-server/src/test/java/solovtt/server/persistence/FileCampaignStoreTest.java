@@ -54,6 +54,21 @@ class FileCampaignStoreTest {
     }
 
     @Test
+    void leCarnet_vitDansLeDossierDeSaCampagne_unParCampagne() {
+        Path root = dir.resolve("campagnes");
+        var store = new FileCampaignStore(root);
+        var strahd = store.create("Strahd");
+        var phandelver = store.create("Phandelver");
+        var page = store.notebook(strahd.id()).create("Session 1");
+
+        var relu = new FileCampaignStore(root);
+        assertEquals(List.of(page), relu.notebook(strahd.id()).list());
+        assertEquals(List.of(), relu.notebook(phandelver.id()).list());
+        assertEquals(true, Files.exists(root.resolve(strahd.id()).resolve("carnet").resolve(page.id() + ".json")));
+        assertThrows(IllegalArgumentException.class, () -> store.notebook("../" + strahd.id()));
+    }
+
+    @Test
     void memeNom_deuxCampagnesDistinctes() {
         var store = new FileCampaignStore(dir);
         store.create("Strahd");

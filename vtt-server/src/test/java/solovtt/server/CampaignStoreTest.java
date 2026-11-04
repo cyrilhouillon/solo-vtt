@@ -43,4 +43,16 @@ class CampaignStoreTest {
         assertEquals(List.of(), store.maps(b.id()).list());
         assertThrows(IllegalArgumentException.class, () -> store.games("inconnue"));
     }
+
+    @Test
+    void enMemoire_unCarnetParCampagne() {
+        var store = CampaignStore.inMemory();
+        var a = store.create("A");
+        var b = store.create("B");
+        var page = store.notebook(a.id()).create("Session 1");
+
+        assertEquals(List.of(page), store.notebook(a.id()).list());
+        assertEquals(List.of(), store.notebook(b.id()).list());
+        assertThrows(IllegalArgumentException.class, () -> store.notebook("inconnue"));
+    }
 }
