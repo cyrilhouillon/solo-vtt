@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -75,6 +76,20 @@ class JsonFileNotebookStoreTest {
         assertThrows(IllegalArgumentException.class, () -> store.saveContent("../campagne", ARRIVEE));
         assertThrows(IllegalArgumentException.class, () -> store.setLastPage("inconnue"));
         assertFalse(Files.exists(dir.resolve("campagne.json")));
+    }
+
+    @Test
+    void uneFicheIllisibleNommeeParUnId_nEstPasTrouvee_etJamaisEcrasee() throws IOException {
+        Path carnet = dir.resolve("carnet");
+        var store = new JsonFileNotebookStore(carnet);
+        store.create("Session 1");
+        String id = UUID.randomUUID().toString();
+        Path abimee = carnet.resolve(id + ".json");
+        Files.writeString(abimee, "{pas du json");
+
+        assertEquals(Optional.empty(), store.find(id));
+        assertThrows(IllegalArgumentException.class, () -> store.saveContent(id, ARRIVEE));
+        assertEquals("{pas du json", Files.readString(abimee));
     }
 
     @Test

@@ -53,6 +53,14 @@ public final class JsonFileNotebookStore implements NotebookStore {
         return pages.stream().sorted(BY_TITLE).toList();
     }
 
+    /** Lit la seule fiche de cette page : un id qui n'est pas un UUID ne construit aucun chemin. */
+    @Override
+    public synchronized Optional<Page> find(String id) {
+        if (!isPageId(id)) return Optional.empty();
+        Path file = dir.resolve(id + EXTENSION);
+        return Files.isRegularFile(file) ? read(file) : Optional.empty();
+    }
+
     @Override
     public synchronized Page create(String title) {
         var page = new Page(UUID.randomUUID().toString(), title, null);
@@ -86,6 +94,16 @@ public final class JsonFileNotebookStore implements NotebookStore {
     /** Une page lue sur le disque : aucun chemin ne se construit depuis un id qui n'en est pas un. */
     private Page known(String id) {
         return find(id).orElseThrow(() -> new IllegalArgumentException("Page inconnue : " + id));
+    }
+
+    /** Un id de page est un UUID sous sa forme canonique, comme {@link #create} le tire. */
+    private static boolean isPageId(String id) {
+        if (id == null) return false;
+        try {
+            return UUID.fromString(id).toString().equals(id);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private boolean isPageFile(Path file) {
