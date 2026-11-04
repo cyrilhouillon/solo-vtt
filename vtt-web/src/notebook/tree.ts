@@ -24,10 +24,8 @@ export function buildTree(pages: readonly PageSummary[]): PageNode[] {
     const parent = page.parentId !== null && ids.has(page.parentId) ? page.parentId : null
     children.set(parent, [...(children.get(parent) ?? []), page])
   }
-  const seen = new Set<string>()
   const nodes = (parent: string | null): PageNode[] =>
     (children.get(parent) ?? [])
-      .filter((page) => !seen.has(page.id) && seen.add(page.id))
       .sort(byTitle)
       .map((page) => ({ page, children: nodes(page.id) }))
   return nodes(null)

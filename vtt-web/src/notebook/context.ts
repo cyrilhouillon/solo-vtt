@@ -13,6 +13,16 @@ export interface TreeDrag {
   allowed: boolean
 }
 
+/**
+ * La place du menu de ligne, en coordonnées de la fenêtre : fixe, il sort de l'arbre qui défile au lieu d'y être coupé.
+ * Sous son bouton (`top`), ou au-dessus (`bottom`) quand la fenêtre manque de place.
+ */
+export interface MenuPlace {
+  top?: number
+  bottom?: number
+  right: number
+}
+
 /** Ce que chaque branche de l'arbre partage avec `PageTree`, qui tient l'état et parle au Carnet. */
 export interface TreeContext {
   currentId: Ref<string | null>
@@ -20,6 +30,7 @@ export interface TreeContext {
   busy: Ref<boolean>
   /** La ligne dont le menu est ouvert. */
   menuId: Ref<string | null>
+  menuPlace: Ref<MenuPlace | null>
   edit: Ref<TreeEdit | null>
   drag: Ref<TreeDrag | null>
   draft: Ref<string>

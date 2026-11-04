@@ -41,6 +41,14 @@ function dropClass(pageId: string) {
   }
 }
 
+/** Le menu se pose où l'arbre l'a placé, en coordonnées de la fenêtre. */
+function menuStyle() {
+  const place = tree.menuPlace.value
+  if (!place) return undefined
+  const px = (v: number | undefined) => (v === undefined ? 'auto' : `${v}px`)
+  return { top: px(place.top), bottom: px(place.bottom), right: px(place.right) }
+}
+
 const isEditing = (kind: 'rename' | 'child', pageId: string) =>
   tree.edit.value?.kind === kind && tree.edit.value.pageId === pageId
 </script>
@@ -91,7 +99,7 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
         >
           <AppIcon name="more" />
         </button>
-        <ul v-if="tree.menuId.value === node.page.id" class="menu">
+        <ul v-if="tree.menuId.value === node.page.id" class="menu" :style="menuStyle()">
           <li><button type="button" @click="tree.startEdit('child', node.page.id)">Nouvelle sous-page</button></li>
           <li><button type="button" @click="tree.startEdit('rename', node.page.id)">Renommer</button></li>
           <li><button type="button" @click="tree.requestMove(node.page.id)">Déplacer sous…</button></li>
@@ -207,13 +215,12 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
     opacity: 1;
   }
 }
+/* Fixe : l'arbre défile et couperait un menu posé dedans ; `PageTree` le place sous son bouton ou au-dessus. */
 .menu {
-  position: absolute;
-  z-index: 2;
-  top: 100%;
-  right: 0;
+  position: fixed;
+  z-index: 5;
   list-style: none;
-  margin: 0.15rem 0 0;
+  margin: 0;
   padding: 0.3rem;
   display: flex;
   flex-direction: column;

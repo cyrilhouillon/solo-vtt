@@ -84,15 +84,21 @@ function onPageHide() {
   pending = null
 }
 
-async function call(action: () => Promise<void>) {
+/** Le geste en cours, résolu quand il a fini, réussi ou non. */
+let running: Promise<void> = Promise.resolve()
+
+function call(action: () => Promise<void>): Promise<void> {
   busy.value = true
-  try {
-    await action()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
-  } finally {
-    busy.value = false
-  }
+  running = (async () => {
+    try {
+      await action()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : String(e)
+    } finally {
+      busy.value = false
+    }
+  })()
+  return running
 }
 
 function toggle(pageId: string) {
@@ -123,7 +129,12 @@ async function show(pageId: string) {
   await api.setLastPage(pageId)
 }
 
-function open(pageId: string) {
+/**
+ * Un clic arrive souvent pendant le geste que la sortie du titre vient d'envoyer (renommage) : il attend sa fin au lieu
+ * d'être perdu. Un second clic pendant l'attente reste ignoré.
+ */
+async function open(pageId: string) {
+  if (busy.value) await running
   if (busy.value || page.value?.id === pageId) return
   error.value = null
   call(() => show(pageId))
@@ -168,6 +179,7 @@ function create() {
 }
 
 function rename(pageId: string, newTitle: string) {
+  if (busy.value) return
   error.value = null
   call(async () => {
     try {
@@ -284,7 +296,7 @@ async function leave(target: 'home' | 'combat') {
           :busy="busy"
           @open="open"
           @toggle="toggle"
-          @create="(t, parentId) => createPage(t, parentId)"
+          @create="createPage"
           @rename="rename"
           @move="(pageId) => (moving = pageId)"
           @drop="moveTo"

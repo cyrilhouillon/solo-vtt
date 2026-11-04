@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, toRef } from 'vue'
 import PageBranch from './PageBranch.vue'
-import { treeContext, type TreeDrag, type TreeEdit } from '../notebook/context'
+import { treeContext, type MenuPlace, type TreeDrag, type TreeEdit } from '../notebook/context'
 import { buildTree, canMove } from '../notebook/tree'
 import type { PageSummary } from '../types'
 
@@ -13,7 +13,8 @@ const props = defineProps<{ pages: PageSummary[]; currentId: string | null; expa
 const emit = defineEmits<{
   open: [pageId: string]
   toggle: [pageId: string]
-  create: [title: string, parentId: string]
+  /** `done` : la page est créée, le champ de l'arbre peut se fermer. */
+  create: [title: string, parentId: string, done: () => void]
   rename: [pageId: string, title: string]
   /** Range la page sous `parentId` (`null` : la racine), relâchée là au bout d'un glisser permis. */
   drop: [pageId: string, parentId: string | null]
@@ -25,6 +26,7 @@ const nodes = computed(() => buildTree(props.pages))
 const root = ref<HTMLElement | null>(null)
 const rootZone = ref<HTMLElement | null>(null)
 const menuId = ref<string | null>(null)
+const menuPlace = ref<MenuPlace | null>(null)
 const edit = ref<TreeEdit | null>(null)
 const draft = ref('')
 
@@ -165,7 +167,33 @@ async function focusRow(pageId: string, selector: '.page-link' | '.more') {
 function closeMenu(returnFocus = false) {
   const id = menuId.value
   menuId.value = null
+  menuPlace.value = null
   if (returnFocus && id) void focusRow(id, '.more')
+}
+
+/** Écart entre le bouton ⋯ et son menu (px). */
+const MENU_GAP = 2
+
+/** Ouvre le menu sous son bouton, ou au-dessus s'il dépasserait le bas de la fenêtre, puis donne le focus au premier choix. */
+async function toggleMenu(pageId: string) {
+  if (menuId.value === pageId) return closeMenu()
+  const button = root.value?.querySelector<HTMLElement>(`.row[data-page-id="${CSS.escape(pageId)}"] .more`)
+  if (!button) return
+  const rect = button.getBoundingClientRect()
+  const right = window.innerWidth - rect.right
+  menuId.value = pageId
+  menuPlace.value = { top: rect.bottom + MENU_GAP, right }
+  await nextTick()
+  const menu = root.value?.querySelector<HTMLElement>('.menu')
+  if (menu && menu.getBoundingClientRect().bottom > window.innerHeight && rect.top > menu.offsetHeight + MENU_GAP) {
+    menuPlace.value = { bottom: window.innerHeight - rect.top + MENU_GAP, right }
+  }
+  menu?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true })
+}
+
+/** Fixe, le menu ne suivrait pas sa ligne : tout défilement ou redimensionnement le ferme. */
+function onViewportChange() {
+  if (menuId.value) closeMenu()
 }
 
 function startEdit(kind: TreeEdit['kind'], pageId: string) {
@@ -179,17 +207,20 @@ function startEdit(kind: TreeEdit['kind'], pageId: string) {
 function submitEdit() {
   const current = edit.value
   if (!current) return
-  edit.value = null
   const title = draft.value.trim()
+  if (current.kind === 'child' && title) {
+    // Le champ reste ouvert, titre compris, tant que la page n'est pas créée : un refus ne perd pas la frappe.
+    emit('create', title, current.pageId, () => {
+      if (edit.value === current) edit.value = null
+    })
+    return
+  }
+  edit.value = null
   if (current.kind === 'rename') {
     const before = props.pages.find((p) => p.id === current.pageId)?.title
     if (title && title !== before) emit('rename', current.pageId, title)
-    void focusRow(current.pageId, '.page-link')
-  } else if (title) {
-    emit('create', title, current.pageId)
-  } else {
-    void focusRow(current.pageId, '.page-link')
   }
+  void focusRow(current.pageId, '.page-link')
 }
 
 function cancelEdit() {
@@ -206,17 +237,13 @@ provide(treeContext, {
   expanded: toRef(props, 'expanded'),
   busy: toRef(props, 'busy'),
   menuId,
+  menuPlace,
   edit,
   drag,
   draft,
   open: (pageId) => emit('open', pageId),
   toggle: (pageId) => emit('toggle', pageId),
-  toggleMenu: async (pageId) => {
-    menuId.value = menuId.value === pageId ? null : pageId
-    if (!menuId.value) return
-    await nextTick()
-    root.value?.querySelector<HTMLElement>('.menu button')?.focus()
-  },
+  toggleMenu,
   startEdit,
   submitEdit,
   cancelEdit,
@@ -239,10 +266,14 @@ function onKeyDown(e: KeyboardEvent) {
 onMounted(() => {
   document.addEventListener('pointerdown', onPointerDown)
   document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('scroll', onViewportChange, true)
+  window.addEventListener('resize', onViewportChange)
 })
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onPointerDown)
   document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('scroll', onViewportChange, true)
+  window.removeEventListener('resize', onViewportChange)
   cancelDrag()
 })
 </script>
@@ -277,8 +308,8 @@ onBeforeUnmount(() => {
 .tree {
   min-height: 0;
   overflow-y: auto;
-  /* Place pour le contour de focus des lignes et le menu de la dernière. */
-  padding: 2px 2px 0.5rem;
+  /* Place pour le contour de focus des lignes. */
+  padding: 2px;
   margin: -2px;
 }
 .drop-root {
