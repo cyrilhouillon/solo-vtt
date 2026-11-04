@@ -32,13 +32,9 @@ class CampaignApiTest {
                 .post("/api/campaigns").then().statusCode(201).body("name", equalTo(name.strip())).extract().path("id");
     }
 
-    private static void ouvrir(String id) {
-        given().post("/api/campaigns/{id}/open", id).then().statusCode(200).body("id", equalTo(id));
-    }
-
-    private static void poser(String catalogId, double x, double y) {
+    private static void poser(String campagne, String catalogId, double x, double y) {
         given().contentType(ContentType.JSON).body("{\"catalogId\":\"%s\",\"x\":%s,\"y\":%s}".formatted(catalogId, x, y))
-                .post("/api/scene/tokens").then().statusCode(201);
+                .post(campagne + "/scene/tokens").then().statusCode(201);
     }
 
     @Test
@@ -59,57 +55,55 @@ class CampaignApiTest {
     }
 
     @Test
-    void ouvrirUneCampagneInconnue_404() {
-        given().post("/api/campaigns/{id}/open", "inconnue").then().statusCode(404);
+    void uneCampagneInconnue_404() {
+        given().get("/api/campaigns/inconnue/scene").then().statusCode(404);
+        given().get("/api/campaigns/inconnue/maps").then().statusCode(404);
+        given().post("/api/campaigns/inconnue/combat").then().statusCode(404);
     }
 
     @Test
     void uneCampagneNeuve_naNiCarteNiCombatNiCarteEnregistree() {
-        String id = creer("Neuve " + UUID.randomUUID());
-        ouvrir(id);
+        String c = "/api/campaigns/" + creer("Neuve " + UUID.randomUUID());
 
-        given().get("/api/campaigns/current").then().statusCode(200).body("id", equalTo(id));
-        given().get("/api/scene").then().statusCode(409);
-        given().get("/api/combat").then().statusCode(204);
-        given().get("/api/journal").then().statusCode(200).body("$", empty());
-        given().get("/api/maps").then().statusCode(200).body("$", empty());
+        given().get(c + "/scene").then().statusCode(409);
+        given().get(c + "/combat").then().statusCode(204);
+        given().get(c + "/journal").then().statusCode(200).body("$", empty());
+        given().get(c + "/maps").then().statusCode(200).body("$", empty());
     }
 
     @Test
-    void allerRetour_entreDeuxCampagnes_retrouveLaPartieEtNeMontreQueSesCartes() {
-        String a = creer("Phandelver " + UUID.randomUUID());
-        String b = creer("Strahd " + UUID.randomUUID());
-        ouvrir(a);
-        given().contentType(ContentType.JSON).body("{\"width\":30,\"height\":20,\"unit\":\"METRE\"}").post("/api/scene").then().statusCode(201);
-        poser("gobelin", 12, 1.5);
-        poser("magicienne", 12, 3);
-        poser("loup", 25, 15);
-        given().contentType(ContentType.JSON).body(Map.of("name", "Crypte")).post("/api/maps").then().statusCode(201);
+    void deuxCampagnes_jouentCoteACote_sansSeMarcherDessus() {
+        String a = "/api/campaigns/" + creer("Phandelver " + UUID.randomUUID());
+        String b = "/api/campaigns/" + creer("Strahd " + UUID.randomUUID());
+        given().contentType(ContentType.JSON).body("{\"width\":30,\"height\":20,\"unit\":\"METRE\"}").post(a + "/scene").then().statusCode(201);
+        poser(a, "gobelin", 12, 1.5);
+        poser(a, "magicienne", 12, 3);
+        poser(a, "loup", 25, 15);
+        given().contentType(ContentType.JSON).body(Map.of("name", "Crypte")).post(a + "/maps").then().statusCode(201);
         dice.script(15, 2, 1, 10);
-        given().post("/api/combat").then().statusCode(200);
+        given().post(a + "/combat").then().statusCode(200);
         String decision = given().contentType(ContentType.JSON)
                 .body("{\"attackerId\":\"gobelin-1\",\"attackId\":\"melee:Cimeterre\",\"targetId\":\"magicienne-1\"}")
-                .post("/api/attacks").then().statusCode(200).extract().path("decision.id");
-        List<Object> journal = given().get("/api/journal").then().extract().jsonPath().getList("$");
+                .post(a + "/attacks").then().statusCode(200).extract().path("decision.id");
+        List<Object> journal = given().get(a + "/journal").then().extract().jsonPath().getList("$");
 
-        ouvrir(b);
-        given().get("/api/scene").then().statusCode(409);
-        given().get("/api/combat").then().statusCode(204);
-        given().get("/api/decisions/pending").then().statusCode(204);
-        given().get("/api/maps").then().statusCode(200).body("name", not(hasItem("Crypte")));
+        given().get(b + "/scene").then().statusCode(409);
+        given().get(b + "/combat").then().statusCode(204);
+        given().get(b + "/decisions/pending").then().statusCode(204);
+        given().get(b + "/maps").then().statusCode(200).body("name", not(hasItem("Crypte")));
+        given().contentType(ContentType.JSON).body("{\"width\":10,\"height\":10,\"unit\":\"METRE\"}").post(b + "/scene").then().statusCode(201);
 
-        ouvrir(a);
-        given().get("/api/scene").then().statusCode(200)
-                .body("tokens.id", equalTo(List.of("gobelin-1", "magicienne-1", "loup-1")))
-                .body("tokens.find { it.id == 'magicienne-1' }.y", equalTo(3.0f));
-        given().get("/api/combat").then().statusCode(200).body("activeId", equalTo("gobelin-1"));
-        given().get("/api/decisions/pending").then().statusCode(200).body("id", equalTo(decision));
-        assertEquals(journal, given().get("/api/journal").then().extract().jsonPath().getList("$"));
-        given().get("/api/maps").then().statusCode(200).body("name", equalTo(List.of("Crypte")));
+        given().get(a + "/scene").then().statusCode(200)
+                .body("width", equalTo(30.0f))
+                .body("tokens.id", equalTo(List.of("gobelin-1", "magicienne-1", "loup-1")));
+        given().get(a + "/combat").then().statusCode(200).body("activeId", equalTo("gobelin-1"));
+        given().get(a + "/decisions/pending").then().statusCode(200).body("id", equalTo(decision));
+        assertEquals(journal, given().get(a + "/journal").then().extract().jsonPath().getList("$"));
+        given().get(a + "/maps").then().statusCode(200).body("name", equalTo(List.of("Crypte")));
 
         dice.script(3);
         given().contentType(ContentType.JSON).body("{\"option\":\"Ne rien faire\"}")
-                .post("/api/decisions/" + decision).then().statusCode(200);
-        given().get("/api/creatures/magicienne-1").then().body("hitPoints", equalTo(2));
+                .post(a + "/decisions/" + decision).then().statusCode(200);
+        given().get(a + "/creatures/magicienne-1").then().body("hitPoints", equalTo(2));
     }
 }

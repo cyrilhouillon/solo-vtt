@@ -9,7 +9,7 @@
 
 - JUnit Jupiter, avec les assertions JUnit. Pas de librairie de mock.
 - `vtt-server` : `@QuarkusTest` et RestAssured contre l'API réelle ; RestAssured lit les nombres JSON en `float` (`equalTo(5.0f)`).
-- Aucune campagne n'est ouverte au démarrage : chaque `@BeforeEach` d'un test d'API qui crée une carte appelle d'abord `Campagnes.ouvrirUneNeuve()`.
+- Chaque `@BeforeEach` d'un test d'API qui crée une carte appelle d'abord `Campagnes.creerUneNeuve()`, puis vise ses routes par `campagne() + "/scene"` : chaque test joue dans sa propre campagne.
 - `vtt-web` : pas de tests automatisés ; `vue-tsc` vérifie les types et le parcours se valide dans le navigateur.
 
 ## Conventions

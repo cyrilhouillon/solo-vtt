@@ -1,11 +1,9 @@
 package solovtt.server;
 
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
 
 import java.util.List;
 
-@Path("/api/journal")
 public class JournalResource {
 
     private final SceneSession session;

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static solovtt.server.Campagnes.campagne;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
@@ -35,10 +36,10 @@ class MapApiTest {
 
     @BeforeEach
     void scene() {
-        Campagnes.ouvrirUneNeuve();
+        Campagnes.creerUneNeuve();
         given().contentType(ContentType.JSON).body("{\"width\":30,\"height\":20,\"unit\":\"METRE\"}")
-                .post("/api/scene").then().statusCode(201).body("mapName", nullValue());
-        given().contentType(ContentType.JSON).body("{\"visible\":false}").put("/api/scene/grid").then().statusCode(200);
+                .post(campagne() + "/scene").then().statusCode(201).body("mapName", nullValue());
+        given().contentType(ContentType.JSON).body("{\"visible\":false}").put(campagne() + "/scene/grid").then().statusCode(200);
         poser("gobelin", 12, 1.5);
         poser("magicienne", 12, 3);
         poser("loup", 25, 15);
@@ -46,26 +47,26 @@ class MapApiTest {
 
     private static void poser(String catalogId, double x, double y) {
         given().contentType(ContentType.JSON).body("{\"catalogId\":\"%s\",\"x\":%s,\"y\":%s}".formatted(catalogId, x, y))
-                .post("/api/scene/tokens").then().statusCode(201);
+                .post(campagne() + "/scene/tokens").then().statusCode(201);
     }
 
     private static ValidatableResponse enregistrer(String name) {
-        return given().contentType(ContentType.JSON).body(Map.of("name", name)).post("/api/maps").then();
+        return given().contentType(ContentType.JSON).body(Map.of("name", name)).post(campagne() + "/maps").then();
     }
 
     private static ValidatableResponse charger(String name) {
-        return given().contentType(ContentType.JSON).body(Map.of("name", name)).post("/api/maps/load").then();
+        return given().contentType(ContentType.JSON).body(Map.of("name", name)).post(campagne() + "/maps/load").then();
     }
 
     /** Le Gobelin frappe la Magicienne : la décision Bouclier attend ; rend son id. */
     private static String bouclierPropose() {
         return given().contentType(ContentType.JSON)
                 .body("{\"attackerId\":\"gobelin-1\",\"attackId\":\"melee:Cimeterre\",\"targetId\":\"magicienne-1\"}")
-                .post("/api/attacks").then().statusCode(200).extract().path("decision.id");
+                .post(campagne() + "/attacks").then().statusCode(200).extract().path("decision.id");
     }
 
     private static int tailleDuJournal() {
-        return given().get("/api/journal").then().statusCode(200).extract().jsonPath().getList("$").size();
+        return given().get(campagne() + "/journal").then().statusCode(200).extract().jsonPath().getList("$").size();
     }
 
     private String champ(String field) {
@@ -77,13 +78,13 @@ class MapApiTest {
         String imageId = ImageApiTest.envoyer(ImageApiTest.PNG, "image/png");
         given().contentType(ContentType.JSON)
                 .body("{\"width\":30,\"height\":20,\"unit\":\"METRE\",\"imageId\":\"%s\"}".formatted(imageId))
-                .post("/api/scene").then().statusCode(201);
+                .post(campagne() + "/scene").then().statusCode(201);
         poser("loup", 3, 4.5);
         given().contentType(ContentType.JSON).body("{\"width\":33,\"height\":22,\"gridOffsetX\":0.25,\"gridOffsetY\":0.5}")
-                .put("/api/scene/alignment").then().statusCode(200);
+                .put(campagne() + "/scene/alignment").then().statusCode(200);
         enregistrer(nom).statusCode(201);
         given().contentType(ContentType.JSON).body("{\"width\":30,\"height\":20,\"unit\":\"METRE\"}")
-                .post("/api/scene").then().statusCode(201);
+                .post(campagne() + "/scene").then().statusCode(201);
 
         charger(nom).statusCode(200)
                 .body("width", equalTo(33.0f))
@@ -100,7 +101,7 @@ class MapApiTest {
                 .body("name", equalTo(nom))
                 .body("creatureCount", equalTo(3));
 
-        given().get("/api/maps").then().statusCode(200)
+        given().get(campagne() + "/maps").then().statusCode(200)
                 .body("name", hasItem(nom))
                 .body(champ("width"), equalTo(30.0f))
                 .body(champ("height"), equalTo(20.0f))
@@ -111,23 +112,23 @@ class MapApiTest {
     @Test
     void enregistrerEnCombat_neToucheNiLeCombatNiLeJournal() {
         dice.script(15, 2, 1);
-        given().post("/api/combat").then().statusCode(200);
+        given().post(campagne() + "/combat").then().statusCode(200);
         int journal = tailleDuJournal();
 
         enregistrer(nom).statusCode(201);
 
         assertEquals(journal, tailleDuJournal());
-        given().get("/api/combat").then().statusCode(200);
+        given().get(campagne() + "/combat").then().statusCode(200);
     }
 
     @Test
     void charger_apresUnCombat_redonneDesCreaturesNeuves_sansCombatNiJournal() {
         enregistrer(nom).statusCode(201);
         dice.script(15, 2, 1, 10, 3);
-        given().post("/api/combat").then().statusCode(200);
+        given().post(campagne() + "/combat").then().statusCode(200);
         given().contentType(ContentType.JSON).body("{\"option\":\"Ne rien faire\"}")
-                .post("/api/decisions/" + bouclierPropose()).then().statusCode(200);
-        given().get("/api/creatures/magicienne-1").then().body("hitPoints", equalTo(2));
+                .post(campagne() + "/decisions/" + bouclierPropose()).then().statusCode(200);
+        given().get(campagne() + "/creatures/magicienne-1").then().body("hitPoints", equalTo(2));
 
         charger(nom).statusCode(200)
                 .body("width", equalTo(30.0f))
@@ -140,9 +141,9 @@ class MapApiTest {
                 .body("tokens.find { it.id == 'magicienne-1' }.y", equalTo(3.0f))
                 .body("tokens.find { it.id == 'magicienne-1' }.hitPoints", equalTo(7));
 
-        given().get("/api/combat").then().statusCode(204);
-        given().get("/api/journal").then().statusCode(200).body("$", empty());
-        given().get("/api/scene").then().statusCode(200).body("mapName", equalTo(nom));
+        given().get(campagne() + "/combat").then().statusCode(204);
+        given().get(campagne() + "/journal").then().statusCode(200).body("$", empty());
+        given().get(campagne() + "/scene").then().statusCode(200).body("mapName", equalTo(nom));
     }
 
     @Test
@@ -163,7 +164,7 @@ class MapApiTest {
 
         charger(nom).statusCode(200);
 
-        given().get("/api/decisions/pending").then().statusCode(204);
+        given().get(campagne() + "/decisions/pending").then().statusCode(204);
     }
 
     @Test
@@ -172,13 +173,13 @@ class MapApiTest {
         charger(nom).statusCode(200);
 
         given().contentType(ContentType.JSON).body("{\"width\":10,\"height\":10,\"unit\":\"FOOT\"}")
-                .post("/api/scene").then().statusCode(201).body("mapName", nullValue());
+                .post(campagne() + "/scene").then().statusCode(201).body("mapName", nullValue());
     }
 
     @Test
     void unNomVideOuTropLong_rend400() {
         enregistrer("   ").statusCode(400).body("message", containsString("nom"));
-        given().contentType(ContentType.JSON).body("{}").post("/api/maps").then().statusCode(400);
+        given().contentType(ContentType.JSON).body("{}").post(campagne() + "/maps").then().statusCode(400);
         enregistrer("x".repeat(MapResource.MAX_NAME_LENGTH + 1)).statusCode(400).body("message", containsString("trop long"));
         charger(" ").statusCode(400);
     }
@@ -187,6 +188,6 @@ class MapApiTest {
     void chargerUnNomInconnu_rend404_etLaCarteEnCoursReste() {
         charger(nom).statusCode(404).body("message", containsString(nom));
 
-        given().get("/api/scene").then().statusCode(200).body("tokens", hasSize(3)).body("gridVisible", equalTo(false));
+        given().get(campagne() + "/scene").then().statusCode(200).body("tokens", hasSize(3)).body("gridVisible", equalTo(false));
     }
 }

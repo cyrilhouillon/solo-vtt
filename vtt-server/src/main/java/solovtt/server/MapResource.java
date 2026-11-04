@@ -13,8 +13,7 @@ import org.jboss.resteasy.reactive.ResponseStatus;
 
 import java.util.List;
 
-/** Les cartes enregistrées de la campagne ouverte : enregistrer la carte en cours sous un nom, les lister, en charger une. */
-@Path("/api/maps")
+/** Les cartes enregistrées d'une campagne : enregistrer la carte en cours sous un nom, les lister, en charger une. */
 public class MapResource {
 
     static final int MAX_NAME_LENGTH = 80;
@@ -26,8 +25,7 @@ public class MapResource {
     }
 
     @GET
-    @APIResponse(responseCode = "200", description = "Les cartes enregistrées de la campagne ouverte, triées par nom")
-    @APIResponse(responseCode = "409", description = "Aucune campagne ouverte")
+    @APIResponse(responseCode = "200", description = "Les cartes enregistrées de la campagne, triées par nom")
     public List<Dtos.SavedMapDto> list() {
         return session.maps().list().stream().map(Dtos.SavedMapDto::of).toList();
     }
@@ -38,18 +36,17 @@ public class MapResource {
     @APIResponse(responseCode = "201", description = "La carte enregistrée",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.SavedMapDto.class)))
     @APIResponse(responseCode = "400", description = "Nom absent, vide ou trop long")
-    @APIResponse(responseCode = "409", description = "Aucune campagne ouverte, ou aucune carte")
+    @APIResponse(responseCode = "409", description = "Aucune carte")
     public Dtos.SavedMapDto save(Dtos.MapNameRequest request) {
         String name = nameOf(request);
         if (name.length() > MAX_NAME_LENGTH) {
             throw new IllegalArgumentException("Nom trop long (" + MAX_NAME_LENGTH + " caractères au plus)");
         }
-        MapStore maps = session.maps();
         if (session.scene().isEmpty()) {
             throw new ClientErrorException("Aucune carte : créer d'abord une carte", Response.Status.CONFLICT);
         }
         SavedMap map = session.snapshot(name);
-        maps.save(map);
+        session.maps().save(map);
         return Dtos.SavedMapDto.of(map);
     }
 
@@ -63,7 +60,7 @@ public class MapResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.SceneDto.class)))
     @APIResponse(responseCode = "400", description = "Nom absent ou vide")
     @APIResponse(responseCode = "404", description = "Aucune carte enregistrée sous ce nom")
-    @APIResponse(responseCode = "409", description = "Aucune campagne ouverte, ou une créature de la carte n'est plus au catalogue")
+    @APIResponse(responseCode = "409", description = "Une créature de la carte n'est plus au catalogue")
     public Dtos.SceneDto load(Dtos.MapNameRequest request) {
         String name = nameOf(request);
         SavedMap map = session.maps().find(name)

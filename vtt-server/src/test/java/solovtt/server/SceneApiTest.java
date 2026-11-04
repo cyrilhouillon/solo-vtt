@@ -5,6 +5,7 @@ import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static solovtt.server.Campagnes.campagne;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
@@ -17,7 +18,7 @@ class SceneApiTest {
 
     @BeforeEach
     void carteVideDeTrenteSurVingtMetres() {
-        Campagnes.ouvrirUneNeuve();
+        Campagnes.creerUneNeuve();
         nouvelleCarte(30, 20, "METRE").statusCode(201)
                 .body("unit", equalTo("METRE"))
                 .body("unitSymbol", equalTo("m"))
@@ -27,13 +28,13 @@ class SceneApiTest {
     private static io.restassured.response.ValidatableResponse nouvelleCarte(double w, double h, String unit) {
         return given().contentType(ContentType.JSON)
                 .body("{\"width\":%s,\"height\":%s,\"unit\":\"%s\"}".formatted(w, h, unit))
-                .post("/api/scene").then();
+                .post(campagne() + "/scene").then();
     }
 
     private static io.restassured.response.ValidatableResponse poser(String catalogId, double x, double y) {
         return given().contentType(ContentType.JSON)
                 .body("{\"catalogId\":\"%s\",\"x\":%s,\"y\":%s}".formatted(catalogId, x, y))
-                .post("/api/scene/tokens").then();
+                .post(campagne() + "/scene/tokens").then();
     }
 
     @Test
@@ -49,7 +50,7 @@ class SceneApiTest {
         poser("gobelin", 3, 4).statusCode(201).body("id", equalTo("gobelin-1")).body("name", equalTo("Gobelin guerrier"));
         poser("gobelin", 6, 8).statusCode(201).body("id", equalTo("gobelin-2")).body("name", equalTo("Gobelin guerrier 2"));
 
-        given().get("/api/scene").then().statusCode(200)
+        given().get(campagne() + "/scene").then().statusCode(200)
                 .body("tokens.id", hasItems("gobelin-1", "gobelin-2"))
                 .body("tokens.find { it.id == 'gobelin-2' }.x", equalTo(6.0f))
                 .body("tokens.find { it.id == 'gobelin-2' }.catalogId", equalTo("gobelin"));
@@ -60,7 +61,7 @@ class SceneApiTest {
         poser("squelette", 1, 1).statusCode(201)
                 .body("armorClass", equalTo(14)).body("hitPoints", equalTo(13)).body("maxHitPoints", equalTo(13));
 
-        given().get("/api/scene").then().statusCode(200)
+        given().get(campagne() + "/scene").then().statusCode(200)
                 .body("tokens.find { it.id == 'squelette-1' }.armorClass", equalTo(14))
                 .body("tokens.find { it.id == 'squelette-1' }.hitPoints", equalTo(13));
     }
@@ -69,7 +70,7 @@ class SceneApiTest {
     void laFeuilleDecritLaCreature() {
         poser("squelette", 1, 1);
 
-        given().get("/api/creatures/squelette-1").then().statusCode(200)
+        given().get(campagne() + "/creatures/squelette-1").then().statusCode(200)
                 .body("name", equalTo("Squelette"))
                 .body("armorClass", equalTo(14))
                 .body("hitPoints", equalTo(13))
@@ -89,7 +90,7 @@ class SceneApiTest {
         nouvelleCarte(100, 100, "FOOT").statusCode(201);
         poser("loup", 1, 1);
 
-        given().get("/api/creatures/loup-1").then().statusCode(200)
+        given().get(campagne() + "/creatures/loup-1").then().statusCode(200)
                 .body("speed.value", equalTo(40.0f))
                 .body("speed.unitSymbol", equalTo("ft"));
     }
@@ -102,13 +103,13 @@ class SceneApiTest {
     @Test
     void lesIdsInconnusRendent404() {
         poser("dragon", 1, 1).statusCode(404).body("message", containsString("dragon"));
-        given().get("/api/creatures/fantome-1").then().statusCode(404).body("message", containsString("fantome-1"));    }
+        given().get(campagne() + "/creatures/fantome-1").then().statusCode(404).body("message", containsString("fantome-1"));    }
 
     @Test
     void recreerUneCarteVideLaScene() {
         poser("loup", 1, 1).statusCode(201);
         nouvelleCarte(10, 10, "METRE").statusCode(201).body("tokens", empty());
-        given().get("/api/creatures/loup-1").then().statusCode(404);
+        given().get(campagne() + "/creatures/loup-1").then().statusCode(404);
         poser("loup", 1, 1).body("id", equalTo("loup-1"));
     }
 
@@ -117,11 +118,11 @@ class SceneApiTest {
         poser("loup", 1, 1).statusCode(201);
         poser("loup", 4, 4).statusCode(201);
 
-        given().delete("/api/scene/tokens/loup-1").then().statusCode(204);
+        given().delete(campagne() + "/scene/tokens/loup-1").then().statusCode(204);
 
-        given().get("/api/scene").then().body("tokens.id", equalTo(java.util.List.of("loup-2")));
-        given().get("/api/creatures/loup-1").then().statusCode(404);
-        given().delete("/api/scene/tokens/loup-1").then().statusCode(404).body("message", containsString("loup-1"));
+        given().get(campagne() + "/scene").then().body("tokens.id", equalTo(java.util.List.of("loup-2")));
+        given().get(campagne() + "/creatures/loup-1").then().statusCode(404);
+        given().delete(campagne() + "/scene/tokens/loup-1").then().statusCode(404).body("message", containsString("loup-1"));
         poser("loup", 2, 2).body("id", equalTo("loup-3"));
     }
 
@@ -131,7 +132,7 @@ class SceneApiTest {
     }
 
     private static io.restassured.response.ValidatableResponse grille(String body) {
-        return given().contentType(ContentType.JSON).body(body).put("/api/scene/grid").then();
+        return given().contentType(ContentType.JSON).body(body).put(campagne() + "/scene/grid").then();
     }
 
     @Test
@@ -140,16 +141,16 @@ class SceneApiTest {
 
         given().contentType(ContentType.JSON)
                 .body("{\"width\":45,\"height\":45,\"unit\":\"METRE\",\"imageId\":\"%s\"}".formatted(imageId))
-                .post("/api/scene").then().statusCode(201)
+                .post(campagne() + "/scene").then().statusCode(201)
                 .body("width", equalTo(45.0f))
                 .body("imageId", equalTo(imageId))
                 .body("gridVisible", equalTo(true));
-        given().get("/api/scene").then().statusCode(200).body("imageId", equalTo(imageId));
+        given().get(campagne() + "/scene").then().statusCode(200).body("imageId", equalTo(imageId));
     }
 
     @Test
     void uneCarteSansImage_nAPasDImage() {
-        given().get("/api/scene").then().statusCode(200)
+        given().get(campagne() + "/scene").then().statusCode(200)
                 .body("imageId", org.hamcrest.Matchers.nullValue())
                 .body("gridVisible", equalTo(true));
     }
@@ -160,15 +161,15 @@ class SceneApiTest {
 
         given().contentType(ContentType.JSON)
                 .body("{\"width\":45,\"height\":45,\"unit\":\"METRE\",\"imageId\":\"%s\"}".formatted("0".repeat(64)))
-                .post("/api/scene").then().statusCode(400)
+                .post(campagne() + "/scene").then().statusCode(400)
                 .body("message", containsString("Image inconnue"));
-        given().get("/api/scene").then().statusCode(200).body("width", equalTo(30.0f)).body("tokens", hasSize(1));
+        given().get(campagne() + "/scene").then().statusCode(200).body("width", equalTo(30.0f)).body("tokens", hasSize(1));
     }
 
     @Test
     void masquerPuisAfficherLaGrille() {
         grille("{\"visible\":false}").statusCode(200).body("gridVisible", equalTo(false));
-        given().get("/api/scene").then().body("gridVisible", equalTo(false));
+        given().get(campagne() + "/scene").then().body("gridVisible", equalTo(false));
 
         grille("{\"visible\":true}").statusCode(200).body("gridVisible", equalTo(true));
     }
@@ -181,14 +182,14 @@ class SceneApiTest {
     }
 
     private static io.restassured.response.ValidatableResponse caler(String body) {
-        return given().contentType(ContentType.JSON).body(body).put("/api/scene/alignment").then();
+        return given().contentType(ContentType.JSON).body(body).put(campagne() + "/scene/alignment").then();
     }
 
     private static void carteSurImage() {
         String imageId = ImageApiTest.envoyer(ImageApiTest.PNG, "image/png");
         given().contentType(ContentType.JSON)
                 .body("{\"width\":30,\"height\":20,\"unit\":\"METRE\",\"imageId\":\"%s\"}".formatted(imageId))
-                .post("/api/scene").then().statusCode(201)
+                .post(campagne() + "/scene").then().statusCode(201)
                 .body("gridOffsetX", equalTo(0.0f))
                 .body("gridOffsetY", equalTo(0.0f));
     }
@@ -205,7 +206,7 @@ class SceneApiTest {
                 .body("gridOffsetY", equalTo(0.5f))
                 .body("tokens[0].x", equalTo(3.3f))
                 .body("tokens[0].y", equalTo(4.95f));
-        given().get("/api/scene").then().body("width", equalTo(33.0f)).body("gridOffsetY", equalTo(0.5f));
+        given().get(campagne() + "/scene").then().body("width", equalTo(33.0f)).body("gridOffsetY", equalTo(0.5f));
     }
 
     @Test
@@ -222,7 +223,7 @@ class SceneApiTest {
                 .body("message", containsString("carrées"));
         caler("{\"width\":33,\"height\":22,\"gridOffsetX\":1,\"gridOffsetY\":0}").statusCode(400);
         caler("{\"width\":33,\"height\":22,\"gridOffsetX\":0}").statusCode(400);
-        given().get("/api/scene").then().body("width", equalTo(30.0f));
+        given().get(campagne() + "/scene").then().body("width", equalTo(30.0f));
     }
 
     @Test

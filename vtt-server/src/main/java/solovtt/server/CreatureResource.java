@@ -6,7 +6,6 @@ import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 
-@Path("/api/creatures")
 public class CreatureResource {
 
     private final SceneSession session;

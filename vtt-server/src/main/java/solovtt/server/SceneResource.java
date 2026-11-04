@@ -15,7 +15,6 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import solovtt.scene.Scene;
 
-@Path("/api/scene")
 public class SceneResource {
 
     private final SceneSession session;
