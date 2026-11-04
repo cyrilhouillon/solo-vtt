@@ -1,6 +1,6 @@
 ---
 objective: "En écrivant une page du Carnet, le joueur tape [[ et choisit une page existante par son titre : un lien s'insère, affiche le titre actuel de sa cible (ou un texte choisi), ouvre la cible au clic et s'affiche mort si la cible n'existe plus."
-status: pending
+status: implemented
 ---
 
 # Plan: lier une page du Carnet à une autre
