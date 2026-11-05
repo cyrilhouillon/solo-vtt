@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '../api'
 import ThemeButton from './ThemeButton.vue'
 import type { CampaignView } from '../types'
 
-const emit = defineEmits<{ open: [campaign: CampaignView] }>()
+const router = useRouter()
 
 /** Même limite que le serveur (`CampaignResource.MAX_NAME_LENGTH`). */
 const MAX_NAME_LENGTH = 80
@@ -66,7 +67,7 @@ function create() {
         <ul v-else class="list">
           <li v-for="campaign in campaigns" :key="campaign.id">
             <strong class="name">{{ campaign.name }}</strong>
-            <button type="button" :disabled="busy" :aria-label="`Ouvrir ${campaign.name}`" @click="emit('open', campaign)">Ouvrir</button>
+            <button type="button" :disabled="busy" :aria-label="`Ouvrir ${campaign.name}`" @click="router.push({ name: 'notebook', params: { campaignId: campaign.id } })">Ouvrir</button>
           </li>
         </ul>
       </section>

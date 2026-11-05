@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ApiError, campaignApi, imageUrl } from '../api'
 import AppIcon from './AppIcon.vue'
 import ThemeButton from './ThemeButton.vue'
@@ -40,7 +41,7 @@ import {
 
 const props = defineProps<{ campaign: CampaignView }>()
 /** Retour à l'accueil, ou au Carnet de la campagne. */
-const emit = defineEmits<{ home: []; notebook: [] }>()
+const router = useRouter()
 /** Les appels au serveur, sur la partie de cette campagne. */
 const api = campaignApi(props.campaign.id)
 
@@ -1074,10 +1075,10 @@ onBeforeUnmount(() => {
 <template>
   <div class="layout" :class="{ 'with-drawer': drawer }">
     <header class="bar">
-      <button type="button" class="icon-button" aria-label="Accueil" title="Accueil : changer de campagne" @click="emit('home')">
+      <button type="button" class="icon-button" aria-label="Accueil" title="Accueil : changer de campagne" @click="router.push({ name: 'home' })">
         <AppIcon name="home" />
       </button>
-      <button type="button" class="icon-button" aria-label="Carnet" title="Carnet de la campagne" @click="emit('notebook')">
+      <button type="button" class="icon-button" aria-label="Carnet" title="Carnet de la campagne" @click="router.push({ name: 'notebook', params: { campaignId: campaign.id } })">
         <AppIcon name="notebook" />
       </button>
       <h1 class="app-name">Solo VTT</h1>
