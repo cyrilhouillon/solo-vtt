@@ -41,6 +41,7 @@ export interface TreeContext {
   submitEdit: () => void
   cancelEdit: () => void
   requestMove: (pageId: string) => void
+  requestDelete: (pageId: string) => void
 }
 
 export const treeContext: InjectionKey<TreeContext> = Symbol('treeContext')

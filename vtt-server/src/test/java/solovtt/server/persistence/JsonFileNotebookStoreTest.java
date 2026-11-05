@@ -3,6 +3,7 @@ package solovtt.server.persistence;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import solovtt.server.NotebookStore;
+import solovtt.server.NotebookStoreTest;
 import solovtt.server.Page;
 
 import java.io.IOException;
@@ -172,5 +173,91 @@ class JsonFileNotebookStoreTest {
         Files.writeString(carnet.resolve(id + ".json"), "{\"id\":\"" + id + "\",\"title\":\"Session 1\",\"content\":null}");
 
         assertEquals(List.of(new Page(id, "Session 1", null, null)), new JsonFileNotebookStore(carnet).list());
+    }
+
+    @Test
+    void laCorbeille_suitLesReglesDuPort() {
+        NotebookStoreTest.corbeille(new JsonFileNotebookStore(dir.resolve("a")));
+        NotebookStoreTest.placeDisparueEtLotsSepares(new JsonFileNotebookStore(dir.resolve("b")));
+    }
+
+    @Test
+    void laCorbeille_seRelitParUnNouvelAdaptateur() {
+        Path carnet = dir.resolve("carnet");
+        var store = new JsonFileNotebookStore(carnet);
+        var pnj = store.create("PNJ", null);
+        var bertrand = store.create("Bertrand", pnj.id());
+        store.create("Fils", bertrand.id());
+        store.delete(bertrand.id());
+
+        var relu = new JsonFileNotebookStore(carnet);
+        assertEquals(List.of(pnj), relu.list());
+        var entree = relu.trash().getFirst();
+        assertEquals(bertrand, entree.page());
+        assertEquals(1, entree.subpageCount());
+        assertEquals(store.trash().getFirst().deletedAt(), entree.deletedAt());
+    }
+
+    @Test
+    void uneEcritureQuiEchoueEnCoursDeLot_laisseLaSuppressionALaCorbeille_etLeGesteSeRejoue() throws IOException {
+        Path carnet = dir.resolve("carnet");
+        var store = new JsonFileNotebookStore(carnet);
+        var bertrand = store.create("Bertrand", null);
+        var fils = store.create("Fils", bertrand.id());
+        // Un dossier à la place du fichier voisin : l'écriture de la fiche de Fils échoue.
+        Path bloque = carnet.resolve(fils.id() + ".json.tmp");
+
+        Files.createDirectory(bloque);
+        assertThrows(RuntimeException.class, () -> store.delete(bertrand.id()));
+        assertEquals(List.of(bertrand.id()), store.trash().stream().map(e -> e.page().id()).toList());
+        Files.delete(bloque);
+        store.restore(bertrand.id());
+        assertEquals(List.of(bertrand, fils), store.list());
+
+        store.delete(bertrand.id());
+        Files.createDirectory(bloque);
+        assertThrows(RuntimeException.class, () -> store.restore(bertrand.id()));
+        assertEquals(List.of(bertrand.id()), store.trash().stream().map(e -> e.page().id()).toList());
+        Files.delete(bloque);
+        store.restore(bertrand.id());
+        assertEquals(List.of(bertrand, fils), store.list());
+        assertTrue(store.trash().isEmpty());
+    }
+
+    private static void fiche(Path carnet, String id, String title, String marque) throws IOException {
+        Files.createDirectories(carnet);
+        Files.writeString(carnet.resolve(id + ".json"),
+                "{\"id\":\"" + id + "\",\"title\":\"" + title + "\",\"parentId\":null,\"content\":null" + marque + "}");
+    }
+
+    @Test
+    void laCorbeille_laSuppressionLaPlusRecenteDAbord() throws IOException {
+        Path carnet = dir.resolve("carnet");
+        String ancienne = UUID.randomUUID().toString();
+        String recente = UUID.randomUUID().toString();
+        fiche(carnet, ancienne, "Auberge", ",\"deletedWith\":\"" + ancienne + "\",\"deletedAt\":\"2026-11-01T10:00:00Z\"");
+        fiche(carnet, recente, "Bertrand", ",\"deletedWith\":\"" + recente + "\",\"deletedAt\":\"2026-11-05T10:00:00Z\"");
+
+        assertEquals(List.of(recente, ancienne),
+                new JsonFileNotebookStore(carnet).trash().stream().map(e -> e.page().id()).toList());
+    }
+
+    @Test
+    void vider_neffaceQueLesFichesALaCorbeille_jamaisUneIllisible() throws IOException {
+        Path carnet = dir.resolve("carnet");
+        var store = new JsonFileNotebookStore(carnet);
+        var vivante = store.create("Session 1", null);
+        var supprimee = store.create("Auberge", null);
+        store.delete(supprimee.id());
+        Path illisible = carnet.resolve(UUID.randomUUID() + ".json");
+        Files.writeString(illisible, "{pas du json");
+
+        store.emptyTrash();
+
+        assertFalse(Files.exists(carnet.resolve(supprimee.id() + ".json")));
+        assertEquals("{pas du json", Files.readString(illisible));
+        assertEquals(List.of(vivante), store.list());
+        assertFalse(Files.readString(carnet.resolve(vivante.id() + ".json")).contains("deleted"),
+                "une page vivante n'écrit aucune marque de corbeille");
     }
 }

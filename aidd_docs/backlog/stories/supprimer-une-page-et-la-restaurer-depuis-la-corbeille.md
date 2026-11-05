@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 parent: aidd_docs/backlog/epics/tenir-le-carnet-de-sa-campagne.md
 depends_on:
   - aidd_docs/backlog/stories/ranger-les-pages-du-carnet-dans-un-arbre.md

@@ -3,6 +3,7 @@ package solovtt.server;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -49,5 +50,17 @@ class PageTreeTest {
 
         assertEquals(List.of(page("orpheline", null), page("a", null), page("b", null), page("sous-a", "a"),
                 page("seule", null)), PageTree.rooted(pages));
+    }
+
+    @Test
+    void laBrancheDUnePage_laPageEtSesSousPagesATouteProfondeur() {
+        assertEquals(Set.of("lore", "villes", "barovie"), PageTree.branch(LORE, "lore"));
+        assertEquals(Set.of("pnj"), PageTree.branch(LORE, "pnj"));
+    }
+
+    @Test
+    void laBranche_neBouclePasSurUneBoucleDuDisque() {
+        var boucle = List.of(page("a", "b"), page("b", "a"), page("c", null));
+        assertEquals(Set.of("a", "b"), PageTree.branch(boucle, "a"));
     }
 }

@@ -1,5 +1,7 @@
 package solovtt.server;
 
+import java.time.Instant;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -8,10 +10,12 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
- * Où vit le Carnet d'une campagne : ses pages, rangées en arbre par leur parent, et ses onglets ouverts. Un
- * déplacement ne touche que la page déplacée : ses sous-pages la suivent.
+ * Où vit le Carnet d'une campagne : ses pages, rangées en arbre par leur parent, ses onglets ouverts et sa corbeille. Un
+ * déplacement ne touche que la page déplacée : ses sous-pages la suivent. Une page à la corbeille n'est vue que par
+ * {@link #trash()} : ni {@link #list()} ni {@link #find} ne la rendent.
  */
 public interface NotebookStore {
 
@@ -56,6 +60,33 @@ public interface NotebookStore {
      *     l'une de ses sous-pages
      */
     void move(String id, String parentId);
+
+    /**
+     * Met la page et ses sous-pages à la corbeille, en un seul lot.
+     *
+     * @throws IllegalArgumentException si aucune page vivante n'a cet id
+     */
+    void delete(String id);
+
+    /** Les suppressions à la corbeille, une par page supprimée par le joueur, la plus récente d'abord. */
+    List<TrashEntry> trash();
+
+    /**
+     * Sort de la corbeille la page supprimée sous cet id, avec les sous-pages parties avec elle. Elle reprend son parent
+     * s'il est vivant, sinon la racine.
+     *
+     * @throws IllegalArgumentException si {@code id} n'est pas une suppression de la corbeille
+     */
+    void restore(String id);
+
+    /** Efface pour de bon tout ce qui est à la corbeille. */
+    void emptyTrash();
+
+    /** Une suppression de la corbeille : la page supprimée par le joueur, quand, et combien de sous-pages sont parties avec elle. */
+    record TrashEntry(Page page, Instant deletedAt, int subpageCount) {}
+
+    /** Une page à la corbeille : {@code deletedWith} est la page dont la suppression l'a emportée (la sienne pour elle). */
+    record Trashed(Page page, String deletedWith, Instant deletedAt) {}
 
     /** Les onglets ouverts, {@link Tabs#NONE} si aucun ; un onglet peut citer une page disparue depuis. */
     Tabs tabs();
@@ -121,9 +152,20 @@ public interface NotebookStore {
         }
     }
 
+    /** Les suppressions tirées des pages à la corbeille, la plus récente d'abord. */
+    static List<TrashEntry> trashEntries(Collection<Trashed> trashed) {
+        Map<String, Long> lots = trashed.stream().collect(Collectors.groupingBy(Trashed::deletedWith, Collectors.counting()));
+        return trashed.stream()
+                .filter(t -> t.page().id().equals(t.deletedWith()))
+                .map(t -> new TrashEntry(t.page(), t.deletedAt(), (int) (lots.get(t.deletedWith()) - 1)))
+                .sorted(Comparator.comparing(TrashEntry::deletedAt).reversed().thenComparing(TrashEntry::page, BY_TITLE))
+                .toList();
+    }
+
     /** Garde le Carnet en mémoire, le temps du processus. */
     static NotebookStore inMemory() {
         Map<String, Page> pages = new ConcurrentHashMap<>();
+        Map<String, Trashed> trashed = new ConcurrentHashMap<>();
         AtomicReference<Tabs> tabs = new AtomicReference<>(Tabs.NONE);
         return new NotebookStore() {
             @Override
@@ -157,6 +199,39 @@ public interface NotebookStore {
                 if (parentId != null) known(parentId);
                 checkMove(list(), id, parentId);
                 pages.put(id, new Page(id, page.title(), parentId, page.content()));
+            }
+
+            @Override
+            public synchronized void delete(String id) {
+                known(id);
+                Instant now = Instant.now();
+                for (String member : PageTree.branch(list(), id)) {
+                    trashed.put(member, new Trashed(pages.remove(member), id, now));
+                }
+            }
+
+            @Override
+            public List<TrashEntry> trash() {
+                return trashEntries(trashed.values());
+            }
+
+            @Override
+            public synchronized void restore(String id) {
+                Trashed root = trashed.get(id);
+                if (root == null || !id.equals(root.deletedWith())) throw new IllegalArgumentException("Aucune suppression : " + id);
+                String parent = root.page().parentId();
+                String parentId = parent != null && pages.containsKey(parent) ? parent : null;
+                for (Trashed member : List.copyOf(trashed.values())) {
+                    if (!id.equals(member.deletedWith())) continue;
+                    Page page = member.page();
+                    trashed.remove(page.id());
+                    pages.put(page.id(), page.id().equals(id) ? new Page(id, page.title(), parentId, page.content()) : page);
+                }
+            }
+
+            @Override
+            public synchronized void emptyTrash() {
+                trashed.clear();
             }
 
             @Override

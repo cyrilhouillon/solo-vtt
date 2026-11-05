@@ -103,6 +103,7 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
           <li><button type="button" @click="tree.startEdit('child', node.page.id)">Nouvelle sous-page</button></li>
           <li><button type="button" @click="tree.startEdit('rename', node.page.id)">Renommer</button></li>
           <li><button type="button" @click="tree.requestMove(node.page.id)">Déplacer sous…</button></li>
+          <li><button type="button" class="danger" @click="tree.requestDelete(node.page.id)">Supprimer…</button></li>
         </ul>
       </div>
       <div v-if="isEditing('child', node.page.id)" class="row" :style="{ '--depth': depth + 1 }">
@@ -228,6 +229,9 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
   background: var(--wood-raised);
   border: 1px solid var(--rule);
   border-radius: 4px;
+}
+.menu .danger {
+  color: var(--danger);
 }
 .menu button {
   width: 100%;

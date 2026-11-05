@@ -13,6 +13,7 @@ import java.util.Map;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -386,5 +387,90 @@ class NotebookApiTest {
         Campagnes.creerUneNeuve();
         creer("Session 1");
         given().queryParam("q", "eveque").get(recherche()).then().statusCode(200).body("$", empty());
+    }
+
+    private static String corbeille() {
+        return carnet() + "/trash";
+    }
+
+    private static void supprimer(String pageId, int status) {
+        given().delete(carnet() + "/pages/" + pageId).then().statusCode(status);
+    }
+
+    private static void restaurer(String pageId, int status) {
+        given().post(corbeille() + "/" + pageId + "/restore").then().statusCode(status);
+    }
+
+    @Test
+    void avantDeSupprimer_leCarnetDitSesSousPagesEtLesPagesQuiYRenvoient() {
+        String pnj = creer("PNJ");
+        String bertrand = creerSous("Bertrand", pnj);
+        String fils = creerSous("Fils", bertrand);
+        String session = creer("Session 1");
+        String auberge = creer("Auberge");
+        enregistrer(session, citant(bertrand, fils), 204);
+        enregistrer(auberge, citant(fils), 204);
+        enregistrer(fils, citant(bertrand), 204);
+
+        given().get(carnet() + "/pages/" + bertrand + "/deletion").then().statusCode(200)
+                .body("subpageCount", equalTo(1)).body("citingCount", equalTo(2));
+        given().get(carnet() + "/pages/" + auberge + "/deletion").then().statusCode(200)
+                .body("subpageCount", equalTo(0)).body("citingCount", equalTo(0));
+        given().get(carnet() + "/pages/inconnue/deletion").then().statusCode(404);
+    }
+
+    @Test
+    void supprimer_laPageEtSesSousPagesVontALaCorbeille_puisReviennentALeurPlace() {
+        String pnj = creer("PNJ");
+        String bertrand = creerSous("Bertrand", pnj);
+        String fils = creerSous("Fils", bertrand);
+        String session = creer("Session 1");
+        enregistrer(session, citant(fils), 204);
+        enregistrer(fils, ARRIVEE, 204);
+        envoyerOnglets(corpsOnglets(List.of(bertrand, session), bertrand), 204);
+
+        supprimer(bertrand, 204);
+
+        given().get(carnet()).then().body("pages.title", equalTo(List.of("PNJ", "Session 1")))
+                .body("openPageIds", equalTo(List.of(session))).body("activePageId", nullValue());
+        given().get(corbeille()).then().statusCode(200).body("id", equalTo(List.of(bertrand)))
+                .body("title", equalTo(List.of("Bertrand"))).body("subpageCount", equalTo(List.of(1)))
+                .body("deletedAt[0]", notNullValue());
+        given().get(citantes(fils)).then().statusCode(404);
+        given().queryParam("q", "Fils").get(recherche()).then().body("$", empty());
+        enregistrer(fils, ARRIVEE, 404);
+        given().contentType(ContentType.JSON).body(Map.of("title", "X")).put(carnet() + "/pages/" + bertrand + "/title")
+                .then().statusCode(404);
+        deplacer(bertrand, null, 404);
+        deplacer(session, fils, 404);
+        envoyerOnglets(corpsOnglets(List.of(fils), fils), 404);
+        supprimer(bertrand, 404);
+        restaurer(fils, 404);
+        restaurer(session, 404);
+
+        restaurer(bertrand, 204);
+
+        given().get(carnet()).then().body("pages.title", equalTo(List.of("Bertrand", "Fils", "PNJ", "Session 1")))
+                .body("pages.parentId", equalTo(Arrays.asList(pnj, bertrand, null, null)));
+        given().get(carnet() + "/pages/" + fils).then().body("content.content[0].content[0].text", equalTo("Arrivée"));
+        given().get(citantes(fils)).then().body("id", equalTo(List.of(session)));
+        given().get(corbeille()).then().body("$", empty());
+    }
+
+    @Test
+    void restaurerSansSaPlace_revientALaRacine_puisViderEffaceTout() {
+        String pnj = creer("PNJ");
+        String bertrand = creerSous("Bertrand", pnj);
+        supprimer(bertrand, 204);
+        supprimer(pnj, 204);
+
+        restaurer(bertrand, 204);
+        given().get(carnet()).then().body("pages.title", equalTo(List.of("Bertrand")))
+                .body("pages[0].parentId", nullValue());
+
+        given().delete(corbeille()).then().statusCode(204);
+        given().get(corbeille()).then().body("$", empty());
+        restaurer(pnj, 404);
+        supprimer("inconnue", 404);
     }
 }

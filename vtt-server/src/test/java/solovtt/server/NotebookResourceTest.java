@@ -38,6 +38,26 @@ class NotebookResourceTest {
             }
 
             @Override
+            public void delete(String id) {
+                pages.delete(id);
+            }
+
+            @Override
+            public List<TrashEntry> trash() {
+                return pages.trash();
+            }
+
+            @Override
+            public void restore(String id) {
+                pages.restore(id);
+            }
+
+            @Override
+            public void emptyTrash() {
+                pages.emptyTrash();
+            }
+
+            @Override
             public Tabs tabs() {
                 return onglets;
             }

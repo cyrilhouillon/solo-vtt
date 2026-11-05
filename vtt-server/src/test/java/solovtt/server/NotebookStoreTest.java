@@ -4,12 +4,14 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class NotebookStoreTest {
+public class NotebookStoreTest {
 
     private static final String ARRIVEE = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
 
@@ -108,5 +110,64 @@ class NotebookStoreTest {
         assertThrows(IllegalArgumentException.class, () -> store.move("inconnue", null));
         assertThrows(IllegalArgumentException.class, () -> store.rename("inconnue", "X"));
         assertEquals(List.of(lore), store.list());
+    }
+
+    @Test
+    void enMemoire_supprimer_puisRestaurer_laPageEtSesSousPages() {
+        corbeille(NotebookStore.inMemory());
+    }
+
+    @Test
+    void enMemoire_restaurerSansSaPlace_ouUnLotAPart_puisVider() {
+        placeDisparueEtLotsSepares(NotebookStore.inMemory());
+    }
+
+    /** Les règles de la corbeille, communes aux adaptateurs. */
+    public static void corbeille(NotebookStore store) {
+        var pnj = store.create("PNJ", null);
+        var bertrand = store.create("Bertrand", pnj.id());
+        var fils = store.create("Fils", bertrand.id());
+        var session = store.create("Session 1", null);
+        store.saveContent(fils.id(), ARRIVEE);
+
+        store.delete(bertrand.id());
+
+        assertEquals(List.of(pnj, session), store.list());
+        assertEquals(Optional.empty(), store.find(fils.id()));
+        assertThrows(IllegalArgumentException.class, () -> store.saveContent(bertrand.id(), ARRIVEE));
+        assertThrows(IllegalArgumentException.class, () -> store.create("Petit-fils", fils.id()));
+        assertThrows(IllegalArgumentException.class, () -> store.delete(bertrand.id()));
+        var entrees = store.trash();
+        assertEquals(1, entrees.size());
+        assertEquals(bertrand, entrees.getFirst().page());
+        assertEquals(1, entrees.getFirst().subpageCount());
+        assertThrows(IllegalArgumentException.class, () -> store.restore(fils.id()));
+        assertThrows(IllegalArgumentException.class, () -> store.restore(session.id()));
+
+        store.restore(bertrand.id());
+
+        assertEquals(List.of(bertrand, new Page(fils.id(), "Fils", bertrand.id(), ARRIVEE), pnj, session), store.list());
+        assertEquals(List.of(), store.trash());
+    }
+
+    public static void placeDisparueEtLotsSepares(NotebookStore store) {
+        var pnj = store.create("PNJ", null);
+        var bertrand = store.create("Bertrand", pnj.id());
+        var fils = store.create("Fils", bertrand.id());
+
+        store.delete(fils.id());
+        store.delete(bertrand.id());
+        store.delete(pnj.id());
+        assertEquals(3, store.trash().size());
+        store.restore(bertrand.id());
+
+        assertEquals(List.of(new Page(bertrand.id(), "Bertrand", null, null)), store.list());
+        // Fils, supprimé à part avant Bertrand, reste son propre lot.
+        assertEquals(Set.of(pnj.id(), fils.id()), store.trash().stream().map(e -> e.page().id()).collect(Collectors.toSet()));
+
+        store.emptyTrash();
+        assertEquals(List.of(), store.trash());
+        assertThrows(IllegalArgumentException.class, () -> store.restore(pnj.id()));
+        assertEquals(List.of(new Page(bertrand.id(), "Bertrand", null, null)), store.list());
     }
 }

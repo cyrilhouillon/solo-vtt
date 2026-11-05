@@ -20,6 +20,8 @@ const emit = defineEmits<{
   drop: [pageId: string, parentId: string | null]
   /** Demande le choix d'une destination pour la page. */
   move: [pageId: string]
+  /** Demande la suppression de la page, à confirmer. */
+  delete: [pageId: string]
 }>()
 
 const nodes = computed(() => buildTree(props.pages))
@@ -231,8 +233,14 @@ function cancelEdit() {
   if (current) void focusRow(current.pageId, '.page-link')
 }
 
-/** Rend le focus à la ligne d'une page : après le dialogue de déplacement, son bouton de menu a disparu. */
-defineExpose({ focusPage: (pageId: string) => focusRow(pageId, '.page-link') })
+/**
+ * Rend le focus à la ligne d'une page : à son titre après le dialogue de déplacement (son bouton de menu a disparu), à son
+ * bouton de menu après une suppression annulée.
+ */
+defineExpose({
+  focusPage: (pageId: string) => focusRow(pageId, '.page-link'),
+  focusMenu: (pageId: string) => focusRow(pageId, '.more'),
+})
 
 provide(treeContext, {
   currentId: toRef(props, 'currentId'),
@@ -252,6 +260,10 @@ provide(treeContext, {
   requestMove: (pageId) => {
     menuId.value = null
     emit('move', pageId)
+  },
+  requestDelete: (pageId) => {
+    menuId.value = null
+    emit('delete', pageId)
   },
 })
 

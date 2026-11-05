@@ -8,6 +8,7 @@ import type {
   DistanceUnit,
   JournalEntry,
   NotebookView,
+  PageDeletion,
   PageDocument,
   PageSummary,
   PageView,
@@ -15,6 +16,7 @@ import type {
   SceneView,
   SearchResult,
   TokenView,
+  TrashedPage,
 } from './types'
 
 /** Erreur rendue par le serveur, avec son message lisible. */
@@ -103,6 +105,18 @@ export function campaignApi(campaignId: string) {
         body: JSON.stringify({ content }),
         keepalive,
       }),
+
+    /** Ce que la suppression de la page emporterait, à dire avant de la confirmer. */
+    pageDeletion: (pageId: string) => request<PageDeletion>(`${base}/notebook/pages/${encodeURIComponent(pageId)}/deletion`),
+    /** Met la page et ses sous-pages à la corbeille. */
+    deletePage: (pageId: string) => request<void>(`${base}/notebook/pages/${encodeURIComponent(pageId)}`, { method: 'DELETE' }),
+    /** Les suppressions à la corbeille, la plus récente d'abord. */
+    trash: () => request<TrashedPage[]>(`${base}/notebook/trash`),
+    /** Sort la page de la corbeille, avec ses sous-pages, à sa place ou à la racine. */
+    restorePage: (pageId: string) =>
+      request<void>(`${base}/notebook/trash/${encodeURIComponent(pageId)}/restore`, { method: 'POST' }),
+    /** Efface pour de bon tout ce qui est à la corbeille. */
+    emptyTrash: () => request<void>(`${base}/notebook/trash`, { method: 'DELETE' }),
 
     /** Garde les onglets ouverts, dans l'ordre, et l'actif (`null` sans onglet), que le Carnet rouvre à son retour. */
     setTabs: (pageIds: readonly string[], activeId: string | null) =>

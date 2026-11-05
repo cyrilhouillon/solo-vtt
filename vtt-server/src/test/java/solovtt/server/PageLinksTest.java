@@ -3,6 +3,7 @@ package solovtt.server;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -65,5 +66,15 @@ class PageLinksTest {
     void unContenuIllisible_estSaute() {
         var pages = List.of(page("abime", "{pas du json"), page("session-1", document(paragraphe(lien("bertrand")))));
         assertEquals(List.of("session-1"), citantes(pages, "bertrand"));
+    }
+
+    @Test
+    void lesPagesQuiCitentUnLot_horsDuLot_uneFoisChacune() {
+        var pages = List.of(page("bertrand", document(paragraphe(lien("fils")))),
+                page("fils", document(paragraphe(lien("bertrand")))),
+                page("session-1", document(paragraphe(lien("bertrand"), lien("fils")))),
+                page("auberge", document(paragraphe(lien("fils")))), page("vide", null));
+        var citantes = PageLinks.citingAny(pages, Set.of("bertrand", "fils")).stream().map(Page::id).toList();
+        assertEquals(List.of("session-1", "auberge"), citantes);
     }
 }
