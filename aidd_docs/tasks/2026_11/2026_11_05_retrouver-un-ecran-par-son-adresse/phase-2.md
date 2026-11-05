@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: le clic du milieu ouvre une page dans un nouvel onglet

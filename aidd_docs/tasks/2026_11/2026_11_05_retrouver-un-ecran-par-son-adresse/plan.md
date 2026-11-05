@@ -1,6 +1,6 @@
 ---
 objective: "Chaque écran d'une campagne a son adresse (accueil, Carnet sur une page, combat) : recharger, un favori ou Précédent / Suivant y ramènent, en attendant l'enregistrement de la page en cours, et le clic du milieu sur une page de l'arbre ou un lien de page l'ouvre dans un nouvel onglet du navigateur."
-status: in-progress
+status: implemented
 ---
 
 # Plan: retrouver un écran par son adresse
