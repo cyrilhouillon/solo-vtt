@@ -18,8 +18,10 @@ import org.jboss.resteasy.reactive.ResponseStatus;
 
 import java.io.UncheckedIOException;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-/** Le Carnet d'une campagne : ses pages, leur contenu et la dernière page consultée. */
+/** Le Carnet d'une campagne : ses pages, leur contenu et ses onglets ouverts. */
 public class NotebookResource {
 
     static final int MAX_TITLE_LENGTH = 120;
@@ -32,13 +34,20 @@ public class NotebookResource {
         this.notebook = notebook;
     }
 
-    /** Une page dont le parent est illisible, ou qui boucle sur elle-même, est rendue à la racine. */
+    /**
+     * Une page dont le parent est illisible, ou qui boucle sur elle-même, est rendue à la racine. Un onglet dont la page
+     * n'existe plus est omis ; s'il était actif, aucun onglet ne l'est.
+     */
     @GET
-    @APIResponse(responseCode = "200", description = "Les pages triées par titre, avec leur parent, et la dernière consultée",
+    @APIResponse(responseCode = "200", description = "Les pages triées par titre, avec leur parent, et les onglets ouverts",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.NotebookDto.class)))
     public Dtos.NotebookDto get() {
-        return new Dtos.NotebookDto(PageTree.rooted(notebook.list()).stream().map(Dtos.PageSummaryDto::of).toList(),
-                notebook.lastPage().orElse(null));
+        List<Page> pages = notebook.list();
+        Set<String> ids = pages.stream().map(Page::id).collect(Collectors.toSet());
+        NotebookStore.Tabs tabs = notebook.tabs();
+        List<String> open = tabs.pageIds().stream().filter(ids::contains).toList();
+        String active = open.contains(tabs.activeId()) ? tabs.activeId() : null;
+        return new Dtos.NotebookDto(PageTree.rooted(pages).stream().map(Dtos.PageSummaryDto::of).toList(), open, active);
     }
 
     /** Crée une page vide sous ce titre, à la racine ou sous une page ; deux pages peuvent porter le même titre. */
@@ -130,14 +139,18 @@ public class NotebookResource {
         notebook.saveContent(pageId, content.toString());
     }
 
+    /** Garde les onglets ouverts, dans l'ordre de la barre, et l'actif ; une liste vide ferme tout. */
     @PUT
-    @Path("/last-page")
-    @APIResponse(responseCode = "204", description = "Dernière page notée")
-    @APIResponse(responseCode = "400", description = "Page absente")
-    @APIResponse(responseCode = "404", description = "Aucune page avec cet id")
-    public void setLastPage(Dtos.LastPageRequest request) {
-        if (request == null || request.pageId() == null) throw new IllegalArgumentException("Donner la page consultée");
-        notebook.setLastPage(known(request.pageId()).id());
+    @Path("/tabs")
+    @APIResponse(responseCode = "204", description = "Onglets gardés")
+    @APIResponse(responseCode = "400", description = "Liste absente, page en double, ou actif qui n'est pas l'un des onglets")
+    @APIResponse(responseCode = "404", description = "Aucune page avec l'un de ces ids")
+    public void setTabs(Dtos.TabsRequest request) {
+        if (request == null || request.pageIds() == null || request.pageIds().contains(null)) {
+            throw new IllegalArgumentException("Donner les pages ouvertes en onglets");
+        }
+        request.pageIds().forEach(this::known);
+        notebook.setTabs(new NotebookStore.Tabs(request.pageIds(), request.activeId()));
     }
 
     /** Le titre nettoyé, à la création comme au renommage. */

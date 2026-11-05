@@ -27,23 +27,45 @@ class NotebookStoreTest {
     }
 
     @Test
-    void enMemoire_contenuEtDernierePage() {
+    void enMemoire_contenuEtOnglets() {
         var store = NotebookStore.inMemory();
         var session = store.create("Session 1", null);
-        assertEquals(Optional.empty(), store.lastPage());
+        var bertrand = store.create("Bertrand", null);
+        assertEquals(NotebookStore.Tabs.NONE, store.tabs());
 
         store.saveContent(session.id(), ARRIVEE);
-        store.setLastPage(session.id());
+        var tabs = new NotebookStore.Tabs(List.of(session.id(), bertrand.id()), bertrand.id());
+        store.setTabs(tabs);
 
         assertEquals(Optional.of(new Page(session.id(), "Session 1", null, ARRIVEE)), store.find(session.id()));
-        assertEquals(Optional.of(session.id()), store.lastPage());
+        assertEquals(tabs, store.tabs());
+        store.setTabs(NotebookStore.Tabs.NONE);
+        assertEquals(NotebookStore.Tabs.NONE, store.tabs());
     }
 
     @Test
     void enMemoire_unePageInconnue_estRefusee() {
         var store = NotebookStore.inMemory();
         assertThrows(IllegalArgumentException.class, () -> store.saveContent("inconnue", ARRIVEE));
-        assertThrows(IllegalArgumentException.class, () -> store.setLastPage("inconnue"));
+        assertThrows(IllegalArgumentException.class,
+                () -> store.setTabs(new NotebookStore.Tabs(List.of("inconnue"), "inconnue")));
+    }
+
+    @Test
+    void enMemoire_desOngletsEnDoubleOuUnActifHorsDesOnglets_sontRefuses() {
+        var store = NotebookStore.inMemory();
+        var session = store.create("Session 1", null);
+        var bertrand = store.create("Bertrand", null);
+        var gardes = new NotebookStore.Tabs(List.of(session.id()), session.id());
+        store.setTabs(gardes);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> store.setTabs(new NotebookStore.Tabs(List.of(session.id(), session.id()), session.id())));
+        assertThrows(IllegalArgumentException.class,
+                () -> store.setTabs(new NotebookStore.Tabs(List.of(session.id()), bertrand.id())));
+        assertThrows(IllegalArgumentException.class, () -> store.setTabs(new NotebookStore.Tabs(List.of(session.id()), null)));
+        assertThrows(IllegalArgumentException.class, () -> store.setTabs(new NotebookStore.Tabs(List.of(), session.id())));
+        assertEquals(gardes, store.tabs());
     }
 
     @Test

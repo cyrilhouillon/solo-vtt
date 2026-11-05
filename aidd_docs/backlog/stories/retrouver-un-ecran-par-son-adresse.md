@@ -18,6 +18,6 @@ depends_on:
 - Le clic du milieu sur un lien de page du Carnet, ou sur une page de l'arbre, ouvre cette page dans un nouvel onglet du navigateur.
 - Précédent et Suivant du navigateur repassent par les pages et les écrans visités, sans quitter l'application.
 - Recharger l'onglet, ou ouvrir une adresse gardée en favori, rouvre le même écran sur la même page.
-- Ouvrir une campagne sans page dans l'adresse mène, comme aujourd'hui, à la dernière page consultée.
+- Ouvrir une campagne sans page dans l'adresse mène, comme aujourd'hui, à l'onglet actif.
 - Une adresse vers une campagne ou une page qui n'existe pas ne casse rien : campagne inconnue, retour à l'accueil ; page inconnue, le Carnet de la campagne s'ouvre comme sans page.
 - Précédent et Suivant attendent l'enregistrement de la page en cours, comme les boutons de l'application, et restent sur place s'il échoue.

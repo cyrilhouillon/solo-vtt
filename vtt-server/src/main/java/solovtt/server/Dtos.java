@@ -62,8 +62,8 @@ final class Dtos {
     /** Le document de l'éditeur à garder pour une page ; {@code null} si absent. */
     record PageContentRequest(JsonNode content) {}
 
-    /** La page consultée ; {@code null} si absent. */
-    record LastPageRequest(String pageId) {}
+    /** Les pages ouvertes en onglets, dans l'ordre, et celle de l'onglet actif ({@code null} sans onglet). */
+    record TabsRequest(List<String> pageIds, String activeId) {}
 
     /** Une page, telle que l'arbre du Carnet la montre ; {@code parentId} : {@code null} à la racine. */
     record PageSummaryDto(String id, String title, String parentId) {
@@ -87,8 +87,11 @@ final class Dtos {
         }
     }
 
-    /** {@code lastPageId} : la dernière page consultée, {@code null} si aucune. */
-    record NotebookDto(List<PageSummaryDto> pages, String lastPageId) {}
+    /**
+     * {@code openPageIds} : les pages ouvertes en onglets, dans l'ordre ; {@code activePageId} : celle de l'onglet actif,
+     * {@code null} si aucune.
+     */
+    record NotebookDto(List<PageSummaryDto> pages, List<String> openPageIds, String activePageId) {}
 
     record CampaignDto(String id, String name) {
         static CampaignDto of(Campaign campaign) {

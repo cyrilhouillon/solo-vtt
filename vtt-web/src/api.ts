@@ -75,7 +75,7 @@ export function campaignApi(campaignId: string) {
   const base = `/api/campaigns/${encodeURIComponent(campaignId)}`
   return {
     ...api,
-    /** Les pages du Carnet et la dernière page consultée. */
+    /** Les pages du Carnet et ses onglets ouverts. */
     notebook: () => request<NotebookView>(`${base}/notebook`),
 
     /** `parentId` : la page sous laquelle la ranger, `null` pour la racine. */
@@ -104,8 +104,9 @@ export function campaignApi(campaignId: string) {
         keepalive,
       }),
 
-    /** Note la page consultée, que le Carnet rouvre à la prochaine ouverture de la campagne. */
-    setLastPage: (pageId: string) => request<void>(`${base}/notebook/last-page`, { method: 'PUT', body: JSON.stringify({ pageId }) }),
+    /** Garde les onglets ouverts, dans l'ordre, et l'actif (`null` sans onglet), que le Carnet rouvre à son retour. */
+    setTabs: (pageIds: readonly string[], activeId: string | null) =>
+      request<void>(`${base}/notebook/tabs`, { method: 'PUT', body: JSON.stringify({ pageIds, activeId }) }),
 
     scene: () => request<SceneView>(`${base}/scene`),
 

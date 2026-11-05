@@ -72,10 +72,14 @@ export interface SearchResult extends PageSummary {
   excerpt: { text: string; match: boolean }[]
 }
 
-/** Le Carnet d'une campagne : ses pages (l'arbre se tire de leur parent) et la dernière page consultée (`null` si aucune). */
+/**
+ * Le Carnet d'une campagne : ses pages (l'arbre se tire de leur parent), les pages ouvertes en onglets, dans l'ordre, et
+ * celle de l'onglet actif (`null` si aucune).
+ */
 export interface NotebookView {
   pages: PageSummary[]
-  lastPageId: string | null
+  openPageIds: string[]
+  activePageId: string | null
 }
 
 /** Une carte enregistrée, prête à charger. */
