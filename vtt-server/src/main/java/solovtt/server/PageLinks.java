@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Les liens entre pages du Carnet : un nœud {@code pageLink} de l'éditeur, {@code { type: "pageLink", attrs: { pageId,
@@ -24,13 +25,21 @@ public final class PageLinks {
      * contenu ou au contenu illisible est sautée.
      */
     public static List<Page> citing(List<Page> pages, String id) {
-        return pages.stream().filter(p -> !p.id().equals(id) && linksTo(p, id)).toList();
+        return citingAny(pages, Set.of(id));
     }
 
-    private static boolean linksTo(Page page, String id) {
+    /**
+     * Les pages hors de {@code ids} qui contiennent au moins un lien vers l'une d'elles, dans l'ordre reçu : celles dont
+     * les liens mourraient si toutes ces pages disparaissaient.
+     */
+    public static List<Page> citingAny(List<Page> pages, Set<String> ids) {
+        return pages.stream().filter(p -> !ids.contains(p.id()) && linksTo(p, ids)).toList();
+    }
+
+    private static boolean linksTo(Page page, Set<String> ids) {
         if (page.content() == null) return false;
         try {
-            return contains(JSON.readTree(page.content()), id);
+            return contains(JSON.readTree(page.content()), ids);
         } catch (JsonProcessingException e) {
             LOG.log(System.Logger.Level.WARNING, "Liens ignorés, contenu illisible : " + page.id(), e);
             return false;
@@ -38,13 +47,13 @@ public final class PageLinks {
     }
 
     /** Parcourt tout le document : un lien peut être dans un paragraphe, une liste, une citation… */
-    private static boolean contains(JsonNode node, String id) {
+    private static boolean contains(JsonNode node, Set<String> ids) {
         if (node.isObject() && PAGE_LINK.equals(node.path("type").asText())
-                && id.equals(node.path("attrs").path("pageId").asText(null))) {
+                && ids.contains(node.path("attrs").path("pageId").asText(""))) {
             return true;
         }
         for (JsonNode child : node) {
-            if (contains(child, id)) return true;
+            if (contains(child, ids)) return true;
         }
         return false;
     }

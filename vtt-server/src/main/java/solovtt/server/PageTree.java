@@ -1,9 +1,11 @@
 package solovtt.server;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /** L'arbre du Carnet, qui n'est rien d'autre que le parent de chaque page. */
 public final class PageTree {
@@ -15,13 +17,30 @@ public final class PageTree {
      * racine, à un parent inconnu ou après autant de pas que de pages : une boucle déjà sur le disque ne la bloque pas.
      */
     public static boolean isWithin(List<Page> pages, String id, String ancestorId) {
-        Map<String, String> parents = parents(pages);
+        return isWithin(parents(pages), id, ancestorId);
+    }
+
+    private static boolean isWithin(Map<String, String> parents, String id, String ancestorId) {
         String current = id;
         for (int steps = 0; current != null && steps <= parents.size(); steps++) {
             if (current.equals(ancestorId)) return true;
             current = parents.get(current);
         }
         return false;
+    }
+
+    /**
+     * La page {@code id} et toutes ses sous-pages, à toute profondeur : ce qu'emporte sa suppression. Une boucle déjà sur
+     * le disque ne la bloque pas.
+     */
+    public static Set<String> branch(List<Page> pages, String id) {
+        Map<String, String> parents = parents(pages);
+        Set<String> branch = new LinkedHashSet<>();
+        branch.add(id);
+        for (Page page : pages) {
+            if (isWithin(parents, page.id(), id)) branch.add(page.id());
+        }
+        return branch;
     }
 
     /**
