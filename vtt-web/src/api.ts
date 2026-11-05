@@ -104,8 +104,9 @@ export function campaignApi(campaignId: string) {
         keepalive,
       }),
 
-    /** Note la page consultée, que le Carnet rouvre à la prochaine ouverture de la campagne. */
-    setLastPage: (pageId: string) => request<void>(`${base}/notebook/last-page`, { method: 'PUT', body: JSON.stringify({ pageId }) }),
+    /** Garde les onglets ouverts, dans l'ordre, et l'actif (`null` sans onglet), que le Carnet rouvre à son retour. */
+    setTabs: (pageIds: readonly string[], activeId: string | null) =>
+      request<void>(`${base}/notebook/tabs`, { method: 'PUT', body: JSON.stringify({ pageIds, activeId }) }),
 
     scene: () => request<SceneView>(`${base}/scene`),
 

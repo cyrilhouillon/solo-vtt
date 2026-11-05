@@ -20,7 +20,7 @@ Ouvrir une campagne mène à son Carnet : le joueur y relit où il en était, ra
 ## Boundaries
 
 - **Inclut :**
-  - ouvrir une campagne mène au Carnet, sur la dernière page consultée ; Carnet et combat sont deux écrans séparés, on passe de l'un à l'autre ;
+  - ouvrir une campagne mène au Carnet, sur l'onglet actif ; Carnet et combat sont deux écrans séparés, on passe de l'un à l'autre ;
   - un arbre libre de pages : créer, renommer, déplacer, supprimer ; une session est une page ordinaire ;
   - l'édition riche au fil du texte (titres, gras, italique, listes, citations, images), enregistrée automatiquement, avec annuler / rétablir ;
   - lier une page existante ; le lien suit le renommage et le déplacement de sa cible ;
