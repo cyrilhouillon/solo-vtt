@@ -1,27 +1,34 @@
 package solovtt.server.persistence;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import solovtt.server.NotebookStore;
 import solovtt.server.Page;
+import solovtt.server.PageTree;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * Le Carnet d'une campagne, dans un dossier : une fiche par page ({@code <id>.json} : id, titre, parent, contenu en JSON
  * imbriqué) et {@code carnet.json} pour les onglets : {@code openPageIds} dans l'ordre, {@code lastPageId} l'actif (un
- * fichier d'avant les onglets, sans {@code openPageIds}, se lit en un seul onglet). Chaque écriture passe par un fichier
- * voisin et un déplacement atomique. Une fiche illisible est ignorée, jamais écrasée.
+ * fichier d'avant les onglets, sans {@code openPageIds}, se lit en un seul onglet). Une page à la corbeille garde sa fiche,
+ * marquée {@code deletedWith} (la page dont la suppression l'a emportée) et {@code deletedAt} (ISO-8601, le mapper n'ayant
+ * pas de module {@code java.time}) ; une fiche sans ces champs est vivante. Chaque écriture passe par un fichier voisin et
+ * un déplacement atomique. Une fiche illisible est ignorée, jamais écrasée ni effacée.
  */
 public final class JsonFileNotebookStore implements NotebookStore {
 
@@ -29,9 +36,18 @@ public final class JsonFileNotebookStore implements NotebookStore {
     private static final String EXTENSION = ".json";
     private static final System.Logger LOG = System.getLogger(JsonFileNotebookStore.class.getName());
 
-    private record PageFile(String id, String title, String parentId, JsonNode content) {}
+    private record PageFile(String id, String title, String parentId, JsonNode content,
+                            @JsonInclude(JsonInclude.Include.NON_NULL) String deletedWith,
+                            @JsonInclude(JsonInclude.Include.NON_NULL) String deletedAt) {}
 
     private record NotebookFile(String lastPageId, List<String> openPageIds) {}
+
+    /** Une fiche lue : la page, et sa marque de corbeille, {@code null} si elle est vivante. */
+    private record Stored(Page page, Trashed trashed) {
+        boolean alive() {
+            return trashed == null;
+        }
+    }
 
     private final Path dir;
     private final ObjectMapper mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
@@ -42,24 +58,15 @@ public final class JsonFileNotebookStore implements NotebookStore {
 
     @Override
     public synchronized List<Page> list() {
-        if (!Files.isDirectory(dir)) return List.of();
-        List<Page> pages = new ArrayList<>();
-        try (Stream<Path> files = Files.list(dir)) {
-            for (Path file : files.filter(this::isPageFile).toList()) {
-                read(file).ifPresent(pages::add);
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException("Carnet illisible : " + dir, e);
-        }
-        return pages.stream().sorted(BY_TITLE).toList();
+        return stored().stream().filter(Stored::alive).map(Stored::page).sorted(BY_TITLE).toList();
     }
 
-    /** Lit la seule fiche de cette page : un id qui n'est pas un UUID ne construit aucun chemin. */
+    /** Lit la seule fiche de cette page, vivante : un id qui n'est pas un UUID ne construit aucun chemin. */
     @Override
     public synchronized Optional<Page> find(String id) {
         if (!isPageId(id)) return Optional.empty();
         Path file = dir.resolve(id + EXTENSION);
-        return Files.isRegularFile(file) ? read(file) : Optional.empty();
+        return Files.isRegularFile(file) ? read(file).filter(Stored::alive).map(Stored::page) : Optional.empty();
     }
 
     @Override
@@ -91,6 +98,50 @@ public final class JsonFileNotebookStore implements NotebookStore {
     }
 
     @Override
+    public synchronized void delete(String id) {
+        known(id);
+        List<Page> alive = list();
+        Set<String> branch = PageTree.branch(alive, id);
+        String deletedAt = Instant.now().toString();
+        for (Page page : alive) {
+            if (branch.contains(page.id())) write(page, id, deletedAt);
+        }
+    }
+
+    @Override
+    public synchronized List<TrashEntry> trash() {
+        return NotebookStore.trashEntries(stored().stream().filter(s -> !s.alive()).map(Stored::trashed).toList());
+    }
+
+    @Override
+    public synchronized void restore(String id) {
+        List<Stored> all = stored();
+        Stored root = all.stream()
+                .filter(s -> !s.alive() && s.page().id().equals(id) && id.equals(s.trashed().deletedWith()))
+                .findFirst().orElseThrow(() -> new IllegalArgumentException("Aucune suppression : " + id));
+        Set<String> alive = all.stream().filter(Stored::alive).map(s -> s.page().id()).collect(Collectors.toSet());
+        String parent = root.page().parentId();
+        String parentId = parent != null && alive.contains(parent) ? parent : null;
+        for (Stored member : all) {
+            if (member.alive() || !id.equals(member.trashed().deletedWith())) continue;
+            Page page = member.page();
+            write(page.id().equals(id) ? new Page(id, page.title(), parentId, page.content()) : page);
+        }
+    }
+
+    @Override
+    public synchronized void emptyTrash() {
+        for (Stored member : stored()) {
+            if (member.alive()) continue;
+            try {
+                Files.deleteIfExists(dir.resolve(member.page().id() + EXTENSION));
+            } catch (IOException e) {
+                throw new UncheckedIOException("Impossible de vider la corbeille : " + dir, e);
+            }
+        }
+    }
+
+    @Override
     public synchronized Tabs tabs() {
         Path file = dir.resolve(NOTEBOOK_FILE);
         if (!Files.exists(file)) return Tabs.NONE;
@@ -110,7 +161,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
         writeAtomically(dir.resolve(NOTEBOOK_FILE), new NotebookFile(tabs.activeId(), tabs.pageIds()));
     }
 
-    /** Une page lue sur le disque : aucun chemin ne se construit depuis un id qui n'en est pas un. */
+    /** Une page vivante lue sur le disque : aucun chemin ne se construit depuis un id qui n'en est pas un. */
     private Page known(String id) {
         return find(id).orElseThrow(() -> new IllegalArgumentException("Page inconnue : " + id));
     }
@@ -130,27 +181,51 @@ public final class JsonFileNotebookStore implements NotebookStore {
         return Files.isRegularFile(file) && name.endsWith(EXTENSION) && !name.equals(NOTEBOOK_FILE);
     }
 
-    private Optional<Page> read(Path file) {
+    /** Toutes les fiches lisibles, vivantes ou à la corbeille. */
+    private List<Stored> stored() {
+        if (!Files.isDirectory(dir)) return List.of();
+        List<Stored> pages = new ArrayList<>();
+        try (Stream<Path> files = Files.list(dir)) {
+            for (Path file : files.filter(this::isPageFile).toList()) {
+                read(file).ifPresent(pages::add);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Carnet illisible : " + dir, e);
+        }
+        return pages;
+    }
+
+    private Optional<Stored> read(Path file) {
         try {
             PageFile page = mapper.readValue(file.toFile(), PageFile.class);
             String expected = page.id() + EXTENSION;
-            if (page.id() == null || page.title() == null || !expected.equals(file.getFileName().toString())) {
+            if (page.id() == null || page.title() == null || !expected.equals(file.getFileName().toString())
+                    || (page.deletedWith() == null) != (page.deletedAt() == null)) {
                 LOG.log(System.Logger.Level.WARNING, "Page ignorée, fiche incohérente : " + file);
                 return Optional.empty();
             }
             String content = page.content() == null || page.content().isNull() ? null : mapper.writer()
                     .without(SerializationFeature.INDENT_OUTPUT).writeValueAsString(page.content());
-            return Optional.of(new Page(page.id(), page.title(), page.parentId(), content));
-        } catch (IOException e) {
+            Page read = new Page(page.id(), page.title(), page.parentId(), content);
+            Trashed trashed = page.deletedWith() == null ? null
+                    : new Trashed(read, page.deletedWith(), Instant.parse(page.deletedAt()));
+            return Optional.of(new Stored(read, trashed));
+        } catch (IOException | RuntimeException e) {
             LOG.log(System.Logger.Level.WARNING, "Page ignorée, fiche illisible : " + file, e);
             return Optional.empty();
         }
     }
 
     private void write(Page page) {
+        write(page, null, null);
+    }
+
+    /** Écrit la fiche, marquée à la corbeille quand {@code deletedWith} n'est pas {@code null}. */
+    private void write(Page page, String deletedWith, String deletedAt) {
         try {
             JsonNode content = page.content() == null ? null : mapper.readTree(page.content());
-            writeAtomically(dir.resolve(page.id() + EXTENSION), new PageFile(page.id(), page.title(), page.parentId(), content));
+            writeAtomically(dir.resolve(page.id() + EXTENSION),
+                    new PageFile(page.id(), page.title(), page.parentId(), content, deletedWith, deletedAt));
         } catch (IOException e) {
             throw new UncheckedIOException("Contenu de page illisible : " + page.id(), e);
         }
