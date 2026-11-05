@@ -10,6 +10,7 @@ import CitingPages from './CitingPages.vue'
 import SearchResults from './SearchResults.vue'
 import { ancestors, buildTree } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
+import { IMAGE_TYPES } from '../images'
 import type { CampaignView, NotebookView, PageDocument, PageView, SearchResult } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
@@ -35,6 +36,28 @@ const moving = ref<string | null>(null)
 const pageTitle = ref('')
 /** Les pages qui citent la page ouverte, `null` tant qu'elles ne sont pas lues. */
 const citing = ref<string[] | null>(null)
+/** L'éditeur de la page ouverte, qui insère les images. */
+const editor = ref<InstanceType<typeof PageEditor> | null>(null)
+const imageInput = ref<HTMLInputElement | null>(null)
+/** Vrai pendant l'envoi d'une image : le bouton Image attend. */
+const uploading = ref(false)
+
+/** L'image choisie part au serveur, puis entre dans la page au curseur ; un refus va au bandeau. */
+async function chooseImage(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  // Vidé tout de suite : choisir à nouveau le même fichier redéclenche `change`.
+  input.value = ''
+  if (!file || !editor.value) return
+  error.value = null
+  uploading.value = true
+  try {
+    const refusal = await editor.value.insertImage(file)
+    if (refusal) error.value = refusal
+  } finally {
+    uploading.value = false
+  }
+}
 
 /** La recherche en cours : tant que le champ n'est pas vide, ses résultats remplacent l'arbre. */
 const query = ref('')
@@ -298,6 +321,17 @@ function moveTo(pageId: string, parentId: string | null) {
   })
 }
 
+/**
+ * Un fichier lâché hors du texte éditable (marge, arbre, page verrouillée) ne remplace jamais l'application : le
+ * navigateur l'ouvrirait. Le texte éditable prend le sien en main avant.
+ */
+function keepFiles(e: DragEvent) {
+  if (!e.dataTransfer?.types.includes('Files')) return
+  // Au-dessus du texte éditable, ProseMirror a déjà accepté le dépôt ; ailleurs, le curseur dit qu'on ne dépose rien.
+  if (e.type === 'dragover' && !e.defaultPrevented) e.dataTransfer.dropEffect = 'none'
+  e.preventDefault()
+}
+
 async function leave(target: 'home' | 'combat') {
   // Une frappe qui n'a pas pu partir reste à l'écran, avec l'erreur : on ne quitte pas en la perdant.
   if (!(await saved())) return
@@ -307,7 +341,7 @@ async function leave(target: 'home' | 'combat') {
 </script>
 
 <template>
-  <div class="notebook">
+  <div class="notebook" @dragover="keepFiles" @drop="keepFiles">
     <header class="bar">
       <button type="button" class="icon-button" aria-label="Accueil" title="Accueil : changer de campagne" @click="leave('home')">
         <AppIcon name="home" />
@@ -406,25 +440,42 @@ async function leave(target: 'home' | 'combat') {
               />
               <template v-else>{{ page.title }}</template>
             </h2>
-            <button
-              type="button"
-              class="icon-button"
-              aria-label="Page verrouillée"
-              :aria-pressed="!unlocked"
-              :title="unlocked ? 'Verrouiller la page' : 'Déverrouiller la page pour l’écrire'"
-              @click="unlocked = !unlocked"
-            >
-              <AppIcon :name="unlocked ? 'unlock' : 'lock'" />
-            </button>
+            <span class="page-tools">
+              <template v-if="unlocked">
+                <button
+                  type="button"
+                  class="icon-button"
+                  aria-label="Insérer une image"
+                  title="Insérer une image PNG, JPEG ou WebP au curseur"
+                  :disabled="uploading"
+                  @click="imageInput?.click()"
+                >
+                  <AppIcon name="image" />
+                </button>
+                <input ref="imageInput" type="file" hidden :accept="IMAGE_TYPES.join(',')" @change="chooseImage" />
+              </template>
+              <button
+                type="button"
+                class="icon-button"
+                aria-label="Page verrouillée"
+                :aria-pressed="!unlocked"
+                :title="unlocked ? 'Verrouiller la page' : 'Déverrouiller la page pour l’écrire'"
+                @click="unlocked = !unlocked"
+              >
+                <AppIcon :name="unlocked ? 'unlock' : 'lock'" />
+              </button>
+            </span>
           </header>
           <hr class="tapered" />
           <PageEditor
+            ref="editor"
             :content="page.content"
             :editable="unlocked"
             :label="`Texte de ${page.title}`"
             :pages="notebook.pages"
             @change="onChange"
             @open="open"
+            @refuse="(reason) => (error = reason)"
           />
           <CitingPages v-if="citing" :page-ids="citing" :pages="notebook.pages" @open="open" />
         </article>
@@ -535,6 +586,12 @@ input[type='search']::-webkit-search-cancel-button {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+.page-tools {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 .page-title {
   margin: 0;
