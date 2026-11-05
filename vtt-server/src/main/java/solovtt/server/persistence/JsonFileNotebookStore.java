@@ -97,14 +97,19 @@ public final class JsonFileNotebookStore implements NotebookStore {
         write(new Page(page.id(), page.title(), parentId, page.content()));
     }
 
+    /**
+     * La page d'abord : si une écriture échoue ensuite, la suppression est déjà à la corbeille, et la restaurer ramène ce
+     * qui en est parti.
+     */
     @Override
     public synchronized void delete(String id) {
-        known(id);
+        Page root = known(id);
         List<Page> alive = list();
         Set<String> branch = PageTree.branch(alive, id);
         String deletedAt = Instant.now().toString();
+        write(root, id, deletedAt);
         for (Page page : alive) {
-            if (branch.contains(page.id())) write(page, id, deletedAt);
+            if (!page.id().equals(id) && branch.contains(page.id())) write(page, id, deletedAt);
         }
     }
 
@@ -113,6 +118,10 @@ public final class JsonFileNotebookStore implements NotebookStore {
         return NotebookStore.trashEntries(stored().stream().filter(s -> !s.alive()).map(Stored::trashed).toList());
     }
 
+    /**
+     * La page en dernier : si une écriture échoue avant, la suppression reste à la corbeille, et la restaurer à nouveau
+     * ramène le reste.
+     */
     @Override
     public synchronized void restore(String id) {
         List<Stored> all = stored();
@@ -123,10 +132,11 @@ public final class JsonFileNotebookStore implements NotebookStore {
         String parent = root.page().parentId();
         String parentId = parent != null && alive.contains(parent) ? parent : null;
         for (Stored member : all) {
-            if (member.alive() || !id.equals(member.trashed().deletedWith())) continue;
-            Page page = member.page();
-            write(page.id().equals(id) ? new Page(id, page.title(), parentId, page.content()) : page);
+            if (member.alive() || member == root || !id.equals(member.trashed().deletedWith())) continue;
+            write(member.page());
         }
+        Page page = root.page();
+        write(new Page(id, page.title(), parentId, page.content()));
     }
 
     @Override

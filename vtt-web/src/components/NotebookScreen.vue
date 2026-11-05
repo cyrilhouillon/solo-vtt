@@ -450,13 +450,14 @@ function confirmDelete() {
       await api.deletePage(pageId)
       deleting.value = null
       deletion.value = null
-      notebook.value = await api.notebook()
+      // Les onglets du lot se ferment avant la relecture : un échec de celle-ci ne laisse pas ouverte une page supprimée.
       await closeTabs(lot)
+      notebook.value = await api.notebook()
       refreshSearch()
-      // La ligne a disparu : le focus passe au parent, sinon au champ de recherche.
+      // La ligne a disparu : le focus passe au parent, sinon au champ de recherche, sinon au titre du Carnet vide.
       await nextTick()
       if (parentId) await tree.value?.focusPage(parentId)
-      else searchField.value?.focus()
+      else (searchField.value ?? firstTitle.value)?.focus()
     } finally {
       deleting.value = null
       deletion.value = null
@@ -468,13 +469,17 @@ function confirmDelete() {
 function inTrash(action: () => Promise<void>) {
   if (busy.value) return
   error.value = null
-  call(async () => {
+  let failed = false
+  // Fermée une fois l'appel fini : le bouton « Corbeille », rallumé, peut reprendre le focus.
+  void call(async () => {
     try {
       await action()
     } catch (e) {
-      trashOpen.value = false
+      failed = true
       throw e
     }
+  }).then(() => {
+    if (failed) closeTrash()
   })
 }
 

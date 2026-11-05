@@ -32,6 +32,7 @@ watch(
     const el = dialog.value
     if (!el) return
     confirming.value = false
+    restored = null
     if (!open) {
       if (el.open) el.close()
       return
@@ -42,14 +43,34 @@ watch(
   },
 )
 
-/** Vidée, la corbeille n'a plus que « Fermer » à offrir au focus. */
+/** La ligne restaurée, dont la place reçoit le focus une fois la corbeille relue. */
+let restored: number | null = null
+
+function restore(entry: TrashedPage, index: number) {
+  restored = index
+  emit('restore', entry.id)
+}
+
+/**
+ * Vidée, la corbeille n'a plus que « Fermer » à offrir au focus ; une ligne restaurée le passe au « Restaurer » qui
+ * prend sa place, sinon au précédent. Les boutons se rallument à la fin de l'appel : le focus attend ce moment.
+ */
 watch(
-  () => props.entries?.length,
-  async (count) => {
-    if (count !== 0 || !props.open) return
-    confirming.value = false
+  () => [props.entries, props.busy] as const,
+  async ([entries, busy]) => {
+    if (!props.open || !entries || busy) return
+    const index = restored
+    restored = null
+    if (entries.length === 0) {
+      confirming.value = false
+      await nextTick()
+      closeButton.value?.focus()
+      return
+    }
+    if (index === null) return
     await nextTick()
-    closeButton.value?.focus()
+    const buttons = dialog.value?.querySelectorAll<HTMLButtonElement>('.entry button')
+    buttons?.[Math.min(index, entries.length - 1)]?.focus()
   },
 )
 
@@ -84,13 +105,13 @@ function onEscape() {
     <p v-if="entries === null" class="hint">Lecture de la corbeille…</p>
     <p v-else-if="!entries.length" class="hint">La corbeille est vide.</p>
     <ul v-else class="entries">
-      <li v-for="entry in entries" :key="entry.id" class="entry">
+      <li v-for="(entry, index) in entries" :key="entry.id" class="entry">
         <div class="what">
           <span class="title">{{ entry.title }}</span>
           <span v-if="entry.subpageCount" class="hint">{{ subpages(entry.subpageCount) }}</span>
           <time class="hint" :datetime="entry.deletedAt">{{ deletedAt(entry) }}</time>
         </div>
-        <button type="button" :disabled="busy" :aria-label="`Restaurer « ${entry.title} »`" @click="emit('restore', entry.id)">
+        <button type="button" :disabled="busy" :aria-label="`Restaurer « ${entry.title} »`" @click="restore(entry, index)">
           Restaurer
         </button>
       </li>

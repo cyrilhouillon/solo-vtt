@@ -198,6 +198,32 @@ class JsonFileNotebookStoreTest {
         assertEquals(store.trash().getFirst().deletedAt(), entree.deletedAt());
     }
 
+    @Test
+    void uneEcritureQuiEchoueEnCoursDeLot_laisseLaSuppressionALaCorbeille_etLeGesteSeRejoue() throws IOException {
+        Path carnet = dir.resolve("carnet");
+        var store = new JsonFileNotebookStore(carnet);
+        var bertrand = store.create("Bertrand", null);
+        var fils = store.create("Fils", bertrand.id());
+        // Un dossier à la place du fichier voisin : l'écriture de la fiche de Fils échoue.
+        Path bloque = carnet.resolve(fils.id() + ".json.tmp");
+
+        Files.createDirectory(bloque);
+        assertThrows(RuntimeException.class, () -> store.delete(bertrand.id()));
+        assertEquals(List.of(bertrand.id()), store.trash().stream().map(e -> e.page().id()).toList());
+        Files.delete(bloque);
+        store.restore(bertrand.id());
+        assertEquals(List.of(bertrand, fils), store.list());
+
+        store.delete(bertrand.id());
+        Files.createDirectory(bloque);
+        assertThrows(RuntimeException.class, () -> store.restore(bertrand.id()));
+        assertEquals(List.of(bertrand.id()), store.trash().stream().map(e -> e.page().id()).toList());
+        Files.delete(bloque);
+        store.restore(bertrand.id());
+        assertEquals(List.of(bertrand, fils), store.list());
+        assertTrue(store.trash().isEmpty());
+    }
+
     private static void fiche(Path carnet, String id, String title, String marque) throws IOException {
         Files.createDirectories(carnet);
         Files.writeString(carnet.resolve(id + ".json"),
