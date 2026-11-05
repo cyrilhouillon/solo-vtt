@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { campaignApi } from '../api'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router'
+import { ApiError, campaignApi } from '../api'
 import AppIcon from './AppIcon.vue'
 import ThemeButton from './ThemeButton.vue'
 import PageEditor from './PageEditor.vue'
@@ -16,10 +17,10 @@ import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
 import type { CampaignView, NotebookView, PageDeletion, PageDocument, PageView, SearchResult, TrashedPage } from '../types'
 
-const props = defineProps<{ campaign: CampaignView }>()
-/** Retour à l'accueil, ou passage à l'écran de combat de la campagne. */
-const emit = defineEmits<{ home: []; combat: [] }>()
+/** `pageId` : la page de l'adresse, `null` sans page. */
+const props = defineProps<{ campaign: CampaignView; pageId: string | null }>()
 const api = campaignApi(props.campaign.id)
+const router = useRouter()
 
 /** Le Carnet, `null` tant qu'il n'est pas lu. */
 const notebook = ref<NotebookView | null>(null)
@@ -221,9 +222,78 @@ async function show(pageId: string) {
   citing.value = null
   if (!tabs.value.includes(pageId)) tabs.value = [...tabs.value, pageId]
   display(opened, false)
+  await writeAddress(pageId)
   await persistTabs()
   await readCiting(pageId)
 }
+
+/**
+ * Vrai quand la page s'est ouverte ; illisible (inconnue, à la corbeille : 404), rien ne change et aucune erreur n'est
+ * dite. Toute autre erreur (serveur injoignable…) remonte jusqu'au bandeau.
+ */
+async function tryShow(pageId: string): Promise<boolean> {
+  try {
+    await show(pageId)
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return false
+    throw e
+  }
+  return page.value?.id === pageId
+}
+
+/** Vrai pendant une navigation lancée par le Carnet lui-même, qui n'a pas à attendre le geste dont elle fait partie. */
+let writing = false
+
+/**
+ * L'adresse dit la page ouverte (`null` : aucune). Elle remplace l'entrée en cours, sauf `push` : un geste qui ouvre une
+ * page en ajoute une, que Précédent défera.
+ */
+async function writeAddress(pageId: string | null, push = false) {
+  if (pageId === props.pageId) return
+  const params = pageId ? { campaignId: props.campaign.id, pageId } : { campaignId: props.campaign.id }
+  writing = true
+  try {
+    await (push ? router.push : router.replace)({ name: 'notebook', params })
+  } finally {
+    writing = false
+  }
+}
+
+/** L'adresse d'une page, que portent les lignes de l'arbre et les liens : le clic du milieu l'ouvre dans un nouvel onglet. */
+const pageHref = (pageId: string) => router.resolve({ name: 'notebook', params: { campaignId: props.campaign.id, pageId } }).href
+
+/** Avant de changer de page ou d'écran par l'adresse : le geste en cours finit, puis la frappe part ; sinon on reste. */
+async function mayLeave(): Promise<boolean> {
+  if (writing) return true
+  await running
+  return saved()
+}
+onBeforeRouteUpdate(mayLeave)
+onBeforeRouteLeave(mayLeave)
+
+/** Précédent, Suivant, ou un geste qui a navigué : la page de l'adresse s'ouvre ; illisible, l'adresse reprend la page ouverte. */
+watch(
+  () => props.pageId,
+  (pageId) => {
+    if (pageId === (page.value?.id ?? null)) return
+    error.value = null
+    void call(async () => {
+      if (!pageId) {
+        // Une entrée sans page, d'avant le premier onglet : aucune page n'est montée.
+        page.value = null
+        citing.value = null
+        return
+      }
+      // Page illisible ou erreur (dite au bandeau par `call`) : l'adresse reprend la page ouverte.
+      let shown = false
+      try {
+        shown = await tryShow(pageId)
+      } finally {
+        if (!shown) await writeAddress(page.value?.id ?? null)
+      }
+    })
+  },
+)
 
 const tabBar = ref<InstanceType<typeof PageTabs> | null>(null)
 
@@ -273,6 +343,7 @@ async function closeTabs(pageIds: ReadonlySet<string>) {
   // Sans voisin lisible, aucune page n'est montée ; le voisin reste l'actif gardé, retenté à la prochaine ouverture.
   page.value = null
   citing.value = null
+  await writeAddress(null)
   await persistTabs(next)
 }
 
@@ -293,7 +364,8 @@ async function open(pageId: string) {
   if (busy.value) await running
   if (busy.value || page.value?.id === pageId) return
   error.value = null
-  call(() => show(pageId))
+  // L'adresse change d'abord ; sa garde attend la frappe, puis la page s'ouvre (`watch` de `pageId`).
+  void router.push({ name: 'notebook', params: { campaignId: props.campaign.id, pageId } })
 }
 
 onMounted(() => {
@@ -304,11 +376,16 @@ onMounted(() => {
     // Le serveur ne rend que des onglets dont la page existe. Tous fermés, ils le restent.
     const { pages, openPageIds, activePageId } = notebook.value
     tabs.value = openPageIds
+    // La page de l'adresse d'abord ; sans page, ou illisible, l'onglet actif comme à l'ouverture de la campagne.
+    if (props.pageId && (await tryShow(props.pageId))) return
     const target = activePageId ?? openPageIds[0]
     if (target) await show(target)
-    else if (!pages.length) {
-      await nextTick()
-      firstTitle.value?.focus()
+    else {
+      await writeAddress(null)
+      if (!pages.length) {
+        await nextTick()
+        firstTitle.value?.focus()
+      }
     }
   })
 })
@@ -333,6 +410,7 @@ function createPage(newTitle: string, parentId: string | null, done = () => {}) 
     display(created, true)
     // Une page neuve : rien ne peut encore la citer.
     citing.value = []
+    await writeAddress(created.id, true)
     await persistTabs()
   })
 }
@@ -526,11 +604,9 @@ function keepFiles(e: DragEvent) {
   e.preventDefault()
 }
 
-async function leave(target: 'home' | 'combat') {
-  // Une frappe qui n'a pas pu partir reste à l'écran, avec l'erreur : on ne quitte pas en la perdant.
-  if (!(await saved())) return
-  if (target === 'home') emit('home')
-  else emit('combat')
+/** La garde de sortie attend la frappe : si elle n'a pas pu partir, on reste à l'écran, avec l'erreur. */
+function leave(target: 'home' | 'combat') {
+  void router.push(target === 'home' ? { name: 'home' } : { name: 'combat', params: { campaignId: props.campaign.id } })
 }
 </script>
 
@@ -606,6 +682,7 @@ async function leave(target: 'home' | 'combat') {
           :current-id="page?.id ?? null"
           :expanded="expanded"
           :busy="busy"
+          :page-href="pageHref"
           @open="open"
           @toggle="toggle"
           @create="createPage"
@@ -687,6 +764,7 @@ async function leave(target: 'home' | 'combat') {
             :editable="unlocked"
             :label="`Texte de ${page.title}`"
             :pages="notebook.pages"
+            :page-href="pageHref"
             @change="onChange"
             @open="open"
             @refuse="(reason) => (error = reason)"

@@ -79,15 +79,18 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
           @keydown="onKey"
           @blur="tree.submitEdit()"
         />
-        <button
+        <!-- Un lien, pour que le clic du milieu ouvre la page dans un nouvel onglet ; tout autre clic l'ouvre ici. Le glisser
+             natif d'un lien gênerait celui de l'arbre, en événements pointeur. -->
+        <a
           v-else
-          type="button"
           class="page-link"
+          :href="tree.pageHref(node.page.id)"
+          draggable="false"
           :aria-current="node.page.id === tree.currentId.value ? 'page' : undefined"
-          @click="tree.open(node.page.id)"
+          @click.prevent="tree.open(node.page.id)"
         >
           {{ node.page.title }}
-        </button>
+        </a>
         <button
           type="button"
           class="more"
@@ -167,11 +170,17 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
 .page-link {
   flex: 1;
   min-width: 0;
-  text-align: left;
-  background: none;
-  border-color: transparent;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-weight: 500;
+  text-decoration: none;
   color: var(--ink-muted);
   overflow-wrap: anywhere;
+}
+.page-link:hover {
+  background: var(--wood-raised);
+  border-color: var(--ink-muted);
 }
 .page-link[aria-current='page'] {
   color: var(--ink);

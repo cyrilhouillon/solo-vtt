@@ -9,7 +9,14 @@ import type { PageSummary } from '../types'
  * L'arbre des pages du Carnet. Il ne garde que l'état de l'interface (menu ouvert, champ ouvert) ; les branches
  * dépliées et chaque geste qui touche le serveur reviennent au Carnet.
  */
-const props = defineProps<{ pages: PageSummary[]; currentId: string | null; expanded: ReadonlySet<string>; busy: boolean }>()
+const props = defineProps<{
+  pages: PageSummary[]
+  currentId: string | null
+  expanded: ReadonlySet<string>
+  busy: boolean
+  /** L'adresse d'une page, que porte sa ligne. */
+  pageHref: (pageId: string) => string
+}>()
 const emit = defineEmits<{
   open: [pageId: string]
   toggle: [pageId: string]
@@ -251,6 +258,7 @@ provide(treeContext, {
   edit,
   drag,
   draft,
+  pageHref: (pageId) => props.pageHref(pageId),
   open: (pageId) => emit('open', pageId),
   toggle: (pageId) => emit('toggle', pageId),
   toggleMenu,
