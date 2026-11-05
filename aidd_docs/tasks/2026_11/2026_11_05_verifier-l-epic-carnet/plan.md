@@ -1,6 +1,6 @@
 ---
 objective: "Les cinq preuves de succès de l'epic « tenir le carnet de sa campagne » sont observées (session liée puis retour du combat, renommage suivi et liens entrants, recherche, corbeille liens compris, reprise après redémarrage), puis l'epic est close ou ses écarts deviennent des items du backlog."
-status: pending
+status: implemented
 ---
 
 # Plan: vérifier l'epic « tenir le carnet de sa campagne » de bout en bout

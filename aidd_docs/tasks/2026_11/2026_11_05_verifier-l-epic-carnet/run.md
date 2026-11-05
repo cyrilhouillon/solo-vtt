@@ -17,3 +17,18 @@
 - [pass] Task 2 — `verification.md` dit, preuve à l'appui, si chacune des quatre premières preuves de l'epic tient — Chrome 1568 × 733, thème clair, 5174 → 8081 : preuves 1 à 4 tenues (session liée par `[[` puis combat lancé, tour fini, combat terminé, retour sur Session 5 avec ses 5 onglets ; renommage visible dans le lien, l'onglet et l'arbre, et Session 5 listée sous « Pages qui renvoient ici » ; « vigne » → Session 5, mot surligné ; suppression confirmée « 2 sous-pages, 1 page y renvoie », liens barrés, restauration qui les fait revivre), détail dans `verification.md`.
 - [pass] Task 3 — `verification.md` dit, preuve à l'appui, si le Carnet reprend à l'identique après redémarrage — relevé `GET` (campagnes, notebook, trash, chaque page et ses citantes, recherche) avant et après le redémarrage de 8081 : `cmp` identique ; chargement direct des adresses d'Ismark le Petit et de Session 5, puis ouverture depuis l'accueil : même page, mêmes liens et citantes ; console sans erreur.
 - [pass] Task 4 — Plus rien n'écoute sur 8081 ni 5174 ; 8080 et 5173 inchangés — `netstat` après arrêt : seuls 8080 (PID 50784) et 5173 (PID 40236), les mêmes qu'avant.
+
+## Phase 3 · Clore l'epic ou reporter ses écarts
+
+- Date: 2026-11-05
+- Validated on: df698cf
+
+- [pass] Task 1 — Le statut de l'epic correspond à `verification.md` ; chaque écart bloquant ou gênant a un item — `verification.md` : 5 preuves tenues, aucun écart bloquant ni gênant (un cosmétique, un conforme) ; epic `status: done`, aucun item créé.
+- [pass] Task 2 — `plan.md` et ses phases portent `status: implemented` — `plan.md` `implemented`, phases 1 à 3 `done`.
+
+## Final
+
+- Date: 2026-11-05
+- Validated on: df698cf
+
+- [pass] `mvn -q test` — exit 0, 316 tests, 0 échec (dont `CarnetDeBoutEnBoutTest` : `Tests run: 2, Failures: 0, Errors: 0`)

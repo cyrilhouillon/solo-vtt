@@ -1,6 +1,6 @@
 ---
 type: epic
-status: ready
+status: done
 goal: aidd_docs/tasks/2026_11/2026_11_01-solo-vtt-prd.md
 source: aidd_docs/tasks/2026_11/2026_11_04_journal-de-campagne/brainstorm.md
 depends_on:
