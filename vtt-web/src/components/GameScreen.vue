@@ -40,7 +40,6 @@ import {
 } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
-/** Retour à l'accueil, ou au Carnet de la campagne. */
 const router = useRouter()
 /** Les appels au serveur, sur la partie de cette campagne. */
 const api = campaignApi(props.campaign.id)

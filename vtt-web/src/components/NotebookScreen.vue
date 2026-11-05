@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router'
-import { campaignApi } from '../api'
+import { ApiError, campaignApi } from '../api'
 import AppIcon from './AppIcon.vue'
 import ThemeButton from './ThemeButton.vue'
 import PageEditor from './PageEditor.vue'
@@ -227,12 +227,16 @@ async function show(pageId: string) {
   await readCiting(pageId)
 }
 
-/** Vrai quand la page s'est ouverte ; illisible (inconnue, à la corbeille), rien ne change et aucune erreur n'est dite. */
+/**
+ * Vrai quand la page s'est ouverte ; illisible (inconnue, à la corbeille : 404), rien ne change et aucune erreur n'est
+ * dite. Toute autre erreur (serveur injoignable…) remonte jusqu'au bandeau.
+ */
 async function tryShow(pageId: string): Promise<boolean> {
   try {
     await show(pageId)
-  } catch {
-    return false
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return false
+    throw e
   }
   return page.value?.id === pageId
 }
@@ -280,7 +284,13 @@ watch(
         citing.value = null
         return
       }
-      if (!(await tryShow(pageId))) await writeAddress(page.value?.id ?? null)
+      // Page illisible ou erreur (dite au bandeau par `call`) : l'adresse reprend la page ouverte.
+      let shown = false
+      try {
+        shown = await tryShow(pageId)
+      } finally {
+        if (!shown) await writeAddress(page.value?.id ?? null)
+      }
     })
   },
 )
