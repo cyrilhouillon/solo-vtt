@@ -19,7 +19,8 @@ import java.util.stream.Stream;
 
 /**
  * Le Carnet d'une campagne, dans un dossier : une fiche par page ({@code <id>.json} : id, titre, parent, contenu en JSON
- * imbriqué) et {@code carnet.json} pour la dernière page consultée. Chaque écriture passe par un fichier voisin et un
+ * imbriqué) et {@code carnet.json} pour les onglets : {@code openPageIds} dans l'ordre, {@code lastPageId} l'actif (un
+ * fichier d'avant les onglets, sans {@code openPageIds}, se lit en un seul onglet). Chaque écriture passe par un fichier voisin et un
  * déplacement atomique. Une fiche illisible est ignorée, jamais écrasée.
  */
 public final class JsonFileNotebookStore implements NotebookStore {
@@ -30,7 +31,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
 
     private record PageFile(String id, String title, String parentId, JsonNode content) {}
 
-    private record NotebookFile(String lastPageId) {}
+    private record NotebookFile(String lastPageId, List<String> openPageIds) {}
 
     private final Path dir;
     private final ObjectMapper mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
@@ -90,20 +91,23 @@ public final class JsonFileNotebookStore implements NotebookStore {
     }
 
     @Override
-    public synchronized Optional<String> lastPage() {
+    public synchronized Tabs tabs() {
         Path file = dir.resolve(NOTEBOOK_FILE);
-        if (!Files.exists(file)) return Optional.empty();
+        if (!Files.exists(file)) return Tabs.NONE;
         try {
-            return Optional.ofNullable(mapper.readValue(file.toFile(), NotebookFile.class).lastPageId());
-        } catch (IOException e) {
-            LOG.log(System.Logger.Level.WARNING, "Dernière page illisible : " + file, e);
-            return Optional.empty();
+            NotebookFile read = mapper.readValue(file.toFile(), NotebookFile.class);
+            if (read.openPageIds() != null) return new Tabs(read.openPageIds(), read.lastPageId());
+            return read.lastPageId() == null ? Tabs.NONE : new Tabs(List.of(read.lastPageId()), read.lastPageId());
+        } catch (IOException | RuntimeException e) {
+            LOG.log(System.Logger.Level.WARNING, "Onglets illisibles : " + file, e);
+            return Tabs.NONE;
         }
     }
 
     @Override
-    public synchronized void setLastPage(String id) {
-        writeAtomically(dir.resolve(NOTEBOOK_FILE), new NotebookFile(known(id).id()));
+    public synchronized void setTabs(Tabs tabs) {
+        NotebookStore.checkTabs(tabs, id -> find(id).isPresent());
+        writeAtomically(dir.resolve(NOTEBOOK_FILE), new NotebookFile(tabs.activeId(), tabs.pageIds()));
     }
 
     /** Une page lue sur le disque : aucun chemin ne se construit depuis un id qui n'en est pas un. */

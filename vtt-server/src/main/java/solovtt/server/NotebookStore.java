@@ -7,9 +7,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 /**
- * Où vit le Carnet d'une campagne : ses pages, rangées en arbre par leur parent, et la dernière page consultée. Un
+ * Où vit le Carnet d'une campagne : ses pages, rangées en arbre par leur parent, et ses onglets ouverts. Un
  * déplacement ne touche que la page déplacée : ses sous-pages la suivent.
  */
 public interface NotebookStore {
@@ -56,15 +57,27 @@ public interface NotebookStore {
      */
     void move(String id, String parentId);
 
-    /** L'id de la dernière page consultée, vide si aucune. */
-    Optional<String> lastPage();
+    /** Les onglets ouverts, {@link Tabs#NONE} si aucun ; un onglet peut citer une page disparue depuis. */
+    Tabs tabs();
 
     /**
-     * Note la dernière page consultée.
+     * Garde les onglets ouverts et l'actif.
      *
-     * @throws IllegalArgumentException si aucune page n'a cet id
+     * @throws IllegalArgumentException si une page est inconnue ou en double, ou si l'actif n'est pas l'un des onglets
      */
-    void setLastPage(String id);
+    void setTabs(Tabs tabs);
+
+    /**
+     * Les pages ouvertes en onglets, dans l'ordre de la barre, et celle de l'onglet actif : {@code null} si et seulement si
+     * aucun onglet n'est ouvert.
+     */
+    record Tabs(List<String> pageIds, String activeId) {
+        public static final Tabs NONE = new Tabs(List.of(), null);
+
+        public Tabs {
+            pageIds = List.copyOf(pageIds);
+        }
+    }
 
     /**
      * Les pages dont le titre ou le texte contient chaque mot de la requête, sans casse ni accents : celles dont le titre
@@ -91,10 +104,25 @@ public interface NotebookStore {
         }
     }
 
+    /**
+     * Refuse des onglets en double, ou dont l'actif n'est pas l'un d'eux ; chaque page doit être connue de l'appelant, qui
+     * tient le verrou du Carnet.
+     */
+    static void checkTabs(Tabs tabs, Predicate<String> known) {
+        if (tabs.pageIds().stream().distinct().count() != tabs.pageIds().size()) {
+            throw new IllegalArgumentException("Une page ne s'ouvre que dans un seul onglet");
+        }
+        boolean activeOk = tabs.pageIds().isEmpty() ? tabs.activeId() == null : tabs.activeId() != null && tabs.pageIds().contains(tabs.activeId());
+        if (!activeOk) throw new IllegalArgumentException("L'onglet actif doit être l'un des onglets ouverts");
+        for (String id : tabs.pageIds()) {
+            if (!known.test(id)) throw new IllegalArgumentException("Page inconnue : " + id);
+        }
+    }
+
     /** Garde le Carnet en mémoire, le temps du processus. */
     static NotebookStore inMemory() {
         Map<String, Page> pages = new ConcurrentHashMap<>();
-        AtomicReference<String> lastPage = new AtomicReference<>();
+        AtomicReference<Tabs> tabs = new AtomicReference<>(Tabs.NONE);
         return new NotebookStore() {
             @Override
             public List<Page> list() {
@@ -130,13 +158,14 @@ public interface NotebookStore {
             }
 
             @Override
-            public Optional<String> lastPage() {
-                return Optional.ofNullable(lastPage.get());
+            public Tabs tabs() {
+                return tabs.get();
             }
 
             @Override
-            public void setLastPage(String id) {
-                lastPage.set(known(id).id());
+            public synchronized void setTabs(Tabs next) {
+                checkTabs(next, pages::containsKey);
+                tabs.set(next);
             }
 
             private Page known(String id) {

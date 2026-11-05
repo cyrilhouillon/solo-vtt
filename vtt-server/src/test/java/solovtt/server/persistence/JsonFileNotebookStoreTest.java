@@ -2,6 +2,7 @@ package solovtt.server.persistence;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import solovtt.server.NotebookStore;
 import solovtt.server.Page;
 
 import java.io.IOException;
@@ -30,21 +31,22 @@ class JsonFileNotebookStoreTest {
     void sansDossier_carnetVide() {
         var store = new JsonFileNotebookStore(dir.resolve("carnet"));
         assertEquals(List.of(), store.list());
-        assertEquals(Optional.empty(), store.lastPage());
+        assertEquals(NotebookStore.Tabs.NONE, store.tabs());
     }
 
     @Test
-    void pagesContenusEtDernierePage_seRelisentParUnNouvelAdaptateur() throws IOException {
+    void pagesContenusEtOnglets_seRelisentParUnNouvelAdaptateur() throws IOException {
         Path carnet = dir.resolve("carnet");
         var store = new JsonFileNotebookStore(carnet);
         var session = store.create("Session 1", null);
         var bertrand = store.create("Bertrand", null);
         store.saveContent(session.id(), ARRIVEE);
-        store.setLastPage(session.id());
+        var onglets = new NotebookStore.Tabs(List.of(session.id(), bertrand.id()), session.id());
+        store.setTabs(onglets);
 
         var relu = new JsonFileNotebookStore(carnet);
         assertEquals(List.of(bertrand, new Page(session.id(), "Session 1", null, ARRIVEE)), relu.list());
-        assertEquals(Optional.of(session.id()), relu.lastPage());
+        assertEquals(onglets, relu.tabs());
         assertTrue(Files.readString(carnet.resolve(session.id() + ".json")).contains("\"content\" : {"),
                 "le contenu est un objet JSON imbriqué, pas une chaîne");
         try (Stream<Path> files = Files.list(carnet)) {
@@ -74,7 +76,8 @@ class JsonFileNotebookStoreTest {
         store.create("Session 1", null);
 
         assertThrows(IllegalArgumentException.class, () -> store.saveContent("../campagne", ARRIVEE));
-        assertThrows(IllegalArgumentException.class, () -> store.setLastPage("inconnue"));
+        assertThrows(IllegalArgumentException.class,
+                () -> store.setTabs(new NotebookStore.Tabs(List.of("../campagne"), "../campagne")));
         assertFalse(Files.exists(dir.resolve("campagne.json")));
     }
 
@@ -93,11 +96,39 @@ class JsonFileNotebookStoreTest {
     }
 
     @Test
-    void uneDernierePageIllisible_estVide() throws IOException {
+    void desOngletsIllisibles_sontVides_etJamaisEcrases() throws IOException {
         Path carnet = dir.resolve("carnet");
         Files.createDirectories(carnet);
-        Files.writeString(carnet.resolve("carnet.json"), "{pas du json");
-        assertEquals(Optional.empty(), new JsonFileNotebookStore(carnet).lastPage());
+        Path fichier = carnet.resolve("carnet.json");
+        Files.writeString(fichier, "{pas du json");
+        assertEquals(NotebookStore.Tabs.NONE, new JsonFileNotebookStore(carnet).tabs());
+        Files.writeString(fichier, "{\"lastPageId\":null,\"openPageIds\":[null]}");
+        assertEquals(NotebookStore.Tabs.NONE, new JsonFileNotebookStore(carnet).tabs());
+        assertEquals("{\"lastPageId\":null,\"openPageIds\":[null]}", Files.readString(fichier));
+    }
+
+    @Test
+    void unCarnetDAvantLesOnglets_seLitEnUnSeulOngletActif() throws IOException {
+        Path carnet = dir.resolve("carnet");
+        var store = new JsonFileNotebookStore(carnet);
+        var session = store.create("Session 1", null);
+        Files.writeString(carnet.resolve("carnet.json"), "{\"lastPageId\":\"" + session.id() + "\"}");
+
+        assertEquals(new NotebookStore.Tabs(List.of(session.id()), session.id()), store.tabs());
+    }
+
+    @Test
+    void desOngletsEnDoubleOuUnActifHorsDesOnglets_sontRefuses_sansRienEcrire() {
+        Path carnet = dir.resolve("carnet");
+        var store = new JsonFileNotebookStore(carnet);
+        var session = store.create("Session 1", null);
+        var bertrand = store.create("Bertrand", null);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> store.setTabs(new NotebookStore.Tabs(List.of(session.id(), session.id()), session.id())));
+        assertThrows(IllegalArgumentException.class,
+                () -> store.setTabs(new NotebookStore.Tabs(List.of(session.id()), bertrand.id())));
+        assertFalse(Files.exists(carnet.resolve("carnet.json")));
     }
 
     @Test

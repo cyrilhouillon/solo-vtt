@@ -45,7 +45,8 @@ class NotebookApiTest {
 
     @Test
     void uneCampagneNeuve_aUnCarnetVide() {
-        given().get(carnet()).then().statusCode(200).body("pages", empty()).body("lastPageId", nullValue());
+        given().get(carnet()).then().statusCode(200).body("pages", empty())
+                .body("openPageIds", empty()).body("activePageId", nullValue());
     }
 
     @Test
@@ -70,14 +71,44 @@ class NotebookApiTest {
                 .body("content.content[0].content[0].text", equalTo("Arrivée"));
     }
 
+    private static void onglets(Object body, int status) {
+        given().contentType(ContentType.JSON).body(body).put(carnet() + "/tabs").then().statusCode(status);
+    }
+
+    private static Map<String, Object> onglets(List<String> pageIds, String activeId) {
+        var body = new java.util.HashMap<String, Object>();
+        body.put("pageIds", pageIds);
+        body.put("activeId", activeId);
+        return body;
+    }
+
     @Test
-    void laDernierePageConsultee_estGardee() {
+    void lesOngletsEtLActif_sontGardes_dansLOrdre() {
         String session = creer("Session 1");
         String bertrand = creer("Bertrand");
-        given().contentType(ContentType.JSON).body(Map.of("pageId", session)).put(carnet() + "/last-page").then().statusCode(204);
-        given().contentType(ContentType.JSON).body(Map.of("pageId", bertrand)).put(carnet() + "/last-page").then().statusCode(204);
+        onglets(onglets(List.of(session, bertrand), bertrand), 204);
 
-        given().get(carnet()).then().body("lastPageId", equalTo(bertrand));
+        given().get(carnet()).then().body("openPageIds", equalTo(List.of(session, bertrand)))
+                .body("activePageId", equalTo(bertrand));
+
+        onglets(onglets(List.of(), null), 204);
+        given().get(carnet()).then().body("openPageIds", empty()).body("activePageId", nullValue());
+    }
+
+    @Test
+    void desOngletsRefuses_laissentLesOngletsGardes() {
+        String session = creer("Session 1");
+        String bertrand = creer("Bertrand");
+        onglets(onglets(List.of(session), session), 204);
+
+        onglets(onglets(List.of(session, "inconnue"), session), 404);
+        onglets(onglets(List.of(session, session), session), 400);
+        onglets(onglets(List.of(session), bertrand), 400);
+        onglets(onglets(List.of(session), null), 400);
+        onglets("{}", 400);
+        onglets("{\"pageIds\":[null],\"activeId\":null}", 400);
+
+        given().get(carnet()).then().body("openPageIds", equalTo(List.of(session))).body("activePageId", equalTo(session));
     }
 
     @Test
@@ -105,8 +136,6 @@ class NotebookApiTest {
         creer("Session 1");
         given().get(carnet() + "/pages/inconnue").then().statusCode(404);
         enregistrer("inconnue", ARRIVEE, 404);
-        given().contentType(ContentType.JSON).body(Map.of("pageId", "inconnue")).put(carnet() + "/last-page").then().statusCode(404);
-        given().contentType(ContentType.JSON).body("{}").put(carnet() + "/last-page").then().statusCode(400);
     }
 
     @Test
