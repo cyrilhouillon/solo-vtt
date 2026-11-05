@@ -1,6 +1,6 @@
 ---
 objective: "Toute page ouverte dans le Carnet (arbre, lien, résultat de recherche, page citante, création) entre dans un onglet ou active le sien ; le joueur passe d'un onglet à l'autre et les ferme, chaque onglet porte le titre actuel de sa page, et ses onglets et l'actif reviennent au retour du combat comme à la réouverture de la campagne, même après un redémarrage du serveur."
-status: in-progress
+status: implemented
 ---
 
 # Plan: garder des pages ouvertes en onglets
