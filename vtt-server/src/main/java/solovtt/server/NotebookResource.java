@@ -3,6 +3,7 @@ package solovtt.server;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
@@ -21,7 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** Le Carnet d'une campagne : ses pages, leur contenu et ses onglets ouverts. */
+/** Le Carnet d'une campagne : ses pages, leur contenu, ses onglets ouverts et sa corbeille. */
 public class NotebookResource {
 
     static final int MAX_TITLE_LENGTH = 120;
@@ -137,6 +138,58 @@ public class NotebookResource {
             throw new IllegalArgumentException("Le contenu doit être un document de l'éditeur (type « doc »)");
         }
         notebook.saveContent(pageId, content.toString());
+    }
+
+    /** Ce que la suppression de la page emporterait, à dire avant de la confirmer. */
+    @GET
+    @Path("/pages/{pageId}/deletion")
+    @APIResponse(responseCode = "200", description = "Le nombre de sous-pages, et de pages qui renvoient à la page ou à l'une d'elles",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.DeletionDto.class)))
+    @APIResponse(responseCode = "404", description = "Aucune page avec cet id")
+    public Dtos.DeletionDto deletion(@PathParam("pageId") String pageId) {
+        known(pageId);
+        List<Page> pages = notebook.list();
+        Set<String> branch = PageTree.branch(pages, pageId);
+        return new Dtos.DeletionDto(branch.size() - 1, PageLinks.citingAny(pages, branch).size());
+    }
+
+    /** Met la page et ses sous-pages à la corbeille : les liens vers elles meurent, leurs onglets ne sont plus rendus. */
+    @DELETE
+    @Path("/pages/{pageId}")
+    @APIResponse(responseCode = "204", description = "Page mise à la corbeille, avec ses sous-pages")
+    @APIResponse(responseCode = "404", description = "Aucune page avec cet id")
+    public void delete(@PathParam("pageId") String pageId) {
+        known(pageId);
+        notebook.delete(pageId);
+    }
+
+    @GET
+    @Path("/trash")
+    @APIResponse(responseCode = "200", description = "Les suppressions, la plus récente d'abord, vide si aucune",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = SchemaType.ARRAY, implementation = Dtos.TrashedPageDto.class)))
+    public List<Dtos.TrashedPageDto> trash() {
+        return notebook.trash().stream().map(Dtos.TrashedPageDto::of).toList();
+    }
+
+    /** Sort la page de la corbeille, avec ses sous-pages, sous son parent s'il est vivant, sinon à la racine. */
+    @POST
+    @Path("/trash/{pageId}/restore")
+    @APIResponse(responseCode = "204", description = "Page restaurée, avec ses sous-pages")
+    @APIResponse(responseCode = "404", description = "Aucune suppression de cette page à la corbeille")
+    public void restore(@PathParam("pageId") String pageId) {
+        if (notebook.trash().stream().noneMatch(e -> e.page().id().equals(pageId))) {
+            throw new NotFoundException("Aucune suppression de la page " + pageId + " à la corbeille");
+        }
+        notebook.restore(pageId);
+    }
+
+    /** Efface pour de bon tout ce qui est à la corbeille ; les images que citaient ses pages restent. */
+    @DELETE
+    @Path("/trash")
+    @APIResponse(responseCode = "204", description = "Corbeille vidée")
+    public void emptyTrash() {
+        notebook.emptyTrash();
     }
 
     /** Garde les onglets ouverts, dans l'ordre de la barre, et l'actif ; une liste vide ferme tout. */

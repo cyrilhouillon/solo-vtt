@@ -93,6 +93,20 @@ final class Dtos {
      */
     record NotebookDto(List<PageSummaryDto> pages, List<String> openPageIds, String activePageId) {}
 
+    /**
+     * Ce qu'emporterait la suppression d'une page : {@code subpageCount} sous-pages, et {@code citingCount} pages hors du
+     * lot dont un lien vers l'une d'elles mourrait.
+     */
+    record DeletionDto(int subpageCount, int citingCount) {}
+
+    /** Une suppression à la corbeille ; {@code deletedAt} en ISO-8601. */
+    record TrashedPageDto(String id, String title, String deletedAt, int subpageCount) {
+        static TrashedPageDto of(NotebookStore.TrashEntry entry) {
+            return new TrashedPageDto(entry.page().id(), entry.page().title(), entry.deletedAt().toString(),
+                    entry.subpageCount());
+        }
+    }
+
     record CampaignDto(String id, String name) {
         static CampaignDto of(Campaign campaign) {
             return new CampaignDto(campaign.id(), campaign.name());
