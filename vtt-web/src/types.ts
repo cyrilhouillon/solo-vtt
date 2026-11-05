@@ -82,6 +82,20 @@ export interface NotebookView {
   activePageId: string | null
 }
 
+/** Ce qu'emporterait la suppression d'une page : ses sous-pages, et les pages hors du lot qui lient l'une d'elles. */
+export interface PageDeletion {
+  subpageCount: number
+  citingCount: number
+}
+
+/** Une suppression à la corbeille : la page supprimée, quand (ISO-8601), et combien de sous-pages sont parties avec elle. */
+export interface TrashedPage {
+  id: string
+  title: string
+  deletedAt: string
+  subpageCount: number
+}
+
 /** Une carte enregistrée, prête à charger. */
 export interface SavedMapView {
   name: string

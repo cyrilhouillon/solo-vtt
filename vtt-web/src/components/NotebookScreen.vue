@@ -9,10 +9,12 @@ import MovePageDialog from './MovePageDialog.vue'
 import CitingPages from './CitingPages.vue'
 import SearchResults from './SearchResults.vue'
 import PageTabs from './PageTabs.vue'
-import { ancestors } from '../notebook/tree'
+import DeletePageDialog from './DeletePageDialog.vue'
+import TrashDialog from './TrashDialog.vue'
+import { ancestors, branch } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
-import type { CampaignView, NotebookView, PageDocument, PageView, SearchResult } from '../types'
+import type { CampaignView, NotebookView, PageDeletion, PageDocument, PageView, SearchResult, TrashedPage } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
 /** Retour à l'accueil, ou passage à l'écran de combat de la campagne. */
@@ -36,6 +38,14 @@ const unlocked = ref(false)
 const expanded = ref<ReadonlySet<string>>(new Set())
 /** La page dont on choisit la destination, `null` hors du dialogue. */
 const moving = ref<string | null>(null)
+/** La page dont la suppression attend confirmation, `null` hors du dialogue ; `deletion` : ce qui part avec elle. */
+const deleting = ref<string | null>(null)
+const deletion = ref<PageDeletion | null>(null)
+/** La corbeille ouverte, et ses suppressions (`null` pendant la lecture). */
+const trashOpen = ref(false)
+const trashEntries = ref<TrashedPage[] | null>(null)
+const searchField = ref<HTMLInputElement | null>(null)
+const trashButton = ref<HTMLButtonElement | null>(null)
 /** Le titre en tête de page, éditable une fois la page déverrouillée. */
 const pageTitle = ref('')
 /** Les pages qui citent la page ouverte, `null` tant qu'elles ne sont pas lues. */
@@ -226,24 +236,30 @@ function closeTab(pageId: string) {
   error.value = null
   const keepFocus = tabBar.value?.hasFocus() ?? false
   void call(async () => {
-    await closing(pageId)
+    await closeTabs(new Set([pageId]))
     if (!keepFocus) return
     await nextTick()
     tabBar.value?.focusActive()
   })
 }
 
-async function closing(pageId: string) {
-  const index = tabs.value.indexOf(pageId)
-  if (index < 0) return
-  const rest = tabs.value.filter((id) => id !== pageId)
-  if (page.value?.id !== pageId) {
+/**
+ * Ferme les onglets de ces pages ; si l'actif en est, attend l'envoi de sa frappe, puis active son voisin de droite parmi
+ * ceux qui restent, sinon de gauche.
+ */
+async function closeTabs(pageIds: ReadonlySet<string>) {
+  if (!tabs.value.some((id) => pageIds.has(id))) return
+  const rest = tabs.value.filter((id) => !pageIds.has(id))
+  const activeIndex = page.value ? tabs.value.indexOf(page.value.id) : -1
+  if (activeIndex < 0 || !pageIds.has(tabs.value[activeIndex])) {
     tabs.value = rest
     await persistTabs()
     return
   }
   // Une frappe qui n'a pas pu partir garde l'onglet ouvert, avec l'erreur.
   if (!(await saved())) return
+  // La place de l'actif parmi les onglets qui restent : son voisin de droite y est, sinon celui de gauche.
+  const index = activeIndex - tabs.value.slice(0, activeIndex).filter((id) => pageIds.has(id)).length
   tabs.value = rest
   const next = rest[index] ?? rest[index - 1] ?? null
   if (next) {
@@ -386,6 +402,114 @@ function moveTo(pageId: string, parentId: string | null) {
   })
 }
 
+/** La recherche affichée suit l'arbre : une page supprimée ou restaurée y entre ou en sort. */
+function refreshSearch() {
+  if (searching.value) void search()
+}
+
+/** « Supprimer… » d'une ligne : le dialogue s'ouvre, puis dit ce qui part avec la page. */
+function requestDelete(pageId: string) {
+  if (busy.value) return
+  error.value = null
+  deleting.value = pageId
+  deletion.value = null
+  call(async () => {
+    try {
+      const read = await api.pageDeletion(pageId)
+      if (deleting.value === pageId) deletion.value = read
+    } catch (e) {
+      // Le dialogue modal cacherait l'erreur du bandeau.
+      deleting.value = null
+      throw e
+    }
+  })
+}
+
+/** Annulée, la suppression rend le focus au bouton de menu de la ligne. */
+function cancelDelete() {
+  const pageId = deleting.value
+  deleting.value = null
+  deletion.value = null
+  if (pageId) void tree.value?.focusMenu(pageId)
+}
+
+/**
+ * Met la page et ses sous-pages à la corbeille. La frappe en attente de la page ouverte, si elle en est, part d'abord ;
+ * si elle échoue, rien n'est supprimé. Les onglets du lot se ferment.
+ */
+function confirmDelete() {
+  const pageId = deleting.value
+  if (!pageId || busy.value) return
+  error.value = null
+  call(async () => {
+    try {
+      const pages = notebook.value?.pages ?? []
+      const lot = branch(pages, pageId)
+      if (page.value && lot.has(page.value.id) && !(await saved())) return
+      const parentId = pages.find((p) => p.id === pageId)?.parentId ?? null
+      await api.deletePage(pageId)
+      deleting.value = null
+      deletion.value = null
+      notebook.value = await api.notebook()
+      await closeTabs(lot)
+      refreshSearch()
+      // La ligne a disparu : le focus passe au parent, sinon au champ de recherche.
+      await nextTick()
+      if (parentId) await tree.value?.focusPage(parentId)
+      else searchField.value?.focus()
+    } finally {
+      deleting.value = null
+      deletion.value = null
+    }
+  })
+}
+
+/** Un échec ferme la corbeille : son dialogue modal cacherait l'erreur du bandeau. */
+function inTrash(action: () => Promise<void>) {
+  if (busy.value) return
+  error.value = null
+  call(async () => {
+    try {
+      await action()
+    } catch (e) {
+      trashOpen.value = false
+      throw e
+    }
+  })
+}
+
+function openTrash() {
+  if (busy.value) return
+  trashOpen.value = true
+  trashEntries.value = null
+  inTrash(async () => {
+    trashEntries.value = await api.trash()
+  })
+}
+
+function closeTrash() {
+  trashOpen.value = false
+  void nextTick(() => trashButton.value?.focus())
+}
+
+/** La page revient à sa place, ou à la racine, avec ses sous-pages ; l'arbre se déplie jusqu'à elle. */
+function restore(pageId: string) {
+  inTrash(async () => {
+    await api.restorePage(pageId)
+    notebook.value = await api.notebook()
+    reveal(pageId)
+    refreshSearch()
+    trashEntries.value = await api.trash()
+  })
+}
+
+function emptyTrash() {
+  inTrash(async () => {
+    await api.emptyTrash()
+    trashEntries.value = await api.trash()
+  })
+}
+
 /**
  * Un fichier lâché hors du texte éditable (marge, arbre, page verrouillée) ne remplace jamais l'application : le
  * navigateur l'ouvrirait. Le texte éditable prend le sien en main avant.
@@ -439,6 +563,10 @@ async function leave(target: 'home' | 'combat') {
           </label>
           <button type="submit" :disabled="!trimmed || busy">Créer</button>
         </form>
+        <button ref="trashButton" type="button" class="trash-button" :disabled="busy" @click="openTrash">
+          <AppIcon name="trash" />
+          Corbeille
+        </button>
       </section>
     </main>
 
@@ -448,6 +576,7 @@ async function leave(target: 'home' | 'combat') {
         <hr class="tapered" />
         <div class="search">
           <input
+            ref="searchField"
             v-model="query"
             type="search"
             placeholder="Chercher"
@@ -477,6 +606,7 @@ async function leave(target: 'home' | 'combat') {
           @create="createPage"
           @rename="rename"
           @move="(pageId) => (moving = pageId)"
+          @delete="requestDelete"
           @drop="moveTo"
         />
         <form class="create new-page" @submit.prevent="create">
@@ -486,6 +616,10 @@ async function leave(target: 'home' | 'combat') {
           </label>
           <button type="submit" :disabled="!trimmed || busy">Créer</button>
         </form>
+        <button ref="trashButton" type="button" class="trash-button" :disabled="busy" @click="openTrash">
+          <AppIcon name="trash" />
+          Corbeille
+        </button>
       </nav>
 
       <main class="page">
@@ -558,6 +692,14 @@ async function leave(target: 'home' | 'combat') {
       </main>
       <MovePageDialog :pages="notebook.pages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
     </div>
+    <DeletePageDialog
+      :page="notebook?.pages.find((p) => p.id === deleting) ?? null"
+      :deletion="deletion"
+      :busy="busy"
+      @confirm="confirmDelete"
+      @close="cancelDelete"
+    />
+    <TrashDialog :open="trashOpen" :entries="trashEntries" :busy="busy" @restore="restore" @empty="emptyTrash" @close="closeTrash" />
   </div>
 </template>
 
@@ -629,6 +771,24 @@ section .tapered,
 .new-page {
   padding-top: 0.75rem;
   border-top: 1px solid var(--rule);
+}
+/* Au pied du panneau, discret : on y va rarement. */
+.trash-button {
+  flex: none;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border-color: transparent;
+  color: var(--ink-muted);
+}
+.trash-button:hover:not(:disabled) {
+  color: var(--ink);
+}
+.trash-button :deep(.icon) {
+  width: 18px;
+  height: 18px;
 }
 label {
   flex: 1;
