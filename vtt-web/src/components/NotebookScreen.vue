@@ -9,7 +9,7 @@ import MovePageDialog from './MovePageDialog.vue'
 import CitingPages from './CitingPages.vue'
 import SearchResults from './SearchResults.vue'
 import PageTabs from './PageTabs.vue'
-import { ancestors, buildTree } from '../notebook/tree'
+import { ancestors } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
 import type { CampaignView, NotebookView, PageDocument, PageView, SearchResult } from '../types'
@@ -191,10 +191,10 @@ function display(opened: PageView, editable: boolean) {
   reveal(opened.id)
 }
 
-/** Garde les onglets au serveur ; un échec va au bandeau, sans fermer la page. */
-async function persistTabs() {
+/** Garde les onglets au serveur, l'actif étant par défaut la page ouverte ; un échec va au bandeau, sans fermer la page. */
+async function persistTabs(activeId: string | null = page.value?.id ?? null) {
   try {
-    await api.setTabs(tabs.value, page.value?.id ?? null)
+    await api.setTabs(tabs.value, activeId)
   } catch (e) {
     error.value = `Onglets non enregistrés : ${e instanceof Error ? e.message : String(e)}`
   }
@@ -245,11 +245,19 @@ async function closing(pageId: string) {
   // Une frappe qui n'a pas pu partir garde l'onglet ouvert, avec l'erreur.
   if (!(await saved())) return
   tabs.value = rest
+  const next = rest[index] ?? rest[index - 1] ?? null
+  if (next) {
+    try {
+      await show(next)
+      return
+    } catch (e) {
+      error.value = `Page illisible : ${e instanceof Error ? e.message : String(e)}`
+    }
+  }
+  // Sans voisin lisible, aucune page n'est montée ; le voisin reste l'actif gardé, retenté à la prochaine ouverture.
   page.value = null
   citing.value = null
-  const next = rest[index] ?? rest[index - 1]
-  if (next) await show(next)
-  else await persistTabs()
+  await persistTabs(next)
 }
 
 /** Un échec laisse la liste absente, sans fermer la page. */
@@ -277,12 +285,12 @@ onMounted(() => {
   window.addEventListener('pagehide', onPageHide)
   void call(async () => {
     notebook.value = await api.notebook()
-    // Le serveur ne rend que des onglets dont la page existe.
+    // Le serveur ne rend que des onglets dont la page existe. Tous fermés, ils le restent.
     const { pages, openPageIds, activePageId } = notebook.value
     tabs.value = openPageIds
-    const target = activePageId ?? openPageIds[0] ?? buildTree(pages)[0]?.page.id
+    const target = activePageId ?? openPageIds[0]
     if (target) await show(target)
-    else {
+    else if (!pages.length) {
       await nextTick()
       firstTitle.value?.focus()
     }
@@ -546,7 +554,7 @@ async function leave(target: 'home' | 'combat') {
           />
           <CitingPages v-if="citing" :page-ids="citing" :pages="notebook.pages" @open="open" />
         </article>
-        <p v-else-if="!busy && !tabs.length" class="hint">Aucune page ouverte. Choisir une page dans l'arbre.</p>
+        <p v-else-if="!busy" class="hint">Aucune page ouverte. Choisir une page dans l'arbre.</p>
       </main>
       <MovePageDialog :pages="notebook.pages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
     </div>

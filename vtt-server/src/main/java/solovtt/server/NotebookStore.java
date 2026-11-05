@@ -112,7 +112,9 @@ public interface NotebookStore {
         if (tabs.pageIds().stream().distinct().count() != tabs.pageIds().size()) {
             throw new IllegalArgumentException("Une page ne s'ouvre que dans un seul onglet");
         }
-        boolean activeOk = tabs.pageIds().isEmpty() ? tabs.activeId() == null : tabs.activeId() != null && tabs.pageIds().contains(tabs.activeId());
+        boolean activeOk = tabs.pageIds().isEmpty()
+                ? tabs.activeId() == null
+                : tabs.activeId() != null && tabs.pageIds().contains(tabs.activeId());
         if (!activeOk) throw new IllegalArgumentException("L'onglet actif doit être l'un des onglets ouverts");
         for (String id : tabs.pageIds()) {
             if (!known.test(id)) throw new IllegalArgumentException("Page inconnue : " + id);

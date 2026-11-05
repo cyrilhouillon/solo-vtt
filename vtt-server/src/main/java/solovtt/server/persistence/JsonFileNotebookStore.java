@@ -20,8 +20,8 @@ import java.util.stream.Stream;
 /**
  * Le Carnet d'une campagne, dans un dossier : une fiche par page ({@code <id>.json} : id, titre, parent, contenu en JSON
  * imbriqué) et {@code carnet.json} pour les onglets : {@code openPageIds} dans l'ordre, {@code lastPageId} l'actif (un
- * fichier d'avant les onglets, sans {@code openPageIds}, se lit en un seul onglet). Chaque écriture passe par un fichier voisin et un
- * déplacement atomique. Une fiche illisible est ignorée, jamais écrasée.
+ * fichier d'avant les onglets, sans {@code openPageIds}, se lit en un seul onglet). Chaque écriture passe par un fichier
+ * voisin et un déplacement atomique. Une fiche illisible est ignorée, jamais écrasée.
  */
 public final class JsonFileNotebookStore implements NotebookStore {
 

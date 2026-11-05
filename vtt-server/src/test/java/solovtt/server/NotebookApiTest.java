@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -71,12 +72,12 @@ class NotebookApiTest {
                 .body("content.content[0].content[0].text", equalTo("Arrivée"));
     }
 
-    private static void onglets(Object body, int status) {
+    private static void envoyerOnglets(Object body, int status) {
         given().contentType(ContentType.JSON).body(body).put(carnet() + "/tabs").then().statusCode(status);
     }
 
-    private static Map<String, Object> onglets(List<String> pageIds, String activeId) {
-        var body = new java.util.HashMap<String, Object>();
+    private static Map<String, Object> corpsOnglets(List<String> pageIds, String activeId) {
+        var body = new HashMap<String, Object>();
         body.put("pageIds", pageIds);
         body.put("activeId", activeId);
         return body;
@@ -86,12 +87,12 @@ class NotebookApiTest {
     void lesOngletsEtLActif_sontGardes_dansLOrdre() {
         String session = creer("Session 1");
         String bertrand = creer("Bertrand");
-        onglets(onglets(List.of(session, bertrand), bertrand), 204);
+        envoyerOnglets(corpsOnglets(List.of(session, bertrand), bertrand), 204);
 
         given().get(carnet()).then().body("openPageIds", equalTo(List.of(session, bertrand)))
                 .body("activePageId", equalTo(bertrand));
 
-        onglets(onglets(List.of(), null), 204);
+        envoyerOnglets(corpsOnglets(List.of(), null), 204);
         given().get(carnet()).then().body("openPageIds", empty()).body("activePageId", nullValue());
     }
 
@@ -99,14 +100,14 @@ class NotebookApiTest {
     void desOngletsRefuses_laissentLesOngletsGardes() {
         String session = creer("Session 1");
         String bertrand = creer("Bertrand");
-        onglets(onglets(List.of(session), session), 204);
+        envoyerOnglets(corpsOnglets(List.of(session), session), 204);
 
-        onglets(onglets(List.of(session, "inconnue"), session), 404);
-        onglets(onglets(List.of(session, session), session), 400);
-        onglets(onglets(List.of(session), bertrand), 400);
-        onglets(onglets(List.of(session), null), 400);
-        onglets("{}", 400);
-        onglets("{\"pageIds\":[null],\"activeId\":null}", 400);
+        envoyerOnglets(corpsOnglets(List.of(session, "inconnue"), session), 404);
+        envoyerOnglets(corpsOnglets(List.of(session, session), session), 400);
+        envoyerOnglets(corpsOnglets(List.of(session), bertrand), 400);
+        envoyerOnglets(corpsOnglets(List.of(session), null), 400);
+        envoyerOnglets("{}", 400);
+        envoyerOnglets("{\"pageIds\":[null],\"activeId\":null}", 400);
 
         given().get(carnet()).then().body("openPageIds", equalTo(List.of(session))).body("activePageId", equalTo(session));
     }

@@ -75,7 +75,7 @@ export function campaignApi(campaignId: string) {
   const base = `/api/campaigns/${encodeURIComponent(campaignId)}`
   return {
     ...api,
-    /** Les pages du Carnet et la dernière page consultée. */
+    /** Les pages du Carnet et ses onglets ouverts. */
     notebook: () => request<NotebookView>(`${base}/notebook`),
 
     /** `parentId` : la page sous laquelle la ranger, `null` pour la racine. */
