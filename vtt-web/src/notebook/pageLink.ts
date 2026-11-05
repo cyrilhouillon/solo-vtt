@@ -23,6 +23,8 @@ export interface PageLinkOptions {
   locked: () => boolean
   /** Ouvre la page visée. */
   onOpen: (pageId: string) => void
+  /** L'adresse d'une page : le clic du milieu ouvre la cible dans un nouvel onglet du navigateur. */
+  pageHref: (pageId: string) => string
 }
 
 const suggestionKey = new PluginKey('pageLinkSuggestion')
@@ -39,7 +41,7 @@ export const PageLink = Node.create<PageLinkOptions>({
   selectable: true,
 
   addOptions() {
-    return { pages: () => [], locked: () => true, onOpen: () => {} }
+    return { pages: () => [], locked: () => true, onOpen: () => {}, pageHref: () => '' }
   },
 
   addAttributes() {

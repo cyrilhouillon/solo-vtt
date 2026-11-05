@@ -16,7 +16,14 @@ import type { PageDocument, PageSummary } from '../types'
  * Carnet (`pages`), dont le lien suit le titre. `insertImage` pose une image du disque au curseur ; une image déposée ou
  * collée sur le texte entre de même.
  */
-const props = defineProps<{ content: PageDocument | null; editable: boolean; label: string; pages: readonly PageSummary[] }>()
+const props = defineProps<{
+  content: PageDocument | null
+  editable: boolean
+  label: string
+  pages: readonly PageSummary[]
+  /** L'adresse d'une page, que porte chaque lien. */
+  pageHref: (pageId: string) => string
+}>()
 /** Le document après chaque modification du joueur ; `open` : suivre un lien ; `refuse` : une image déposée ou collée refusée. */
 const emit = defineEmits<{ change: [content: PageDocument]; open: [pageId: string]; refuse: [reason: string] }>()
 
@@ -30,6 +37,7 @@ const editor = useEditor({
       pages: () => props.pages,
       locked: () => !props.editable,
       onOpen: (pageId) => emit('open', pageId),
+      pageHref: (pageId) => props.pageHref(pageId),
     }),
     PageImage,
   ],

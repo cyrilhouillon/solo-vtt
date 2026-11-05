@@ -7,7 +7,7 @@ import type { PageLinkOptions } from '../notebook/pageLink'
 /**
  * Un lien de page dans le texte : le titre actuel de sa cible, ou son texte choisi. Page verrouillée, un clic ou Entrée
  * l'ouvre ; en écriture, un clic le sélectionne (ProseMirror) et montre sa bulle, Ctrl+clic (Cmd+clic) l'ouvre. Une cible
- * absente donne un lien mort, qui n'ouvre rien.
+ * absente donne un lien mort, qui n'ouvre rien. Le clic du milieu ouvre la cible dans un nouvel onglet du navigateur.
  */
 const props = defineProps(nodeViewProps)
 
@@ -25,6 +25,14 @@ function onClick(event: MouseEvent) {
   const follow = locked.value || event.ctrlKey || event.metaKey
   if (target.value && follow) options.value.onOpen(pageId.value)
 }
+
+/**
+ * Le clic du milieu est laissé au navigateur, qui ouvre la cible dans un nouvel onglet : ProseMirror ne le voit pas, sans
+ * quoi, en écriture, il sélectionnerait le lien et annulerait le relâcher.
+ */
+function keepMiddleClick(event: MouseEvent) {
+  if (event.button === 1) event.stopPropagation()
+}
 </script>
 
 <template>
@@ -32,10 +40,12 @@ function onClick(event: MouseEvent) {
     <a
       v-if="target"
       class="page-link"
-      :href="`#page-${pageId}`"
+      :href="options.pageHref(pageId)"
       :tabindex="locked ? undefined : -1"
       :title="label === null ? undefined : target.title"
       @click="onClick"
+      @mousedown="keepMiddleClick"
+      @mouseup="keepMiddleClick"
     >{{ text }}</a>
     <a v-else class="page-link dead" aria-disabled="true" title="Cette page n'existe plus" @click="onClick">{{ text }}</a>
   </NodeViewWrapper>

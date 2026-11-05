@@ -34,6 +34,8 @@ export interface TreeContext {
   edit: Ref<TreeEdit | null>
   drag: Ref<TreeDrag | null>
   draft: Ref<string>
+  /** L'adresse d'une page : le clic du milieu l'ouvre dans un nouvel onglet du navigateur. */
+  pageHref: (pageId: string) => string
   open: (pageId: string) => void
   toggle: (pageId: string) => void
   toggleMenu: (pageId: string) => void

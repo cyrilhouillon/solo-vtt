@@ -255,6 +255,9 @@ async function writeAddress(pageId: string | null, push = false) {
   }
 }
 
+/** L'adresse d'une page, que portent les lignes de l'arbre et les liens : le clic du milieu l'ouvre dans un nouvel onglet. */
+const pageHref = (pageId: string) => router.resolve({ name: 'notebook', params: { campaignId: props.campaign.id, pageId } }).href
+
 /** Avant de changer de page ou d'écran par l'adresse : le geste en cours finit, puis la frappe part ; sinon on reste. */
 async function mayLeave(): Promise<boolean> {
   if (writing) return true
@@ -669,6 +672,7 @@ function leave(target: 'home' | 'combat') {
           :current-id="page?.id ?? null"
           :expanded="expanded"
           :busy="busy"
+          :page-href="pageHref"
           @open="open"
           @toggle="toggle"
           @create="createPage"
@@ -750,6 +754,7 @@ function leave(target: 'home' | 'combat') {
             :editable="unlocked"
             :label="`Texte de ${page.title}`"
             :pages="notebook.pages"
+            :page-href="pageHref"
             @change="onChange"
             @open="open"
             @refuse="(reason) => (error = reason)"
