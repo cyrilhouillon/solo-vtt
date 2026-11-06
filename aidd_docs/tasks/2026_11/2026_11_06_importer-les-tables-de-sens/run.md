@@ -17,3 +17,12 @@
 - [pass] Task 1 — Tirages Actions, Descriptions et élément rendent les mots des jets scriptés — `MeaningTablesTest` : `Tests run: 5, Failures: 0` (Actions 1/57, Descriptions 100/42, élément 3/3, élément inconnu refusé, entrée vide refusée).
 - [pass] Task 2 — Chaque cas de refus rend sa raison et sa ligne ; BOM, CRLF, lignes vides tolérés — `MeaningTablesTextTest` : `Tests run: 10, Failures: 0` (99 entrées « ligne 102 », section absente, titre inconnu, texte avant titre, élément en double, nom vide, colonne en double, BOM/CRLF/espaces).
 - [pass] Task 3 — `mvn -q test -pl mythic-engine -am` vert ; sans tables, ordre des dés et réponses inchangés — exit 0 ; `FateQuestionTest` : `Tests run: 10, Failures: 0` (7 cas d'avant avec `Optional.empty()`, sens 4/90 avec tables, deux dés seulement sans tables) ; `mvn -q verify -pl mythic-engine,mythic-server -am` exit 0, `MythicResourceTest` 9/9.
+
+## Phase 3 · Le serveur Mythic importe les tables et tire un sens
+
+- Date: 2026-11-06
+- Validated on: e137d91
+
+- [pass] Task 1 — Les tables importées se relisent par un nouveau `MeaningStore` ; un document abîmé vaut « sans tables » — `MeaningResourceTest` (7/7) : import puis `tables()` sur une nouvelle ressource et un nouveau store ; `{pas du json` → `imported: false`, remplacé au prochain import ; sur 8081, `<scratchpad>/modules/mythic.json` écrit (`{"meaningTables":{"actions1":["Évêque-001",…`).
+- [pass] Task 2 — `mvn -q verify` vert ; import mal formé refusé en 400 sans écraser ; tirage sans tables en 409 — `mvn -q verify` exit 0, 377 tests, 0 échec ; 8081 : `POST /api/mythic/meanings` sans tables → 409 « Tables de sens non importées… » ; `PUT meaning-tables` à 99 entrées → 400 « Actions 2 : 99 entrées, 100 attendues (ligne 102) », avant et après un import valide, dont la liste reste.
+- [pass] Task 3 — Sur 8081, un `PUT` texte accentué puis un `POST meanings` rendent les mots intacts ; une question qui déclenche un événement porte son sens — `PUT` `text/plain; charset=utf-8` → 200, Actions, Descriptions, Lieux ; tirage Actions → `Évêque-085` · `forêt-040`, Lieux → `château-030` · `château-073` ; campagne au chaos 9, question 50/50 → jet 11, `randomEvent.meaning` = `Évêque-048` · `forêt-047`.
