@@ -15,6 +15,7 @@
         <module>vtt-engine</module>
         <module>dnd-engine</module>
         <module>mythic-engine</module>
+        <module>mythic-server</module>
         <module>vtt-server</module>
     </modules>
 
@@ -44,6 +45,11 @@
             <dependency>
                 <groupId>mythic</groupId>
                 <artifactId>mythic-engine</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>mythic</groupId>
+                <artifactId>mythic-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
