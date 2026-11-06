@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { JSONContent } from '@tiptap/core'
+import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { watch } from 'vue'
@@ -108,23 +109,36 @@ async function insertFiles(files: File[], position?: number) {
 }
 
 /**
- * Écrit des blocs venus d'un module : au curseur sur une page déverrouillée, en un seul pas d'annulation ; à la fin sur
+ * Écrit des blocs venus d'un module : au curseur (après son bloc) sur une page déverrouillée, en un seul pas d'annulation ; à la fin sur
  * une page verrouillée, qui le reste. Le document est émis dans les deux cas : `onUpdate` ne le fait que pour une page
  * éditable.
  */
 function insertBlocks(blocks: JSONContent[]) {
   const current = editor.value
   if (!current) return
-  if (current.isEditable) current.chain().focus().insertContent(blocks).run()
-  else {
-    // Un paragraphe vide final (celui que laisse l'insertion précédente) est remplacé, sinon les jets s'espaceraient.
-    const doc = current.state.doc
-    const last = doc.lastChild
-    const end = doc.content.size
-    const from = last && last.type.name === 'paragraph' && last.content.size === 0 ? end - last.nodeSize : end
-    current.commands.insertContentAt({ from, to: end }, blocks)
-  }
+  const range = current.isEditable ? besideCursor(current.state.selection.$from) : atEnd(current.state.doc)
+  if (current.isEditable) current.chain().focus().insertContentAt(range, blocks).run()
+  else current.commands.insertContentAt(range, blocks)
   emit('change', current.getJSON() as PageDocument)
+}
+
+const isEmptyParagraph = (node: PMNode | null | undefined) => !!node && node.type.name === 'paragraph' && node.content.size === 0
+
+/**
+ * Après le bloc de premier niveau où est le curseur, ou à la place d'un paragraphe vide : le texte n'est jamais coupé,
+ * et un résultat ne s'imbrique pas dans la citation du précédent, où le curseur reste après l'insertion.
+ */
+function besideCursor($from: ResolvedPos) {
+  if ($from.depth === 0) return { from: $from.pos, to: $from.pos }
+  const top = $from.node(1)
+  if (isEmptyParagraph(top)) return { from: $from.before(1), to: $from.after(1) }
+  return { from: $from.after(1), to: $from.after(1) }
+}
+
+/** À la fin du document ; un paragraphe vide final (celui que laisse l'insertion précédente) est remplacé. */
+function atEnd(doc: PMNode) {
+  const end = doc.content.size
+  return { from: isEmptyParagraph(doc.lastChild) ? end - doc.lastChild!.nodeSize : end, to: end }
 }
 
 defineExpose({ insertImage, insertBlocks })
