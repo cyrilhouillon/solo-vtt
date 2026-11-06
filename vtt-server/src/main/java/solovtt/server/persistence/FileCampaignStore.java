@@ -16,13 +16,14 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
  * Une campagne par dossier {@code <racine>/<id>/} : {@code campagne.json} (id et nom), {@code partie.json} et
- * {@code cartes.json}, et son Carnet dans {@code carnet/}. Un dossier sans {@code campagne.json} lisible est ignoré,
+ * {@code cartes.json}, son Carnet dans {@code carnet/} et les données de chaque module dans {@code modules/<module>.json}. Un dossier sans {@code campagne.json} lisible est ignoré,
  * jamais écrasé.
  */
 public final class FileCampaignStore implements CampaignStore {
@@ -93,6 +94,34 @@ public final class FileCampaignStore implements CampaignStore {
     public NotebookStore notebook(String id) {
         Path dir = dirOf(id);
         return notebooks.computeIfAbsent(id, key -> new JsonFileNotebookStore(dir.resolve("carnet")));
+    }
+
+    @Override
+    public synchronized Optional<String> readModuleData(String id, String moduleId) {
+        Path file = moduleFile(id, moduleId);
+        if (!Files.exists(file)) return Optional.empty();
+        try {
+            return Optional.of(Files.readString(file));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Données de module illisibles : " + file, e);
+        }
+    }
+
+    @Override
+    public synchronized void writeModuleData(String id, String moduleId, String json) {
+        Path file = moduleFile(id, moduleId);
+        try {
+            Files.createDirectories(file.getParent());
+            Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
+            Files.writeString(temporary, json);
+            Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Impossible d'écrire les données de module : " + file, e);
+        }
+    }
+
+    private Path moduleFile(String id, String moduleId) {
+        return dirOf(id).resolve("modules").resolve(CampaignStore.checkModuleId(moduleId) + ".json");
     }
 
     /** Le dossier d'une campagne connue : aucun chemin ne se construit depuis un id qui n'en est pas un. */

@@ -31,7 +31,8 @@ export class ApiError extends Error {
 
 const UNREACHABLE = 'Serveur injoignable : vérifier que vtt-server est lancé.'
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/** Appelle le serveur en JSON ; un refus devient une `ApiError` au message lisible. Les modules l'utilisent aussi. */
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   try {
     response = await fetch(path, {

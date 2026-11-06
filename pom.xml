@@ -11,8 +11,11 @@
     <name>Solo VTT</name>
 
     <modules>
+        <module>vtt-module-api</module>
         <module>vtt-engine</module>
         <module>dnd-engine</module>
+        <module>mythic-engine</module>
+        <module>mythic-server</module>
         <module>vtt-server</module>
     </modules>
 
@@ -26,12 +29,27 @@
         <dependencies>
             <dependency>
                 <groupId>solovtt</groupId>
+                <artifactId>vtt-module-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>solovtt</groupId>
                 <artifactId>vtt-engine</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>dnd</groupId>
                 <artifactId>dnd-engine</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>mythic</groupId>
+                <artifactId>mythic-engine</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>mythic</groupId>
+                <artifactId>mythic-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

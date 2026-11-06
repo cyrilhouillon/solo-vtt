@@ -5,5 +5,20 @@
       "maxFindings": 5,
       "maxChars": 8000
     }
+  },
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "vtt-web/src/components/PageEditor.vue"
+        ],
+        "createdAt": "2026-11-06T00:33:14.159Z",
+        "reason": "Claude triage: blockquote rule of the rich-text editor, typographic quote convention documented in DESIGN.md (citations derrière un trait de 3px rule), predates this session (19213ff)"
+      }
+    ]
   }
 }
