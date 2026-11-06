@@ -856,9 +856,9 @@ section .tapered,
   padding: 1.25rem 16px;
   align-items: start;
 }
-/* Les panneaux des modules, à droite de la page ; la colonne n'existe que si un module en montre un. */
+/* Les panneaux des modules, contre la page (qui ne dépasse pas 46rem) ; la colonne n'existe que si un module en montre un. */
 .content.with-modules {
-  grid-template-columns: 17rem minmax(0, 1fr) 18rem;
+  grid-template-columns: 17rem minmax(0, 46rem) 18rem;
 }
 .modules {
   display: flex;

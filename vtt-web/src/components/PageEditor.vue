@@ -116,7 +116,14 @@ function insertBlocks(blocks: JSONContent[]) {
   const current = editor.value
   if (!current) return
   if (current.isEditable) current.chain().focus().insertContent(blocks).run()
-  else current.commands.insertContentAt(current.state.doc.content.size, blocks)
+  else {
+    // Un paragraphe vide final (celui que laisse l'insertion précédente) est remplacé, sinon les jets s'espaceraient.
+    const doc = current.state.doc
+    const last = doc.lastChild
+    const end = doc.content.size
+    const from = last && last.type.name === 'paragraph' && last.content.size === 0 ? end - last.nodeSize : end
+    current.commands.insertContentAt({ from, to: end }, blocks)
+  }
   emit('change', current.getJSON() as PageDocument)
 }
 
