@@ -1,6 +1,6 @@
 ---
 objective: "Le joueur importe une fois ses tables de sens Mythic (fichier texte à titres, gardé hors du dépôt, commun à ses campagnes, refusé avec la raison s'il est mal formé), tire deux mots dans la table choisie depuis le panneau, et chaque événement aléatoire tire aussi ses deux mots dans les tables d'actions ; sans tables, le panneau dit pourquoi et l'oracle oui/non reste utilisable."
-status: in-progress
+status: implemented
 ---
 
 # Plan: importer ses tables de mots et tirer un sens

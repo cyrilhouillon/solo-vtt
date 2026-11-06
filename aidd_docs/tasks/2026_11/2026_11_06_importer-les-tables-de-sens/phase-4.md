@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 ---
 
 # Instruction: le panneau Mythic importe et écrit le sens dans la page
