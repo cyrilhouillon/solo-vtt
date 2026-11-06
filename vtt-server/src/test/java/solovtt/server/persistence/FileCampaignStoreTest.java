@@ -102,16 +102,16 @@ class FileCampaignStoreTest {
         var store = new FileCampaignStore(root);
         var strahd = store.create("Strahd");
         var phandelver = store.create("Phandelver");
-        assertEquals(Optional.empty(), store.readModuleData(strahd.id(), "mythic"));
+        assertEquals(Optional.empty(), store.readModuleData(strahd.id(), "essai"));
 
-        store.writeModuleData(strahd.id(), "mythic", "{\"chaos\":6}");
-        store.writeModuleData(strahd.id(), "mythic", "{\"chaos\":7}");
-        store.writeModuleData(phandelver.id(), "mythic", "{\"chaos\":2}");
+        store.writeModuleData(strahd.id(), "essai", "{\"chaos\":6}");
+        store.writeModuleData(strahd.id(), "essai", "{\"chaos\":7}");
+        store.writeModuleData(phandelver.id(), "essai", "{\"chaos\":2}");
 
         var relu = new FileCampaignStore(root);
-        assertEquals(Optional.of("{\"chaos\":7}"), relu.readModuleData(strahd.id(), "mythic"));
-        assertEquals(Optional.of("{\"chaos\":2}"), relu.readModuleData(phandelver.id(), "mythic"));
-        assertEquals(List.of(root.resolve(strahd.id()).resolve("modules").resolve("mythic.json")),
+        assertEquals(Optional.of("{\"chaos\":7}"), relu.readModuleData(strahd.id(), "essai"));
+        assertEquals(Optional.of("{\"chaos\":2}"), relu.readModuleData(phandelver.id(), "essai"));
+        assertEquals(List.of(root.resolve(strahd.id()).resolve("modules").resolve("essai.json")),
                 fichiers(root.resolve(strahd.id()).resolve("modules")));
     }
 
@@ -121,7 +121,7 @@ class FileCampaignStoreTest {
         var strahd = store.create("Strahd");
         assertThrows(IllegalArgumentException.class, () -> store.writeModuleData(strahd.id(), "../evade", "{}"));
         assertThrows(IllegalArgumentException.class, () -> store.writeModuleData(strahd.id(), "", "{}"));
-        assertThrows(IllegalArgumentException.class, () -> store.readModuleData("inconnue", "mythic"));
+        assertThrows(IllegalArgumentException.class, () -> store.readModuleData("inconnue", "essai"));
         assertEquals(false, Files.exists(dir.resolve(strahd.id()).resolve("modules")));
         assertEquals(false, Files.exists(dir.resolve("evade.json")));
     }

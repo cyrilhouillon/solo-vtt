@@ -61,14 +61,14 @@ class CampaignStoreTest {
         var store = CampaignStore.inMemory();
         var a = store.create("A");
         var b = store.create("B");
-        assertEquals(Optional.empty(), store.readModuleData(a.id(), "mythic"));
+        assertEquals(Optional.empty(), store.readModuleData(a.id(), "essai"));
 
-        store.writeModuleData(a.id(), "mythic", "{\"chaos\":6}");
-        store.writeModuleData(b.id(), "mythic", "{\"chaos\":2}");
+        store.writeModuleData(a.id(), "essai", "{\"chaos\":6}");
+        store.writeModuleData(b.id(), "essai", "{\"chaos\":2}");
 
-        assertEquals(Optional.of("{\"chaos\":6}"), store.readModuleData(a.id(), "mythic"));
-        assertEquals(Optional.of("{\"chaos\":2}"), store.readModuleData(b.id(), "mythic"));
-        assertThrows(IllegalArgumentException.class, () -> store.readModuleData("inconnue", "mythic"));
+        assertEquals(Optional.of("{\"chaos\":6}"), store.readModuleData(a.id(), "essai"));
+        assertEquals(Optional.of("{\"chaos\":2}"), store.readModuleData(b.id(), "essai"));
+        assertThrows(IllegalArgumentException.class, () -> store.readModuleData("inconnue", "essai"));
         assertThrows(IllegalArgumentException.class, () -> store.writeModuleData(a.id(), "../x", "{}"));
         assertThrows(IllegalArgumentException.class, () -> store.writeModuleData(a.id(), "", "{}"));
     }
@@ -81,7 +81,7 @@ class CampaignStoreTest {
 
         assertEquals(true, data.exists(a.id()));
         assertEquals(false, data.exists("inconnue"));
-        data.write(a.id(), "mythic", "{}");
-        assertEquals(Optional.of("{}"), data.read(a.id(), "mythic"));
+        data.write(a.id(), "essai", "{}");
+        assertEquals(Optional.of("{}"), data.read(a.id(), "essai"));
     }
 }
