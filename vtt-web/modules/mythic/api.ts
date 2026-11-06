@@ -56,6 +56,9 @@ export function mythicApi(campaignId: string) {
       (await request<{ chaos: number }>(`${base}/chaos`, { method: 'PUT', body: JSON.stringify({ chaos }) })).chaos,
     ask: (question: string, odds: string) =>
       request<FateAnswer>(`${base}/questions`, { method: 'POST', body: JSON.stringify({ question, odds }) }),
+    /** Assure les pages Fils et Personnages de la section Mythic du Carnet ; idempotent. */
+    prepareLists: () =>
+      request<{ threadsPageId: string; charactersPageId: string }>(`${base}/lists`, { method: 'POST' }),
   }
 }
 

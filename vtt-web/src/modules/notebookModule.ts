@@ -27,4 +27,10 @@ export interface NotebookModule {
   title: string
   /** Le panneau, monté à droite de la page avec la prop `context`. */
   panel?: Component
+  /**
+   * Prépare le Carnet de la campagne (créer les pages de sa section qui manquent), attendu avant sa première lecture à
+   * chaque ouverture : idempotent. Un refus va au bandeau d'erreur, sans empêcher d'ouvrir le Carnet. Le titre du module
+   * est celui de sa section dans l'arbre.
+   */
+  prepare?: (campaignId: string) => Promise<void>
 }

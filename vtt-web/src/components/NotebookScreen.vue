@@ -15,7 +15,7 @@ import TrashDialog from './TrashDialog.vue'
 import { ancestors, branch } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
-import { panelModules } from '../modules/registry'
+import { notebookModules, panelModules } from '../modules/registry'
 import type { NotebookContext } from '../modules/notebookModule'
 import type { CampaignView, NotebookView, PageDeletion, PageDocument, PageView, SearchResult, TrashedPage } from '../types'
 
@@ -381,10 +381,22 @@ async function open(pageId: string) {
   void router.push({ name: 'notebook', params: { campaignId: props.campaign.id, pageId } })
 }
 
+/** Chaque module prépare le Carnet avant sa lecture (les pages de sa section) ; un refus va au bandeau, sans bloquer. */
+async function prepareModules() {
+  const results = await Promise.allSettled(notebookModules.map((module) => module.prepare?.(props.campaign.id)))
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      const reason = result.reason instanceof Error ? result.reason.message : String(result.reason)
+      error.value = `${notebookModules[i].title} : Carnet non préparé (${reason})`
+    }
+  })
+}
+
 onMounted(() => {
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('pagehide', onPageHide)
   void call(async () => {
+    await prepareModules()
     notebook.value = await api.notebook()
     // Le serveur ne rend que des onglets dont la page existe. Tous fermés, ils le restent.
     const { pages, openPageIds, activePageId } = notebook.value
