@@ -40,6 +40,14 @@ public interface NotebookStore {
     Page create(String title, String parentId);
 
     /**
+     * Crée, à la racine, une racine de la section de ce module, avec ce contenu ({@code null} : vide). Seul un module en
+     * crée, par le port {@code NotebookPages} ; elle ne se déplace ni ne se supprime.
+     *
+     * @throws IllegalArgumentException si l'id de section n'est pas un id de module
+     */
+    Page createSectionRoot(String section, String title, String content);
+
+    /**
      * Remplace le contenu de la page.
      *
      * @throws IllegalArgumentException si aucune page n'a cet id
@@ -56,15 +64,15 @@ public interface NotebookStore {
     /**
      * Range la page sous {@code parentId} ({@code null} : à la racine), avec ses sous-pages.
      *
-     * @throws IllegalArgumentException si la page ou le parent est inconnu, ou si le parent est la page elle-même ou
-     *     l'une de ses sous-pages
+     * @throws IllegalArgumentException si la page ou le parent est inconnu, si le parent est la page elle-même ou l'une
+     *     de ses sous-pages, ou si la page est une racine de section
      */
     void move(String id, String parentId);
 
     /**
      * Met la page et ses sous-pages à la corbeille, en un seul lot.
      *
-     * @throws IllegalArgumentException si aucune page vivante n'a cet id
+     * @throws IllegalArgumentException si aucune page vivante n'a cet id, ou si c'est une racine de section
      */
     void delete(String id);
 
@@ -128,11 +136,20 @@ public interface NotebookStore {
 
     Comparator<Page> BY_TITLE = Comparator.comparing(Page::title, String.CASE_INSENSITIVE_ORDER).thenComparing(Page::title);
 
-    /** Refuse un parent qui mettrait la page sous elle-même : l'appelant tient le verrou du Carnet. */
-    static void checkMove(List<Page> pages, String id, String parentId) {
-        if (parentId != null && PageTree.isWithin(pages, parentId, id)) {
+    /**
+     * Refuse de déplacer une racine de section, ou de mettre la page sous elle-même : l'appelant tient le verrou du
+     * Carnet.
+     */
+    static void checkMove(List<Page> pages, Page page, String parentId) {
+        if (page.isSectionRoot()) throw new IllegalArgumentException("Une page de section ne se déplace pas");
+        if (parentId != null && PageTree.isWithin(pages, parentId, page.id())) {
             throw new IllegalArgumentException("Une page ne peut pas aller sous elle-même ni sous l'une de ses sous-pages");
         }
+    }
+
+    /** Refuse de supprimer une racine de section : son module la tient. */
+    static void checkDelete(Page page) {
+        if (page.isSectionRoot()) throw new IllegalArgumentException("Une page de section ne se supprime pas");
     }
 
     /**
@@ -182,28 +199,35 @@ public interface NotebookStore {
             }
 
             @Override
+            public synchronized Page createSectionRoot(String section, String title, String content) {
+                var page = new Page(UUID.randomUUID().toString(), title, null, CampaignStore.checkModuleId(section), content);
+                pages.put(page.id(), page);
+                return page;
+            }
+
+            @Override
             public synchronized void saveContent(String id, String content) {
                 Page page = known(id);
-                pages.put(id, new Page(id, page.title(), page.parentId(), content));
+                pages.put(id, page.withContent(content));
             }
 
             @Override
             public synchronized void rename(String id, String title) {
                 Page page = known(id);
-                pages.put(id, new Page(id, title, page.parentId(), page.content()));
+                pages.put(id, page.withTitle(title));
             }
 
             @Override
             public synchronized void move(String id, String parentId) {
                 Page page = known(id);
                 if (parentId != null) known(parentId);
-                checkMove(list(), id, parentId);
-                pages.put(id, new Page(id, page.title(), parentId, page.content()));
+                checkMove(list(), page, parentId);
+                pages.put(id, page.withParent(parentId));
             }
 
             @Override
             public synchronized void delete(String id) {
-                known(id);
+                checkDelete(known(id));
                 Instant now = Instant.now();
                 for (String member : PageTree.branch(list(), id)) {
                     trashed.put(member, new Trashed(pages.remove(member), id, now));
@@ -225,7 +249,7 @@ public interface NotebookStore {
                     if (!id.equals(member.deletedWith())) continue;
                     Page page = member.page();
                     trashed.remove(page.id());
-                    pages.put(page.id(), page.id().equals(id) ? new Page(id, page.title(), parentId, page.content()) : page);
+                    pages.put(page.id(), page.id().equals(id) ? page.withParent(parentId) : page);
                 }
             }
 

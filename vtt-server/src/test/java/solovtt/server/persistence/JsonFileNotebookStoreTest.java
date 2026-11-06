@@ -182,6 +182,20 @@ class JsonFileNotebookStoreTest {
     }
 
     @Test
+    void laSectionDUnModule_suitLesReglesDuPort_etSeRelit() throws IOException {
+        Path carnet = dir.resolve("carnet");
+        NotebookStoreTest.sections(new JsonFileNotebookStore(carnet));
+
+        var relu = new JsonFileNotebookStore(carnet).list();
+        Page fils = relu.stream().filter(Page::isSectionRoot).findFirst().orElseThrow();
+        assertEquals("mythic", fils.section());
+        assertEquals(1, relu.stream().filter(Page::isSectionRoot).count());
+        Page aldric = relu.stream().filter(p -> p.title().equals("Aldric")).findFirst().orElseThrow();
+        assertFalse(Files.readString(carnet.resolve(aldric.id() + ".json")).contains("section"),
+                "une page ordinaire n'écrit pas de section");
+    }
+
+    @Test
     void laCorbeille_seRelitParUnNouvelAdaptateur() {
         Path carnet = dir.resolve("carnet");
         var store = new JsonFileNotebookStore(carnet);

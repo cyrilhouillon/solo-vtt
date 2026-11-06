@@ -1,9 +1,11 @@
 package solovtt.server;
 
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import solovtt.module.NotebookPages;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -17,6 +19,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static solovtt.server.Campagnes.campagne;
 
 /** Le Carnet d'une campagne neuve : « Session 1 », puis « Bertrand ». */
@@ -26,9 +29,14 @@ class NotebookApiTest {
     private static final String ARRIVEE = """
             {"type":"doc","content":[{"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Arrivée"}]}]}""";
 
+    @Inject
+    NotebookPages sections;
+
+    private String campagneId;
+
     @BeforeEach
     void campagneNeuve() {
-        Campagnes.creerUneNeuve();
+        campagneId = Campagnes.creerUneNeuve();
     }
 
     private static String carnet() {
@@ -472,5 +480,34 @@ class NotebookApiTest {
         given().get(corbeille()).then().body("$", empty());
         restaurer(pnj, 404);
         supprimer("inconnue", 404);
+    }
+
+    @Test
+    void uneRacineDeSection_creeeParLePortDUnModule_seMontreMaisNeSeDeplaceNiNeSeSupprime() {
+        String fils = sections.createSectionRoot(campagneId, "essai", "Fils", null).id();
+        String aldric = creer("Aldric");
+        assertEquals(List.of(new NotebookPages.SectionPage(fils, "Fils")), sections.sectionRoots(campagneId, "essai"));
+        assertEquals(List.of(), sections.sectionRoots(campagneId, "autre"));
+
+        given().get(carnet()).then().statusCode(200)
+                .body("pages.title", equalTo(List.of("Aldric", "Fils")))
+                .body("pages.section", equalTo(Arrays.asList(null, "essai")));
+        given().get(carnet() + "/pages/" + fils).then().statusCode(200).body("section", equalTo("essai"));
+
+        given().contentType(ContentType.JSON).body(Map.of("parentId", aldric))
+                .put(carnet() + "/pages/" + fils + "/parent").then().statusCode(400)
+                .body("message", equalTo("Une page de section ne se déplace pas"));
+        given().delete(carnet() + "/pages/" + fils).then().statusCode(400)
+                .body("message", equalTo("Une page de section ne se supprime pas"));
+        given().contentType(ContentType.JSON).body(Map.of("parentId", fils))
+                .put(carnet() + "/pages/" + aldric + "/parent").then().statusCode(204);
+        given().delete(carnet() + "/pages/" + aldric).then().statusCode(204);
+        given().get(carnet()).then().body("pages.title", equalTo(List.of("Fils")));
+    }
+
+    @Test
+    void lePortDesSections_refuseUneCampagneInconnue() {
+        assertThrows(IllegalArgumentException.class, () -> sections.sectionRoots("inconnue", "essai"));
+        assertThrows(IllegalArgumentException.class, () -> sections.createSectionRoot("inconnue", "essai", "Fils", null));
     }
 }

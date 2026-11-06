@@ -50,7 +50,7 @@ public final class PageTree {
     public static List<Page> rooted(List<Page> pages) {
         Map<String, String> parents = parents(pages);
         return pages.stream().map(page -> isAttached(parents, page) ? page
-                : new Page(page.id(), page.title(), null, page.content())).toList();
+                : page.withParent(null)).toList();
     }
 
     /** Un parent connu, sans boucle qui revienne à la page : une boucle plus haut se résout sur ses propres pages. */
