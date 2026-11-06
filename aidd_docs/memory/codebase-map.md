@@ -29,7 +29,7 @@ flowchart TD
 ## Zones
 
 - `pom.xml` (racine) : agrégateur Maven `solovtt:solo-vtt`, qui porte les versions communes.
-- `vtt-module-api/` : les points d'extension d'un module (`solovtt.module.ModuleData`, les données d'un module par campagne), interfaces seules, que le cœur implémente (`vtt-server` : `ModuleDataAdapter`).
+- `vtt-module-api/` : les points d'extension d'un module (`solovtt.module.ModuleData`, les données d'un module par campagne ; `CommonModuleData`, celles communes aux campagnes), interfaces seules, que le cœur implémente (`vtt-server` : `ModuleDataAdapter`, `persistence/FileCommonModuleData` par `CommonModuleDataProducer`, propriété `solovtt.modules.path`).
 - `vtt-engine/` : le moteur générique (`solovtt.engine` : `Engine`, `Pipeline`, `Listener`, `RuleBook`, `Event`, `Decision`, `Dice`, `TurnOrder`, `TurnPolicy`) et la scène (`solovtt.scene` : `Scene` qui pose, déplace et retire les jetons, `Token`, `Position`, `DistanceUnit`). Il ne contient aucune règle ni aucun type de jeu.
 - `dnd-engine/` : les règles D&D 2024, qui dépendent de `vtt-engine`.
   - `state/` : l'état du jeu (`GameState`, `Creature` avec son modificateur d'initiative, `Combat` et ses `InitiativeGroup`, `Weapon`, `Attack` avec allonge et portée, conditions, types de dégâts).
