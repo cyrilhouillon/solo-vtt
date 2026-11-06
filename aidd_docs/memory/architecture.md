@@ -3,7 +3,7 @@
 ## Stack
 
 - Java avec Maven. Les moteurs n'ont aucune dépendance runtime : ils doivent rester embarquables n'importe où (serveur web, client, outils).
-- Modules Maven : `vtt-engine` (moteur générique `solovtt.engine` et scène générique `solovtt.scene`), `dnd-engine` (règles D&D 2024, qui en dépend) et `vtt-server` (Quarkus, REST JSON, qui embarque les moteurs). Un nouveau système de jeu est un module de plus qui dépend de `vtt-engine`.
+- Modules Maven : `vtt-engine` (moteur générique `solovtt.engine` et scène générique `solovtt.scene`), `dnd-engine` (règles D&D 2024, qui en dépend) et `vtt-server` (Quarkus, REST JSON, qui embarque les moteurs). Un nouveau système de jeu est un module de plus qui dépend de `vtt-engine`. `vtt-module-api` (`solovtt.module`, interfaces seules, sans dépendance) décrit ce que le cœur offre à un module.
 - Client web `vtt-web` (Vue 3, TypeScript, Vite), hors réacteur Maven. La carte est rendue par Konva dans `src/map/`, sans dépendance à Vue.
 - Records, sealed interfaces et pattern matching sur `switch` sont utilisés partout ; ils structurent le moteur.
 
@@ -59,6 +59,8 @@ flowchart LR
 - La vitesse restante arrive au client par `CombatDto.movementLeft`, dans l'unité de la carte ; `null` veut dire illimité (pas de créature active, ou système sans vitesse limitée). Le client n'y ajoute aucune règle : cercle, « reste » et refus de distance n'apparaissent que si une limite existe.
 - Les portées sont des règles D&D, dans `dnd-engine` : chaque `Attack` (corps à corps ou distance, lancer compris) porte son allonge ou sa portée en mètres. L'appelant fournit la distance de la carte et son unité à `AttackAction.of`, qui refuse une cible hors d'allonge ou au-delà de la portée longue (`IllegalArgumentException` avec la raison, sans événement) ; `RangeRules` donne le désavantage au-delà de la portée normale. La distance est euclidienne, mais l'allonge accepte une demi-case de plus (`Attack.CONTACT_TOLERANCE`, 0,75 m) : hors grille, une créature n'occupe pas une case exacte. Le contact hors grille et la diagonale (2,12 m) sont à l'allonge d'une arme ordinaire (1,5 m, SRD p. 15 ; la propriété Reach ajoute 1,5 m, p. 90) ; deux cases d'écart (3 m) non. Le client reçoit cette limite (`AttackDto.reachLimit`) pour son cercle de ciblage, et la feuille affiche l'allonge de l'arme.
 - Les mètres et les pieds se convertissent à la convention des battlemaps, 1,5 m pour 5 ft (`DistanceUnit.convert`) ; les vitesses sont stockées en mètres dans le moteur.
+
+- Un module (Mythic d'abord) se branche sans que le cœur le nomme : seuls les assemblages le citent (`<module>` du `pom.xml` racine, dépendance de `vtt-server/pom.xml`, dossier `vtt-web/modules/`), jamais `vtt-server/src` ni `vtt-web/src`. Côté serveur, un module est un jar à `META-INF/beans.xml` vide, que Quarkus découvre ; ses ressources vivent sous `/api/campaigns/{id}/<module>/…`, à côté des localisateurs de `CampaignResource`. Il injecte les ports de `vtt-module-api`, que le cœur implémente : `ModuleData` (`exists`, `read`, `write`) garde un document JSON par campagne et par module, que le cœur ne lit pas, servi par `ModuleDataAdapter` depuis `CampaignStore.readModuleData` / `writeModuleData` : `<campagne>/modules/<module>.json` (écriture atomique ; mémoire en test). Un id de module n'est fait que de minuscules, chiffres et tirets (`CampaignStore.checkModuleId`), jamais un chemin ; campagne inconnue : `IllegalArgumentException`.
 
 ## Pièges
 
