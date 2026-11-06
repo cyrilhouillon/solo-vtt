@@ -50,5 +50,5 @@ Depuis le Carnet, le joueur pose ses questions à l'oracle, ouvre et clôt ses s
 | Epic Carnet | dependency | `done` |
 | Forme des points d'extension | spike | `resolved` : [définir les points d'extension d'un module du Carnet](../spikes/definir-les-points-d-extension-d-un-module-du-carnet.md) ; une story « socle de module » précède toute story Mythic |
 | Listes stockées en pages ou en données propres | decision | des pages, dans une vraie section de l'arbre par module (marqueur générique) |
-| Format du fichier d'import des tables de mots | decision | tranchée dans une story |
+| Format du fichier d'import des tables de mots | decision | tranchée : texte à titres, 100 entrées par section ([importer ses tables de mots](../stories/importer-ses-tables-de-mots-et-tirer-un-sens.md)) |
 | Table de destin, facteur de chaos, focus d'événement et ajustement de scène libres de droits | assumption | déclarée par l'utilisateur, non vérifiée |

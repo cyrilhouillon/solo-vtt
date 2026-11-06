@@ -40,9 +40,10 @@ class MythicResourceTest {
     }
 
     private final Donnees donnees = new Donnees();
+    private final DonneesCommunes communes = new DonneesCommunes();
 
     private MythicResource oracle(int... des) {
-        return new MythicResource(donnees, Dice.scripted(des));
+        return new MythicResource(donnees, new MeaningStore(communes), Dice.scripted(des));
     }
 
     @Test
@@ -87,7 +88,7 @@ class MythicResourceTest {
         var reponse = oracle(33, 25).ask(STRAHD, new MythicDtos.QuestionRequest(null, "FIFTY_FIFTY"));
 
         assertNull(reponse.question());
-        assertEquals(new MythicDtos.RandomEventDto("NPC_ACTION", "Action d'un PNJ", 25), reponse.randomEvent());
+        assertEquals(new MythicDtos.RandomEventDto("NPC_ACTION", "Action d'un PNJ", 25, null), reponse.randomEvent());
     }
 
     @Test
@@ -117,5 +118,14 @@ class MythicResourceTest {
     void unFichierAbime_repartDuChaosDeDepart() {
         donnees.write(STRAHD, "mythic", "{pas du json");
         assertEquals(5, oracle().chaos(STRAHD).chaos());
+    }
+
+    @Test
+    void avecLesTablesImportees_unEvenementPorteSonSens() {
+        new MeaningResource(new MeaningStore(communes), Dice.scripted()).importTables(TablesDeTest.texte());
+
+        var reponse = oracle(33, 25, 4, 90).ask(STRAHD, new MythicDtos.QuestionRequest(null, "FIFTY_FIFTY"));
+
+        assertEquals(new MythicDtos.MeaningDto("Actions", "action1-004", 4, "action2-090", 90), reponse.randomEvent().meaning());
     }
 }
