@@ -1,5 +1,7 @@
 package mythic.server;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.GET;
@@ -16,6 +18,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import solovtt.engine.Dice;
 import solovtt.module.ModuleData;
+import solovtt.module.NotebookPages;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,7 +26,8 @@ import java.util.List;
 /**
  * L'oracle Mythic d'une campagne : son facteur de chaos, gardé dans les données du module, et les questions oui/non à
  * la table de destin, dont un événement aléatoire tire son sens dans les tables du joueur s'il les a importées. Le jet
- * ne touche ni la partie ni son journal ; le client écrit le résultat dans la page ouverte.
+ * ne touche ni la partie ni son journal ; le client écrit le résultat dans la page ouverte. Les listes de fils et de
+ * personnages sont deux pages de la section Mythic du Carnet, dont les ids sont gardés avec le chaos.
  */
 @Path("/api/campaigns/{campaignId}/mythic")
 public class MythicResource {
@@ -33,15 +37,28 @@ public class MythicResource {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    /** Ce que Mythic garde dans une campagne. */
-    record State(int chaos) {}
+    static final String THREADS_TITLE = "Fils";
+    static final String CHARACTERS_TITLE = "Personnages";
+
+    /** Une liste à puces vide : une entrée de liste est un élément de liste. */
+    static final String EMPTY_LIST = "{\"type\":\"doc\",\"content\":[{\"type\":\"bulletList\",\"content\":"
+            + "[{\"type\":\"listItem\",\"content\":[{\"type\":\"paragraph\"}]}]}]}";
+
+    /** Ce que Mythic garde dans une campagne : le chaos ({@code null} : celui de départ) et les pages de ses listes. */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record State(Integer chaos, String threadsPageId, String charactersPageId) {
+        static final State EMPTY = new State(null, null, null);
+    }
 
     private final ModuleData data;
+    private final NotebookPages pages;
     private final MeaningStore meanings;
     private final Dice dice;
 
-    public MythicResource(ModuleData data, MeaningStore meanings, Dice dice) {
+    public MythicResource(ModuleData data, NotebookPages pages, MeaningStore meanings, Dice dice) {
         this.data = data;
+        this.pages = pages;
         this.meanings = meanings;
         this.dice = dice;
     }
@@ -70,12 +87,48 @@ public class MythicResource {
         known(campaignId);
         if (request == null) throw new IllegalArgumentException("Facteur de chaos absent");
         ChaosFactor chaos = ChaosFactor.of(request.chaos());
-        try {
-            data.write(campaignId, MODULE_ID, JSON.writeValueAsString(new State(chaos.value())));
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException(e);
-        }
+        State state = state(campaignId);
+        write(campaignId, new State(chaos.value(), state.threadsPageId(), state.charactersPageId()));
         return new MythicDtos.ChaosDto(chaos.value());
+    }
+
+    /**
+     * Assure les pages Fils et Personnages de la section Mythic du Carnet : appelé à chaque ouverture du Carnet, il ne
+     * crée que celles qui manquent. Une page gardée est retrouvée par son id, même renommée ; si l'id est perdu, une racine
+     * de la section qui porte encore son titre est reprise, sinon la page est créée, vide.
+     */
+    @POST
+    @Path("/lists")
+    @APIResponse(responseCode = "200", description = "Les ids des pages Fils et Personnages",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MythicDtos.ListsDto.class)))
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public synchronized MythicDtos.ListsDto lists(@PathParam("campaignId") String campaignId) {
+        known(campaignId);
+        State state = state(campaignId);
+        List<NotebookPages.SectionPage> roots = pages.sectionRoots(campaignId, MODULE_ID);
+        String charactersKept = kept(state.charactersPageId(), roots);
+        String threads = ensure(campaignId, state.threadsPageId(), THREADS_TITLE, roots, charactersKept);
+        String characters = ensure(campaignId, state.charactersPageId(), CHARACTERS_TITLE, roots, threads);
+        if (!threads.equals(state.threadsPageId()) || !characters.equals(state.charactersPageId())) {
+            write(campaignId, new State(state.chaos(), threads, characters));
+        }
+        return new MythicDtos.ListsDto(threads, characters);
+    }
+
+    /** L'id gardé s'il est encore une racine de la section, sinon {@code null}. */
+    private static String kept(String id, List<NotebookPages.SectionPage> roots) {
+        return id != null && roots.stream().anyMatch(page -> page.id().equals(id)) ? id : null;
+    }
+
+    /** La page de la liste : gardée, reprise par son titre (hors de l'autre liste), ou créée. */
+    private String ensure(String campaignId, String id, String title, List<NotebookPages.SectionPage> roots, String other) {
+        String kept = kept(id, roots);
+        if (kept != null && !kept.equals(other)) return kept;
+        return roots.stream()
+                .filter(page -> page.title().equals(title) && !page.id().equals(other))
+                .map(NotebookPages.SectionPage::id)
+                .findFirst()
+                .orElseGet(() -> pages.createSectionRoot(campaignId, MODULE_ID, title, EMPTY_LIST).id());
     }
 
     /** Pose une question oui/non au chaos de la campagne. */
@@ -95,14 +148,33 @@ public class MythicResource {
 
     private ChaosFactor chaosOf(String campaignId) {
         known(campaignId);
+        Integer chaos = state(campaignId).chaos();
+        try {
+            return chaos == null ? ChaosFactor.INITIAL : ChaosFactor.of(chaos);
+        } catch (IllegalArgumentException e) {
+            // Un chaos abîmé ne bloque pas l'oracle : il repart de celui de départ, et sera remplacé au prochain réglage.
+            return ChaosFactor.INITIAL;
+        }
+    }
+
+    /** L'état gardé ; un fichier abîmé se lit vide, et sera remplacé à la prochaine écriture. */
+    private State state(String campaignId) {
         return data.read(campaignId, MODULE_ID).map(json -> {
             try {
-                return ChaosFactor.of(JSON.readValue(json, State.class).chaos());
-            } catch (JsonProcessingException | IllegalArgumentException e) {
-                // Un fichier abîmé ne bloque pas l'oracle : il repart du chaos de départ, et sera remplacé au prochain réglage.
-                return ChaosFactor.INITIAL;
+                State read = JSON.readValue(json, State.class);
+                return read == null ? State.EMPTY : read;
+            } catch (JsonProcessingException e) {
+                return State.EMPTY;
             }
-        }).orElse(ChaosFactor.INITIAL);
+        }).orElse(State.EMPTY);
+    }
+
+    private void write(String campaignId, State state) {
+        try {
+            data.write(campaignId, MODULE_ID, JSON.writeValueAsString(state));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static Odds odds(String code) {

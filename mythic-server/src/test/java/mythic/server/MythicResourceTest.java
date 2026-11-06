@@ -6,6 +6,7 @@ import solovtt.engine.Dice;
 import solovtt.module.ModuleData;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -41,9 +42,10 @@ class MythicResourceTest {
 
     private final Donnees donnees = new Donnees();
     private final DonneesCommunes communes = new DonneesCommunes();
+    private final PagesDeTest pages = new PagesDeTest();
 
     private MythicResource oracle(int... des) {
-        return new MythicResource(donnees, new MeaningStore(communes), Dice.scripted(des));
+        return new MythicResource(donnees, pages, new MeaningStore(communes), Dice.scripted(des));
     }
 
     @Test
@@ -127,5 +129,74 @@ class MythicResourceTest {
         var reponse = oracle(33, 25, 4, 90).ask(STRAHD, new MythicDtos.QuestionRequest(null, "FIFTY_FIFTY"));
 
         assertEquals(new MythicDtos.MeaningDto("Actions", "action1-004", 4, "action2-090", 90), reponse.randomEvent().meaning());
+    }
+
+    @Test
+    void lesListes_sontCreeesUneFois_videsDansLaSectionMythic() {
+        var listes = oracle().lists(STRAHD);
+
+        assertEquals(Map.of(listes.threadsPageId(), "Fils", listes.charactersPageId(), "Personnages"), pages.titres(STRAHD));
+        pages.racines.forEach(r -> {
+            assertEquals("mythic", r.moduleId());
+            assertEquals(MythicResource.EMPTY_LIST, r.content());
+        });
+        assertEquals("{\"threadsPageId\":\"" + listes.threadsPageId() + "\",\"charactersPageId\":\""
+                + listes.charactersPageId() + "\"}", donnees.fichiers.get(STRAHD + "/mythic"));
+
+        assertEquals(listes, oracle().lists(STRAHD));
+        assertEquals(2, pages.racines.size());
+        oracle().lists(PHANDELVER);
+        assertEquals(4, pages.racines.size());
+    }
+
+    @Test
+    void uneListeRenommee_estGardee() {
+        var listes = oracle().lists(STRAHD);
+        pages.renommer(listes.threadsPageId(), "Intrigues");
+
+        assertEquals(listes, oracle().lists(STRAHD));
+        assertEquals(2, pages.racines.size());
+    }
+
+    @Test
+    void leChaosEtLesListes_surviventLUnALAutre() {
+        oracle().setChaos(STRAHD, new MythicDtos.ChaosDto(7));
+        var listes = oracle().lists(STRAHD);
+        assertEquals(7, oracle().chaos(STRAHD).chaos());
+
+        oracle().setChaos(STRAHD, new MythicDtos.ChaosDto(3));
+        assertEquals(listes, oracle().lists(STRAHD));
+        assertEquals(3, oracle().chaos(STRAHD).chaos());
+        assertEquals(2, pages.racines.size());
+    }
+
+    @Test
+    void desIdsPerdus_reprennentLesRacinesParLeurTitre_sansDoublon() {
+        var listes = oracle().lists(STRAHD);
+        donnees.fichiers.put(STRAHD + "/mythic", "{abîmé");
+
+        assertEquals(listes, oracle().lists(STRAHD));
+        assertEquals(2, pages.racines.size());
+        assertEquals(5, oracle().chaos(STRAHD).chaos());
+
+        donnees.fichiers.remove(STRAHD + "/mythic");
+        assertEquals(listes, oracle().lists(STRAHD));
+        assertEquals(2, pages.racines.size());
+    }
+
+    @Test
+    void unIdGardeDUnePageDisparue_creeUneNouvellePage() {
+        donnees.fichiers.put(STRAHD + "/mythic", "{\"chaos\":6,\"threadsPageId\":\"disparue\"}");
+
+        var listes = oracle().lists(STRAHD);
+
+        assertEquals(Map.of(listes.threadsPageId(), "Fils", listes.charactersPageId(), "Personnages"), pages.titres(STRAHD));
+        assertEquals(6, oracle().chaos(STRAHD).chaos());
+    }
+
+    @Test
+    void lesListesDUneCampagneInconnue_sont404() {
+        assertThrows(NotFoundException.class, () -> oracle().lists("inconnue"));
+        assertEquals(List.of(), pages.racines);
     }
 }

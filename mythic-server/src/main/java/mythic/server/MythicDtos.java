@@ -15,6 +15,9 @@ public final class MythicDtos {
     /** Le facteur de chaos de la campagne, de 1 à 9. */
     public record ChaosDto(int chaos) {}
 
+    /** Les pages des listes de la campagne, dans la section Mythic du Carnet. */
+    public record ListsDto(String threadsPageId, String charactersPageId) {}
+
     /** Une probabilité, d'« Impossible » à « Certain ». */
     public record OddsDto(String code, String label) {
         static OddsDto of(Odds odds) {
