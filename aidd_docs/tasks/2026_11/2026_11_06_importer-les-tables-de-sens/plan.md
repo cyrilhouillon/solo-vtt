@@ -48,7 +48,7 @@ Source: aidd_docs/backlog/stories/importer-ses-tables-de-mots-et-tirer-un-sens.m
 | Decision   | Why   |
 | ---------- | ----- |
 | Format d'import : texte à titres. `# Actions 1`, `# Actions 2`, `# Descriptions 1`, `# Descriptions 2` obligatoires, puis zéro ou plusieurs `# Élément : <nom>` (nom unique, sans casse) ; 100 entrées non vides par section, une par ligne ; lignes vides ignorées, BOM et CRLF tolérés ; titre inconnu, texte avant le premier titre ou compte faux : refus avec le numéro de ligne | Décision de l'utilisateur ; proche d'un copier-coller du livre. |
-| L'utilisateur colle ses tables du livre (« 1: Abandon2: Accompany… ») ; Claude les met au format et les traduit en français, dans un fichier hors du dépôt, que le joueur importe | Demande de l'utilisateur ; l'application ne traduit rien. |
+| L'utilisateur colle ses tables du livre (« 1: mot2: mot… ») ; Claude les met au format et les traduit en français, dans un fichier hors du dépôt, que le joueur importe | Demande de l'utilisateur ; l'application ne traduit rien. |
 | Les tables sont des données communes du module, derrière un nouveau port `CommonModuleData` ; l'import remplace les tables précédentes | La story les veut communes aux campagnes ; `ModuleData` est par campagne. |
 | Routes communes du module sous `/api/mythic/…` (`meaning-tables`, `meanings`), hors de `/api/campaigns/{id}` | Les tables ne dépendent d'aucune campagne, comme `images`. |
 | Le sens d'un événement aléatoire se tire toujours dans les Actions (deux d100 après le focus) ; sans tables, l'événement s'écrit sans sens | Décision de l'utilisateur (règle par défaut de Mythic 2e). |

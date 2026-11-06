@@ -29,7 +29,7 @@ status: in-progress
 | Scenario     | Action                  | Observable outcome   | Actor                           |
 | ------------ | ----------------------- | -------------------- | ------------------------------- |
 | Setup        | Serveurs 8081 / 5174 (trois chemins dans le scratchpad) ; campagne neuve, page ouverte | Section Sens : « Tables de sens non importées », bouton Importer ; oracle oui/non utilisable | browser |
-| Setup        | L'utilisateur colle ses tables (« 1: Abandon2: Accompany… ») ; Claude écrit le fichier traduit au format, dans le scratchpad | Fichier `.txt` hors du dépôt | system |
+| Setup        | L'utilisateur colle ses tables (« 1: mot2: mot… ») ; Claude écrit le fichier traduit au format, dans le scratchpad | Fichier `.txt` hors du dépôt | system |
 | Happy path   | Importer ce fichier | Liste Actions, Descriptions, éléments ; Tirer actif | browser |
 | Happy path   | Actions, Tirer, page déverrouillée | Au curseur : « Sens (Actions) : mot · mot », « d100 : n / n » | browser |
 | Happy path   | Un élément, Tirer, page verrouillée | À la fin de la page, verrou gardé | browser |

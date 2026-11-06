@@ -66,7 +66,7 @@ class MeaningTablesTextTest {
 
     @Test
     void duTexteAvantLePremierTitre_estRefuse() {
-        assertEquals("Ligne 2 : texte avant le premier titre (« # Actions 1 » attendu)", refus("\n1: Abandon\n" + OBLIGATOIRES));
+        assertEquals("Ligne 2 : texte avant le premier titre (« # Actions 1 » attendu)", refus("\n1: mot-invente\n" + OBLIGATOIRES));
     }
 
     @Test
