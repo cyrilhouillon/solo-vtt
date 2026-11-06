@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { JSONContent } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { watch } from 'vue'
@@ -14,7 +15,7 @@ import type { PageDocument, PageSummary } from '../types'
  * ou au clavier (Ctrl+B, Ctrl+I) ; Ctrl+Z et Ctrl+Y défont et refont. Un éditeur par page : l'historique ne passe pas de
  * l'une à l'autre. Verrouillée, la page se lit avec la même mise en page ; seul le curseur change. `[[` lie une page du
  * Carnet (`pages`), dont le lien suit le titre. `insertImage` pose une image du disque au curseur ; une image déposée ou
- * collée sur le texte entre de même.
+ * collée sur le texte entre de même. `insertBlocks` écrit ce qu'envoie un module du Carnet.
  */
 const props = defineProps<{
   content: PageDocument | null
@@ -106,7 +107,20 @@ async function insertFiles(files: File[], position?: number) {
   if (refusal) emit('refuse', refusal)
 }
 
-defineExpose({ insertImage })
+/**
+ * Écrit des blocs venus d'un module : au curseur sur une page déverrouillée, en un seul pas d'annulation ; à la fin sur
+ * une page verrouillée, qui le reste. Le document est émis dans les deux cas : `onUpdate` ne le fait que pour une page
+ * éditable.
+ */
+function insertBlocks(blocks: JSONContent[]) {
+  const current = editor.value
+  if (!current) return
+  if (current.isEditable) current.chain().focus().insertContent(blocks).run()
+  else current.commands.insertContentAt(current.state.doc.content.size, blocks)
+  emit('change', current.getJSON() as PageDocument)
+}
+
+defineExpose({ insertImage, insertBlocks })
 
 watch(
   () => props.editable,

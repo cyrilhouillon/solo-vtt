@@ -15,6 +15,8 @@ import TrashDialog from './TrashDialog.vue'
 import { ancestors, branch } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
+import { panelModules } from '../modules/registry'
+import type { NotebookContext } from '../modules/notebookModule'
 import type { CampaignView, NotebookView, PageDeletion, PageDocument, PageView, SearchResult, TrashedPage } from '../types'
 
 /** `pageId` : la page de l'adresse, `null` sans page. */
@@ -122,6 +124,17 @@ let pending: { pageId: string; content: PageDocument } | null = null
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 /** Les envois se suivent, un à la fois. */
 let saving: Promise<void> = Promise.resolve()
+
+/** Ce que le Carnet offre aux panneaux des modules. */
+const moduleContext: NotebookContext = {
+  campaignId: props.campaign.id,
+  hasOpenPage: () => page.value !== null && editor.value !== null,
+  writeToOpenPage: (blocks) => {
+    if (!page.value || !editor.value) return 'Aucune page ouverte : ouvrir une page pour y écrire.'
+    editor.value.insertBlocks(blocks)
+    return null
+  },
+}
 
 function onChange(content: PageDocument) {
   if (!page.value) return
@@ -651,7 +664,7 @@ function leave(target: 'home' | 'combat') {
       </section>
     </main>
 
-    <div v-else class="content">
+    <div v-else class="content" :class="{ 'with-modules': panelModules.length }">
       <nav class="pages" aria-labelledby="pages-title">
         <h2 id="pages-title" class="panel-title">Pages</h2>
         <hr class="tapered" />
@@ -773,6 +786,13 @@ function leave(target: 'home' | 'combat') {
         </article>
         <p v-else-if="!busy" class="hint">Aucune page ouverte. Choisir une page dans l'arbre.</p>
       </main>
+      <aside v-if="panelModules.length" class="modules" aria-label="Modules du Carnet">
+        <section v-for="module in panelModules" :key="module.id" :aria-labelledby="`module-${module.id}`">
+          <h2 :id="`module-${module.id}`" class="panel-title">{{ module.title }}</h2>
+          <hr class="tapered" />
+          <component :is="module.panel" :context="moduleContext" />
+        </section>
+      </aside>
       <MovePageDialog :pages="notebook.pages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
     </div>
     <DeletePageDialog
@@ -835,6 +855,17 @@ section .tapered,
   gap: 1.25rem;
   padding: 1.25rem 16px;
   align-items: start;
+}
+/* Les panneaux des modules, à droite de la page ; la colonne n'existe que si un module en montre un. */
+.content.with-modules {
+  grid-template-columns: 17rem minmax(0, 1fr) 18rem;
+}
+.modules {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: sticky;
+  top: 1.25rem;
 }
 /* L'arbre reste en vue quand la page défile, et défile lui-même au-delà de la hauteur de la fenêtre. */
 .pages {
@@ -942,10 +973,12 @@ input[type='search']::-webkit-search-cancel-button {
   margin: 0.4rem 0 1rem;
 }
 @media (max-width: 900px) {
-  .content {
+  .content,
+  .content.with-modules {
     grid-template-columns: minmax(0, 1fr);
   }
-  .pages {
+  .pages,
+  .modules {
     position: static;
     max-height: none;
   }
