@@ -17,3 +17,12 @@
 - [pass] Task 1 — les 81 cases et les tranches de focus sont celles transcrites par l'utilisateur ; le test de cohérence passe sur chaque case — script Python comparant le collage de l'utilisateur aux lignes de `FateChart.java` : `IDENTIQUE` ; `FateChartTest` 6/6 (`chaqueCase_aDesSeuilsOrdonnes` sur 9 × 9, bornes de « Probable » chaos 5, « X » des deux côtés), `EventFocusTest` 2/2 (12 tranches, début et fin), `ChaosFactorTest` 3/3
 - [pass] Task 2 — `mvn -q test -pl mythic-engine -am` vert sur les scénarios ; aucun test de destin à 2d10 — `mvn test -pl mythic-engine -am` : `Tests run: 18, Failures: 0, Errors: 0`, `BUILD SUCCESS` ; `FateQuestionTest` 7/7 (33 et 55 au chaos 5 déclenchent, 66 non, 100 déclenche au chaos 1, focus par second d100) ; `grep -rni 2d10 mythic-engine` : aucun
 - [pass] Task 3 — la mémoire nomme `mythic-engine` et ses tests — `grep -c mythic-engine` : `codebase-map.md` 1, `package.md` 1, `testing.md` 1
+
+## Phase 3 · le serveur Mythic tient le chaos et pose la question
+
+- Date: 2026-11-06
+- Validated on: 100be8a
+
+- [pass] Task 1 — `mvn -q verify` vert ; `mythic` n'apparaît pas dans `vtt-server/src` — `mvn verify` racine : 7 modules `SUCCESS`, `BUILD SUCCESS` (vtt-server `Tests run: 223, Failures: 0`) ; le premier `grep -rni mythic vtt-server/src` trouvait l'id d'essai `"mythic"` dans `CampaignStoreTest` et `FileCampaignStoreTest`, remplacé par `"essai"` (d4c4106, 13/13 verts) ; ensuite : aucun résultat
+- [pass] Task 2 — `mvn -q test -pl mythic-server -am` vert sur chaos par défaut, modifié, borné, question, événement, campagne inconnue — `Tests run: 9, Failures: 0, Errors: 0` dans `MythicResourceTest`, `BUILD SUCCESS`
+- [pass] Task 3 — sur 8081 : chaos, question, redémarrage, 404 — serveur `quarkus:dev` 8081, campagnes dans le scratchpad : `GET …/mythic/chaos` campagne neuve `{"chaos":5}` 200 ; `PUT` 7 → 200, relu 7, fichier `modules/mythic.json` = `{"chaos":7}` ; seconde campagne 5 ; `PUT` 0 et 10 → 400 « Le facteur de chaos va de 1 à 9 » ; `POST …/questions` `LIKELY` → 200 `roll` 26, `Oui`, chaos 7, `randomEvent` `null` ; jet 66 au chaos 7 → `randomEvent` `NPC_ACTION` « Action d'un PNJ » ; sans `odds` / `PEUT_ETRE` → 400 ; campagne inconnue → 404 ; redémarrage du serveur → `{"chaos":7}` ; `mythic-server` retiré de `vtt-server/pom.xml` : vtt-server `Tests run: 223, Failures: 0`, `…/mythic/chaos` 404, `…/notebook` 200, puis pom restauré ; 8081 arrêté (jamais 8080)
