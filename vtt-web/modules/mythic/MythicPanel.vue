@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { NotebookContext } from '../../src/modules/notebookModule'
-import { mythicApi, type FateAnswer, type Odds } from './api'
-import { answerBlocks } from './result'
+import { meaningApi, mythicApi, type FateAnswer, type Meaning, type MeaningTable, type MeaningTables, type Odds } from './api'
+import { answerBlocks, meaningBlocks } from './result'
 
 /**
- * L'oracle Mythic dans le Carnet : le facteur de chaos de la campagne, et une question oui/non dont la réponse s'écrit
- * dans la page ouverte.
+ * L'oracle Mythic dans le Carnet : le facteur de chaos de la campagne, une question oui/non, et deux mots tirés dans
+ * les tables de sens du joueur ; chaque résultat s'écrit dans la page ouverte.
  */
 const props = defineProps<{ context: NotebookContext }>()
 const api = mythicApi(props.context.campaignId)
@@ -19,7 +19,16 @@ const chaos = ref<number | null>(null)
 const odds = ref<Odds[]>([])
 const chosen = ref('FIFTY_FIFTY')
 const question = ref('')
-const last = ref<FateAnswer | null>(null)
+/** Le dernier résultat écrit dans la page, rappelé sous les champs. */
+const last = ref<{ answer: FateAnswer } | { meaning: Meaning } | null>(null)
+/** `null` tant que le serveur n'a pas répondu. */
+const meaningTables = ref<MeaningTables | null>(null)
+const chosenTable = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+
+const tableKey = (table: MeaningTable) => `${table.kind}:${table.element ?? ''}`
+const columns = computed(() => meaningTables.value?.tables.filter((t) => t.kind !== 'ELEMENT') ?? [])
+const elements = computed(() => meaningTables.value?.tables.filter((t) => t.kind === 'ELEMENT') ?? [])
 const error = ref<string | null>(null)
 const busy = ref(false)
 
@@ -35,7 +44,60 @@ onMounted(async () => {
   } catch (e) {
     error.value = `Oracle indisponible : ${reason(e)}`
   }
+  try {
+    showTables(await meaningApi.tables())
+  } catch (e) {
+    error.value ??= `Tables de sens indisponibles : ${reason(e)}`
+  }
 })
+
+function showTables(tables: MeaningTables) {
+  meaningTables.value = tables
+  const first = tables.tables[0]
+  if (!tables.tables.some((t) => tableKey(t) === chosenTable.value)) chosenTable.value = first ? tableKey(first) : ''
+}
+
+async function importTables(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  // Vidé pour qu'un même fichier, corrigé sur le disque, puisse être choisi de nouveau.
+  input.value = ''
+  if (!file) return
+  error.value = null
+  busy.value = true
+  try {
+    showTables(await meaningApi.importTables(await file.text()))
+  } catch (e) {
+    error.value = `Tables non importées : ${reason(e)}`
+  } finally {
+    busy.value = false
+  }
+}
+
+async function drawMeaning() {
+  error.value = null
+  const table = meaningTables.value?.tables.find((t) => tableKey(t) === chosenTable.value)
+  if (!table) return
+  // Refusé avant le tirage : sans page, les mots n'auraient nulle part où s'écrire.
+  if (!props.context.hasOpenPage()) {
+    error.value = 'Aucune page ouverte : ouvrir une page pour y écrire le sens.'
+    return
+  }
+  busy.value = true
+  try {
+    const meaning = await meaningApi.draw(table)
+    const refusal = props.context.writeToOpenPage(meaningBlocks(meaning))
+    if (refusal) {
+      error.value = refusal
+      return
+    }
+    last.value = { meaning }
+  } catch (e) {
+    error.value = `Sens non tiré : ${reason(e)}`
+  } finally {
+    busy.value = false
+  }
+}
 
 async function changeChaos(step: number) {
   if (chaos.value === null) return
@@ -65,7 +127,7 @@ async function ask() {
       error.value = refusal
       return
     }
-    last.value = answer
+    last.value = { answer }
     question.value = ''
   } catch (e) {
     error.value = `Question non posée : ${reason(e)}`
@@ -113,14 +175,43 @@ async function ask() {
       </label>
       <button type="submit" class="ask" :disabled="busy || !ready">Demander</button>
     </form>
-    <p v-if="error" class="error-text" role="alert">{{ error }}</p>
-    <p v-else-if="last" class="last" aria-live="polite">
-      <strong>{{ last.answerLabel }}</strong>
-      <span class="muted"> · d100 {{ last.roll }} · {{ last.odds.label }}, chaos {{ last.chaos }}</span>
-      <template v-if="last.randomEvent">
-        <br />
-        Événement aléatoire : {{ last.randomEvent.focusLabel }}
+    <hr class="rule" />
+    <div class="meaning">
+      <template v-if="meaningTables?.imported">
+        <label>
+          Sens
+          <select v-model="chosenTable">
+            <option v-for="t in columns" :key="tableKey(t)" :value="tableKey(t)">{{ t.label }}</option>
+            <optgroup v-if="elements.length" label="Éléments">
+              <option v-for="t in elements" :key="tableKey(t)" :value="tableKey(t)">{{ t.label }}</option>
+            </optgroup>
+          </select>
+        </label>
+        <button type="button" class="ask" :disabled="busy" @click="drawMeaning">Tirer</button>
+        <button type="button" class="replace" :disabled="busy" @click="fileInput?.click()">Remplacer les tables</button>
       </template>
+      <template v-else-if="meaningTables">
+        <span class="label">Sens</span>
+        <p class="muted">Tables de sens non importées : importer le fichier de vos tables.</p>
+        <button type="button" class="ask" :disabled="busy" @click="fileInput?.click()">Importer</button>
+      </template>
+      <input ref="fileInput" type="file" accept=".txt,text/plain" hidden @change="importTables" />
+    </div>
+    <p v-if="error" class="error-text" role="alert">{{ error }}</p>
+    <p v-else-if="last && 'answer' in last" class="last" aria-live="polite">
+      <strong>{{ last.answer.answerLabel }}</strong>
+      <span class="muted"> · d100 {{ last.answer.roll }} · {{ last.answer.odds.label }}, chaos {{ last.answer.chaos }}</span>
+      <template v-if="last.answer.randomEvent">
+        <br />
+        Événement aléatoire : {{ last.answer.randomEvent.focusLabel }}
+        <template v-if="last.answer.randomEvent.meaning">
+          — {{ last.answer.randomEvent.meaning.first }} · {{ last.answer.randomEvent.meaning.second }}
+        </template>
+      </template>
+    </p>
+    <p v-else-if="last" class="last" aria-live="polite">
+      <strong>{{ last.meaning.first }} · {{ last.meaning.second }}</strong>
+      <span class="muted"> · {{ last.meaning.table }}, d100 {{ last.meaning.firstRoll }} / {{ last.meaning.secondRoll }}</span>
     </p>
   </div>
 </template>
@@ -159,7 +250,8 @@ async function ask() {
   border: 0;
   border-top: 1px solid var(--rule);
 }
-.question {
+.question,
+.meaning {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -180,6 +272,21 @@ select {
   align-self: flex-start;
   font-weight: 700;
   background: var(--wood-raised);
+}
+.label {
+  color: var(--ink-muted);
+}
+.meaning p {
+  margin: 0;
+}
+.replace {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  font-size: 0.9rem;
 }
 .error-text {
   margin: 0;
