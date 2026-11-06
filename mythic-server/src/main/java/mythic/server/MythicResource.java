@@ -19,6 +19,7 @@ import solovtt.module.ModuleData;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * L'oracle Mythic d'une campagne : son facteur de chaos, gardé dans les données du module, et les questions oui/non à
@@ -87,7 +88,7 @@ public class MythicResource {
         String question = request.question() == null || request.question().isBlank() ? null : request.question().strip();
         if (question != null && question.length() > MAX_QUESTION_LENGTH)
             throw new IllegalArgumentException("Question trop longue (" + MAX_QUESTION_LENGTH + " caractères au plus)");
-        return MythicDtos.AnswerDto.of(question, FateQuestion.ask(odds, chaos, dice));
+        return MythicDtos.AnswerDto.of(question, FateQuestion.ask(odds, chaos, Optional.empty(), dice));
     }
 
     private ChaosFactor chaosOf(String campaignId) {
