@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: le Carnet montre la section et la prépare à l'ouverture
