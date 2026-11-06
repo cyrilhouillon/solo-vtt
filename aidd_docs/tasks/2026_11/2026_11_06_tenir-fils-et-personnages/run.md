@@ -30,3 +30,11 @@
 - [pass] Task 2 — La section Mythic suit les pages ordinaires ; Fils et Personnages ne se déplacent ni ne se suppriment depuis l'interface ; toute autre page entre et sort de la section — menus : Fils et Personnages = « Nouvelle sous-page », « Renommer » ; Aldric = menu complet. Glisser Aldric sur Personnages → `parentId` = Personnages, affiché sous elle ; glisser vers la zone Racine du Carnet → racine. Glisser Fils sur Aldric : aucun fantôme, rien ne change côté serveur. Dialogue Déplacer d'Aldric : Racine (éteinte, place actuelle), Aldric (éteint), Fils, Personnages permis. Fils déverrouillée : liste à puces avec « La tour de Ravenloft » deux fois, enregistrée ; Personnages : `[[Ald` + Entrée insère le lien, qui ouvre Aldric une fois verrouillée ; Aldric liste Personnages dans « Pages qui renvoient ici » ; « ravenloft » trouve Fils avec l'extrait surligné ; trois onglets ouverts.
 - [pass] Task 3 — Rouvrir la campagne ne crée aucune page de plus — serveur 8081 arrêté puis relancé, page Fils rechargée : pages Aldric, Fils (`mythic`), Personnages (`mythic`), 3 onglets, contenu de Fils identique (deux entrées) ; `mythic.json` = mêmes `threadsPageId` et `charactersPageId` qu'à la création.
 - [pass] Task 4 — `npm run build` vert ; parcours passé ; le cœur ne cite pas Mythic — `npm run build` (vue-tsc + Vite) : `✓ built` ; `grep -ril mythic vtt-web/src vtt-server/src` vide ; `DESIGN.md`, `architecture.md`, `project-brief.md` à jour. Teardown : 8081 et 5174 arrêtés, 8080 et 5173 non touchés.
+
+## Final
+
+- Date: 2026-11-06
+- Validated on: eea5e95 (code de 2497785 ; seul du Markdown diffère)
+
+- [pass] `mvn verify` — exit 0, BUILD SUCCESS ; `vtt-server` : `Tests run: 231, Failures: 0, Errors: 0, Skipped: 0` ; `mythic-server` : `Tests run: 23, Failures: 0` ; autres modules sans échec.
+- [pass] `npm run build` dans `vtt-web/` — vue-tsc puis Vite : `✓ built in 1.01s`.

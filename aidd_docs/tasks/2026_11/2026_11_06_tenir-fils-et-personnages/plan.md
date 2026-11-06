@@ -1,6 +1,6 @@
 ---
 objective: "Le Carnet de chaque campagne montre, sous les pages ordinaires, une section « Mythic » avec les pages « Fils » et « Personnages », créées à la première ouverture, qui sont des pages ordinaires (onglet, verrou, édition, recherche, liens, sous-pages) sauf qu'elles ne se déplacent ni ne se suppriment ; le cœur ne connaît qu'un marqueur de section générique, jamais Mythic."
-status: in-progress
+status: implemented
 ---
 
 # Plan: tenir ses fils et personnages dans la section Mythic du Carnet
