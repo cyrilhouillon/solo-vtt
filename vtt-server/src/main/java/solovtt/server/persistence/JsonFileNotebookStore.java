@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import solovtt.server.CampaignStore;
 import solovtt.server.NotebookStore;
 import solovtt.server.Page;
 import solovtt.server.PageTree;
@@ -23,8 +24,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Le Carnet d'une campagne, dans un dossier : une fiche par page ({@code <id>.json} : id, titre, parent, contenu en JSON
- * imbriqué) et {@code carnet.json} pour les onglets : {@code openPageIds} dans l'ordre, {@code lastPageId} l'actif (un
+ * Le Carnet d'une campagne, dans un dossier : une fiche par page ({@code <id>.json} : id, titre, parent, section d'une
+ * racine de section, contenu en JSON imbriqué) et {@code carnet.json} pour les onglets : {@code openPageIds} dans l'ordre, {@code lastPageId} l'actif (un
  * fichier d'avant les onglets, sans {@code openPageIds}, se lit en un seul onglet). Une page à la corbeille garde sa fiche,
  * marquée {@code deletedWith} (la page dont la suppression l'a emportée) et {@code deletedAt} (ISO-8601, le mapper n'ayant
  * pas de module {@code java.time}) ; une fiche sans ces champs est vivante. Chaque écriture passe par un fichier voisin et
@@ -36,7 +37,8 @@ public final class JsonFileNotebookStore implements NotebookStore {
     private static final String EXTENSION = ".json";
     private static final System.Logger LOG = System.getLogger(JsonFileNotebookStore.class.getName());
 
-    private record PageFile(String id, String title, String parentId, JsonNode content,
+    private record PageFile(String id, String title, String parentId,
+                            @JsonInclude(JsonInclude.Include.NON_NULL) String section, JsonNode content,
                             @JsonInclude(JsonInclude.Include.NON_NULL) String deletedWith,
                             @JsonInclude(JsonInclude.Include.NON_NULL) String deletedAt) {}
 
@@ -78,23 +80,28 @@ public final class JsonFileNotebookStore implements NotebookStore {
     }
 
     @Override
+    public synchronized Page createSectionRoot(String section, String title, String content) {
+        var page = new Page(UUID.randomUUID().toString(), title, null, CampaignStore.checkModuleId(section), content);
+        write(page);
+        return page;
+    }
+
+    @Override
     public synchronized void saveContent(String id, String content) {
-        Page page = known(id);
-        write(new Page(page.id(), page.title(), page.parentId(), content));
+        write(known(id).withContent(content));
     }
 
     @Override
     public synchronized void rename(String id, String title) {
-        Page page = known(id);
-        write(new Page(page.id(), title, page.parentId(), page.content()));
+        write(known(id).withTitle(title));
     }
 
     @Override
     public synchronized void move(String id, String parentId) {
         Page page = known(id);
         if (parentId != null) known(parentId);
-        NotebookStore.checkMove(list(), id, parentId);
-        write(new Page(page.id(), page.title(), parentId, page.content()));
+        NotebookStore.checkMove(list(), page, parentId);
+        write(page.withParent(parentId));
     }
 
     /**
@@ -104,6 +111,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
     @Override
     public synchronized void delete(String id) {
         Page root = known(id);
+        NotebookStore.checkDelete(root);
         List<Page> alive = list();
         Set<String> branch = PageTree.branch(alive, id);
         String deletedAt = Instant.now().toString();
@@ -135,8 +143,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
             if (member.alive() || member == root || !id.equals(member.trashed().deletedWith())) continue;
             write(member.page());
         }
-        Page page = root.page();
-        write(new Page(id, page.title(), parentId, page.content()));
+        write(root.page().withParent(parentId));
     }
 
     @Override
@@ -216,7 +223,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
             }
             String content = page.content() == null || page.content().isNull() ? null : mapper.writer()
                     .without(SerializationFeature.INDENT_OUTPUT).writeValueAsString(page.content());
-            Page read = new Page(page.id(), page.title(), page.parentId(), content);
+            Page read = new Page(page.id(), page.title(), page.parentId(), page.section(), content);
             Trashed trashed = page.deletedWith() == null ? null
                     : new Trashed(read, page.deletedWith(), Instant.parse(page.deletedAt()));
             return Optional.of(new Stored(read, trashed));
@@ -235,7 +242,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
         try {
             JsonNode content = page.content() == null ? null : mapper.readTree(page.content());
             writeAtomically(dir.resolve(page.id() + EXTENSION),
-                    new PageFile(page.id(), page.title(), page.parentId(), content, deletedWith, deletedAt));
+                    new PageFile(page.id(), page.title(), page.parentId(), page.section(), content, deletedWith, deletedAt));
         } catch (IOException e) {
             throw new UncheckedIOException("Contenu de page illisible : " + page.id(), e);
         }

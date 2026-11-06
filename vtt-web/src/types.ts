@@ -55,11 +55,15 @@ export interface PageDocument {
   [key: string]: unknown
 }
 
-/** Une page du Carnet, telle que l'arbre la montre : `parentId` est `null` à la racine. */
+/**
+ * Une page du Carnet, telle que l'arbre la montre : `parentId` est `null` à la racine ; `section`, l'id du module dont
+ * elle est une racine de section (elle ne se déplace ni ne se supprime), `null` pour toute autre page.
+ */
 export interface PageSummary {
   id: string
   title: string
   parentId: string | null
+  section: string | null
 }
 
 /** Une page ouverte : `content` est `null` pour une page neuve. */

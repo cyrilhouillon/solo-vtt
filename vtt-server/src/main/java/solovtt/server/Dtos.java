@@ -65,24 +65,27 @@ final class Dtos {
     /** Les pages ouvertes en onglets, dans l'ordre, et celle de l'onglet actif ({@code null} sans onglet). */
     record TabsRequest(List<String> pageIds, String activeId) {}
 
-    /** Une page, telle que l'arbre du Carnet la montre ; {@code parentId} : {@code null} à la racine. */
-    record PageSummaryDto(String id, String title, String parentId) {
+    /**
+     * Une page, telle que l'arbre du Carnet la montre ; {@code parentId} : {@code null} à la racine ; {@code section} :
+     * l'id du module dont elle est une racine de section, {@code null} sinon.
+     */
+    record PageSummaryDto(String id, String title, String parentId, String section) {
         static PageSummaryDto of(Page page) {
-            return new PageSummaryDto(page.id(), page.title(), page.parentId());
+            return new PageSummaryDto(page.id(), page.title(), page.parentId(), page.section());
         }
     }
 
     /** {@code parentId} : {@code null} à la racine ; {@code content} : le document de l'éditeur, {@code null} si neuve. */
-    record PageDto(String id, String title, String parentId, JsonNode content) {}
+    record PageDto(String id, String title, String parentId, String section, JsonNode content) {}
 
     /** Un morceau d'extrait ; {@code match} : un mot de la recherche, à surligner. */
     record FragmentDto(String text, boolean match) {}
 
     /** Une page trouvée ; {@code excerpt} : l'extrait en morceaux, vide pour une page sans texte. */
-    record SearchResultDto(String id, String title, String parentId, List<FragmentDto> excerpt) {
+    record SearchResultDto(String id, String title, String parentId, String section, List<FragmentDto> excerpt) {
         static SearchResultDto of(NotebookStore.SearchHit hit) {
             Page page = hit.page();
-            return new SearchResultDto(page.id(), page.title(), page.parentId(),
+            return new SearchResultDto(page.id(), page.title(), page.parentId(), page.section(),
                     hit.excerpt().stream().map(f -> new FragmentDto(f.text(), f.match())).toList());
         }
     }

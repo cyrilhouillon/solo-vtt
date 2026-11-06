@@ -2,7 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, toRef } from 'vue'
 import PageBranch from './PageBranch.vue'
 import { treeContext, type MenuPlace, type TreeDrag, type TreeEdit } from '../notebook/context'
-import { buildTree, canMove } from '../notebook/tree'
+import { buildTree, canMove, splitSections } from '../notebook/tree'
+import { notebookModules } from '../modules/registry'
 import type { PageSummary } from '../types'
 
 /**
@@ -31,7 +32,17 @@ const emit = defineEmits<{
   delete: [pageId: string]
 }>()
 
-const nodes = computed(() => buildTree(props.pages))
+/** Les pages ordinaires, puis chaque section sous le titre de son module (son id si le module manque au client). */
+const groups = computed(() => {
+  const { ordinary, sections } = splitSections(buildTree(props.pages))
+  return {
+    ordinary,
+    sections: sections.map((section) => ({
+      ...section,
+      title: notebookModules.find((module) => module.id === section.id)?.title ?? section.id,
+    })),
+  }
+})
 const root = ref<HTMLElement | null>(null)
 const rootZone = ref<HTMLElement | null>(null)
 const menuId = ref<string | null>(null)
@@ -64,7 +75,8 @@ function onTreePointerDown(e: PointerEvent) {
   if (e.pointerType === 'touch' || e.button !== 0 || props.busy || gesture) return
   const link = (e.target as Element | null)?.closest('.page-link')
   const pageId = link?.closest<HTMLElement>('.row[data-page-id]')?.dataset.pageId
-  if (!pageId) return
+  // Une racine de section ne se glisse pas : l'appui reste un clic qui l'ouvre.
+  if (!pageId || props.pages.find((p) => p.id === pageId)?.section != null) return
   gesture = { pageId, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY }
   window.addEventListener('pointermove', onDragMove)
   window.addEventListener('pointerup', onDragEnd)
@@ -312,7 +324,12 @@ onBeforeUnmount(() => {
       Racine du Carnet
     </div>
     <div ref="root" class="tree" @pointerdown="onTreePointerDown">
-      <PageBranch :nodes="nodes" :depth="0" />
+      <PageBranch :nodes="groups.ordinary" :depth="0" />
+      <section v-for="section in groups.sections" :key="section.id" class="section" :aria-labelledby="`section-${section.id}`">
+        <h3 :id="`section-${section.id}`" class="panel-title section-title">{{ section.title }}</h3>
+        <hr class="tapered" />
+        <PageBranch :nodes="section.nodes" :depth="0" />
+      </section>
     </div>
   </div>
   <div v-if="ghost" class="ghost" :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }" aria-hidden="true">
@@ -333,6 +350,12 @@ onBeforeUnmount(() => {
   /* Place pour le contour de focus des lignes. */
   padding: 2px;
   margin: -2px;
+}
+.section {
+  margin-top: 1rem;
+}
+.section-title {
+  font-size: 1rem;
 }
 .drop-root {
   position: absolute;

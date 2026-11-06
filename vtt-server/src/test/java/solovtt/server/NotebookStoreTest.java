@@ -170,4 +170,44 @@ public class NotebookStoreTest {
         assertThrows(IllegalArgumentException.class, () -> store.restore(pnj.id()));
         assertEquals(List.of(new Page(bertrand.id(), "Bertrand", null, null)), store.list());
     }
+
+    @Test
+    void enMemoire_laSectionDUnModule_suitLesReglesDuPort() {
+        sections(NotebookStore.inMemory());
+    }
+
+    /**
+     * Une racine de section garde sa section et son contenu, se renomme, mais ne se déplace ni ne se supprime ; ses
+     * sous-pages vont et viennent comme toute page.
+     */
+    public static void sections(NotebookStore store) {
+        var fils = store.createSectionRoot("essai", "Fils", ARRIVEE);
+        var aldric = store.create("Aldric", null);
+        assertEquals(new Page(fils.id(), "Fils", null, "essai", ARRIVEE), fils);
+        assertEquals(List.of(aldric, fils), store.list());
+
+        store.rename(fils.id(), "Intrigues");
+        var sousPage = store.create("La tour", fils.id());
+        store.move(aldric.id(), fils.id());
+        store.move(sousPage.id(), null);
+        store.move(sousPage.id(), fils.id());
+        assertEquals(Optional.of(new Page(aldric.id(), "Aldric", fils.id(), null)), store.find(aldric.id()));
+        store.delete(sousPage.id());
+        store.restore(sousPage.id());
+        assertEquals(Optional.of(new Page(sousPage.id(), "La tour", fils.id(), null)), store.find(sousPage.id()));
+
+        var avant = store.list();
+        var deplacer = assertThrows(IllegalArgumentException.class, () -> store.move(fils.id(), aldric.id()));
+        assertEquals("Une page de section ne se déplace pas", deplacer.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> store.move(fils.id(), null));
+        var supprimer = assertThrows(IllegalArgumentException.class, () -> store.delete(fils.id()));
+        assertEquals("Une page de section ne se supprime pas", supprimer.getMessage());
+        assertEquals(avant, store.list());
+        assertEquals(List.of(), store.trash());
+        assertEquals("Intrigues", store.find(fils.id()).orElseThrow().title());
+        assertEquals("essai", store.find(fils.id()).orElseThrow().section());
+
+        assertThrows(IllegalArgumentException.class, () -> store.createSectionRoot("../x", "Fils", null));
+        assertThrows(IllegalArgumentException.class, () -> store.createSectionRoot("A", "Fils", null));
+    }
 }

@@ -80,7 +80,7 @@ public class NotebookResource {
     @PUT
     @Path("/pages/{pageId}/parent")
     @APIResponse(responseCode = "204", description = "Page déplacée, avec ses sous-pages")
-    @APIResponse(responseCode = "400", description = "Le parent est la page elle-même ou l'une de ses sous-pages")
+    @APIResponse(responseCode = "400", description = "Le parent est la page elle-même ou l'une de ses sous-pages, ou la page est une racine de section")
     @APIResponse(responseCode = "404", description = "Aucune page avec cet id, ou avec l'id du parent")
     public void move(@PathParam("pageId") String pageId, Dtos.ParentRequest request) {
         known(pageId);
@@ -157,6 +157,7 @@ public class NotebookResource {
     @DELETE
     @Path("/pages/{pageId}")
     @APIResponse(responseCode = "204", description = "Page mise à la corbeille, avec ses sous-pages")
+    @APIResponse(responseCode = "400", description = "La page est une racine de section, que son module tient")
     @APIResponse(responseCode = "404", description = "Aucune page avec cet id")
     public void delete(@PathParam("pageId") String pageId) {
         known(pageId);
@@ -224,7 +225,7 @@ public class NotebookResource {
     private static Dtos.PageDto dto(Page page) {
         try {
             JsonNode content = page.content() == null ? null : JSON.readTree(page.content());
-            return new Dtos.PageDto(page.id(), page.title(), page.parentId(), content);
+            return new Dtos.PageDto(page.id(), page.title(), page.parentId(), page.section(), content);
         } catch (JsonProcessingException e) {
             throw new UncheckedIOException("Contenu de page illisible : " + page.id(), e);
         }

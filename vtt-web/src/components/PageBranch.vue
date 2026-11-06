@@ -105,8 +105,11 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
         <ul v-if="tree.menuId.value === node.page.id" class="menu" :style="menuStyle()">
           <li><button type="button" @click="tree.startEdit('child', node.page.id)">Nouvelle sous-page</button></li>
           <li><button type="button" @click="tree.startEdit('rename', node.page.id)">Renommer</button></li>
-          <li><button type="button" @click="tree.requestMove(node.page.id)">Déplacer sous…</button></li>
-          <li><button type="button" class="danger" @click="tree.requestDelete(node.page.id)">Supprimer…</button></li>
+          <!-- Une racine de section appartient à son module : elle ne se déplace ni ne se supprime. -->
+          <template v-if="node.page.section === null">
+            <li><button type="button" @click="tree.requestMove(node.page.id)">Déplacer sous…</button></li>
+            <li><button type="button" class="danger" @click="tree.requestDelete(node.page.id)">Supprimer…</button></li>
+          </template>
         </ul>
       </div>
       <div v-if="isEditing('child', node.page.id)" class="row" :style="{ '--depth': depth + 1 }">

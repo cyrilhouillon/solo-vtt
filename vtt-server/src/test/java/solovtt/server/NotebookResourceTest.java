@@ -23,6 +23,11 @@ class NotebookResourceTest {
             }
 
             @Override
+            public Page createSectionRoot(String section, String title, String content) {
+                return pages.createSectionRoot(section, title, content);
+            }
+
+            @Override
             public void saveContent(String id, String content) {
                 pages.saveContent(id, content);
             }
