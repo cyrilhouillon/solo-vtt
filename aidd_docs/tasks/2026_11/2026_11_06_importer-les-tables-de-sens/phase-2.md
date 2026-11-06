@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: le moteur Mythic lit les tables et tire un sens
