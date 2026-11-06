@@ -46,11 +46,31 @@ public interface CampaignStore {
      */
     NotebookStore notebook(String id);
 
+    /**
+     * Le document JSON qu'un module garde dans la campagne, vide s'il n'a encore rien écrit.
+     *
+     * @throws IllegalArgumentException si aucune campagne n'a cet id, ou si l'id du module est invalide
+     */
+    Optional<String> readModuleData(String id, String moduleId);
+
+    /**
+     * Remplace le document JSON qu'un module garde dans la campagne.
+     *
+     * @throws IllegalArgumentException si aucune campagne n'a cet id, ou si l'id du module est invalide
+     */
+    void writeModuleData(String id, String moduleId, String json);
+
+    /** Un id de module : minuscules, chiffres et tirets, jamais un chemin. */
+    static String checkModuleId(String moduleId) {
+        if (moduleId == null || !moduleId.matches("[a-z0-9-]+")) throw new IllegalArgumentException("Id de module invalide : " + moduleId);
+        return moduleId;
+    }
+
     Comparator<Campaign> BY_NAME = Comparator.comparing(Campaign::name, String.CASE_INSENSITIVE_ORDER).thenComparing(Campaign::name);
 
     /** Garde les campagnes, leurs parties, leurs cartes et leurs Carnets en mémoire, le temps du processus. */
     static CampaignStore inMemory() {
-        record Content(Campaign campaign, GameStore games, MapStore maps, NotebookStore notebook) {}
+        record Content(Campaign campaign, GameStore games, MapStore maps, NotebookStore notebook, Map<String, String> modules) {}
         Map<String, Content> campaigns = new ConcurrentHashMap<>();
         return new CampaignStore() {
             @Override
@@ -61,7 +81,7 @@ public interface CampaignStore {
             @Override
             public Campaign create(String name) {
                 var campaign = new Campaign(UUID.randomUUID().toString(), name);
-                campaigns.put(campaign.id(), new Content(campaign, GameStore.inMemory(), MapStore.inMemory(), NotebookStore.inMemory()));
+                campaigns.put(campaign.id(), new Content(campaign, GameStore.inMemory(), MapStore.inMemory(), NotebookStore.inMemory(), new ConcurrentHashMap<>()));
                 return campaign;
             }
 
@@ -78,6 +98,16 @@ public interface CampaignStore {
             @Override
             public NotebookStore notebook(String id) {
                 return content(id).notebook();
+            }
+
+            @Override
+            public Optional<String> readModuleData(String id, String moduleId) {
+                return Optional.ofNullable(content(id).modules().get(checkModuleId(moduleId)));
+            }
+
+            @Override
+            public void writeModuleData(String id, String moduleId, String json) {
+                content(id).modules().put(checkModuleId(moduleId), json);
             }
 
             private Content content(String id) {

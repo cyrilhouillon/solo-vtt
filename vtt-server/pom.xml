@@ -37,6 +37,10 @@
             <artifactId>dnd-engine</artifactId>
         </dependency>
         <dependency>
+            <groupId>solovtt</groupId>
+            <artifactId>vtt-module-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>

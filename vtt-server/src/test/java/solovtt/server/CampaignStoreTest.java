@@ -55,4 +55,33 @@ class CampaignStoreTest {
         assertEquals(List.of(), store.notebook(b.id()).list());
         assertThrows(IllegalArgumentException.class, () -> store.notebook("inconnue"));
     }
+
+    @Test
+    void enMemoire_lesDonneesDUnModule_parCampagne() {
+        var store = CampaignStore.inMemory();
+        var a = store.create("A");
+        var b = store.create("B");
+        assertEquals(Optional.empty(), store.readModuleData(a.id(), "mythic"));
+
+        store.writeModuleData(a.id(), "mythic", "{\"chaos\":6}");
+        store.writeModuleData(b.id(), "mythic", "{\"chaos\":2}");
+
+        assertEquals(Optional.of("{\"chaos\":6}"), store.readModuleData(a.id(), "mythic"));
+        assertEquals(Optional.of("{\"chaos\":2}"), store.readModuleData(b.id(), "mythic"));
+        assertThrows(IllegalArgumentException.class, () -> store.readModuleData("inconnue", "mythic"));
+        assertThrows(IllegalArgumentException.class, () -> store.writeModuleData(a.id(), "../x", "{}"));
+        assertThrows(IllegalArgumentException.class, () -> store.writeModuleData(a.id(), "", "{}"));
+    }
+
+    @Test
+    void adaptateur_exposeLesDonneesDesModulesDuCoeur() {
+        var store = CampaignStore.inMemory();
+        var a = store.create("A");
+        var data = new ModuleDataAdapter(store);
+
+        assertEquals(true, data.exists(a.id()));
+        assertEquals(false, data.exists("inconnue"));
+        data.write(a.id(), "mythic", "{}");
+        assertEquals(Optional.of("{}"), data.read(a.id(), "mythic"));
+    }
 }
