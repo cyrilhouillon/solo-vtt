@@ -181,9 +181,9 @@ public class NotebookStoreTest {
      * sous-pages vont et viennent comme toute page.
      */
     public static void sections(NotebookStore store) {
-        var fils = store.createSectionRoot("mythic", "Fils", ARRIVEE);
+        var fils = store.createSectionRoot("essai", "Fils", ARRIVEE);
         var aldric = store.create("Aldric", null);
-        assertEquals(new Page(fils.id(), "Fils", null, "mythic", ARRIVEE), fils);
+        assertEquals(new Page(fils.id(), "Fils", null, "essai", ARRIVEE), fils);
         assertEquals(List.of(aldric, fils), store.list());
 
         store.rename(fils.id(), "Intrigues");
@@ -205,7 +205,7 @@ public class NotebookStoreTest {
         assertEquals(avant, store.list());
         assertEquals(List.of(), store.trash());
         assertEquals("Intrigues", store.find(fils.id()).orElseThrow().title());
-        assertEquals("mythic", store.find(fils.id()).orElseThrow().section());
+        assertEquals("essai", store.find(fils.id()).orElseThrow().section());
 
         assertThrows(IllegalArgumentException.class, () -> store.createSectionRoot("../x", "Fils", null));
         assertThrows(IllegalArgumentException.class, () -> store.createSectionRoot("A", "Fils", null));

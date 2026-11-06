@@ -188,7 +188,7 @@ class JsonFileNotebookStoreTest {
 
         var relu = new JsonFileNotebookStore(carnet).list();
         Page fils = relu.stream().filter(Page::isSectionRoot).findFirst().orElseThrow();
-        assertEquals("mythic", fils.section());
+        assertEquals("essai", fils.section());
         assertEquals(1, relu.stream().filter(Page::isSectionRoot).count());
         Page aldric = relu.stream().filter(p -> p.title().equals("Aldric")).findFirst().orElseThrow();
         assertFalse(Files.readString(carnet.resolve(aldric.id() + ".json")).contains("section"),
