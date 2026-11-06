@@ -2,7 +2,7 @@
 
 ## API publique
 
-- `vtt-engine` (Maven `solovtt:vtt-engine`) est le moteur générique et la scène ; `dnd-engine` (Maven `dnd:dnd-engine`) est la librairie de règles D&D 2024 qui s'appuie dessus. Toutes deux sont destinées à `solo-vtt`. `vtt-module-api` (Maven `solovtt:vtt-module-api`) porte les interfaces qu'un module injecte et que le cœur implémente.
+- `vtt-engine` (Maven `solovtt:vtt-engine`) est le moteur générique et la scène ; `dnd-engine` (Maven `dnd:dnd-engine`) est la librairie de règles D&D 2024 qui s'appuie dessus. Toutes deux sont destinées à `solo-vtt`. `vtt-module-api` (Maven `solovtt:vtt-module-api`) porte les interfaces qu'un module injecte et que le cœur implémente (`ModuleData`).
 - `vtt-server` (Maven `solovtt:vtt-server`, Quarkus) expose les moteurs en REST JSON sous `/api` ; `vtt-web` (npm, privé) est le client.
 - La surface de pilotage est `Engine<S, E>` : `submit(Resolution)`, `answer(decisionId, option)`, `events()`, `subscribe(observer)`, `pendingDecision()`.
 - Elle s'étend par des `Listener` enregistrés dans un `RuleBook` (`StandardRules.create()` donne l'ensemble par défaut).
