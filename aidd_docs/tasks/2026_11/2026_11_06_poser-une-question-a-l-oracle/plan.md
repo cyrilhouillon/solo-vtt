@@ -1,6 +1,6 @@
 ---
 objective: "Depuis le Carnet, le joueur pose une question oui/non à l'oracle Mythic 2e (probabilité, facteur de chaos de la campagne, gardé et modifiable de 1 à 9) ; réponse, jet et éventuel événement aléatoire avec son focus s'écrivent dans la page ouverte, et Mythic vit dans ses propres modules, que le cœur ne nomme jamais."
-status: in-progress
+status: implemented
 ---
 
 # Plan: poser une question à l'oracle depuis le Carnet

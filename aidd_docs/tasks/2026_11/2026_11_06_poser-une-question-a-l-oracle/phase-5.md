@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: le panneau Mythic écrit l'oracle dans la page

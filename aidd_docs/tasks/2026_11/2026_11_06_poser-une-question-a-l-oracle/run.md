@@ -36,3 +36,20 @@
 - [pass] Task 2 — écriture au curseur (déverrouillée) ou en fin de page (verrouillée), enregistrée, annulable ; refus sans page — 5174 / 8081, Chrome, campagne « Essai Mythic », page « Session 6 » : verrouillée, deux clics → deux citations à la fin, sans paragraphe vide entre elles (après correction 438b3a2 : la première version en laissait un), page toujours verrouillée, serveur `paragraph,paragraph,blockquote,blockquote,paragraph` ; déverrouillée, curseur en fin de « Premier paragraphe. » → citation insérée juste après ; Ctrl+Z la retire, serveur relu sans elle ; onglet fermé → « Aucune page ouverte : ouvrir une page pour y écrire. »
 - [pass] Task 2 — colonne du panneau — fenêtre large : panneau contre la page (grille `17rem minmax(0, 46rem) 18rem`, après correction 438b3a2 : il partait au bord droit) ; iframe de 400px : panneau sous la page (`modulesTop` 972 > `pageBottom` 952), `scrollWidth` 386 ≤ 397, sans défilement horizontal ; sans module : `.modules` absent, deux colonnes
 - [pass] Task 3 — mémoire et `DESIGN.md` décrivent le contrat et la colonne — `architecture.md` (`NotebookModule`, `registry.ts`, `writeToOpenPage`, verrou), `codebase-map.md` (`src/modules/`, `vtt-web/modules/`), `DESIGN.md` (colonne de 18rem, empilement sous 900px)
+
+## Phase 5 · le panneau Mythic écrit l'oracle dans la page
+
+- Date: 2026-11-06
+- Validated on: f33affa
+
+- [pass] Task 1 — une question écrit question, probabilité, chaos, jet, réponse (et événement avec focus sur un double ≤ chaos) dans la page ouverte, au curseur ou en fin de page verrouillée ; le chaos se garde par campagne et passe un redémarrage — 5174 / 8081, Chrome, campagne « Essai Mythic », page « Session 6 » : + deux fois → chaos 7 ; page déverrouillée, curseur dans « Premier paragraphe. », « Le garde est-il corrompu ? », « Probable », Demander → citation « Oracle : Le garde est-il corrompu ? (Probable, chaos 7) / d100 : 76 → Oui » entre les deux paragraphes ; Demander répété : au 29ᵉ jet, d100 11 → « Oui exceptionnel » et « Événement aléatoire : Action d'un PNJ » écrits et rappelés dans le panneau ; aucune citation imbriquée (`blockquote blockquote` : 0 ; défaut de la première version, corrigé en cea9223), 32 blocs en page comme au serveur ; page verrouillée : réponse à la fin, verrou gardé ; − et + éteints à 1 et à 9 ; rechargement : chaos 7, réponses relues ; recherche « corrompu » → « Session 6 » avec l'extrait de la réponse ; seconde campagne : chaos 5 ; réponse 404 simulée sur `…/questions` → « Question non posée : Not Found » dans le panneau, page inchangée ; onglet fermé → « Aucune page ouverte : ouvrir une page pour y écrire la réponse. », 0 `POST …/questions` ; chaos gardé après redémarrage du serveur : phase 3. Écart constaté : 30 réponses demandées en rafale (moins de 500 ms d'écart) se défont en un seul Ctrl+Z (regroupement de l'historique de ProseMirror), noté dans `architecture.md` ; un Carnet sans page n'a pas de panneau
+- [pass] Task 2 — builds verts ; sans `modules/mythic/`, le Carnet marche comme avant ; mémoire, `DESIGN.md`, story et plan à jour — `mvn verify` : `BUILD SUCCESS` (27, 68, 18, 9, 223 tests, 0 échec) ; `npm run build` : `✓ built` ; `modules/mythic/` déplacé : `✓ built`, « Mythic absent du bundle », remis ; `grep -rni mythic vtt-server/src vtt-web/src` : aucun ; `architecture.md`, `codebase-map.md`, `project-brief.md`, `DESIGN.md` décrivent le panneau ; story `status: done` ; 8081 et 5174 arrêtés (jamais 8080 ni 5173)
+
+## Final
+
+- Date: 2026-11-06
+- Validated on: f33affa
+
+- [pass] `mvn -q verify` (racine) — `BUILD SUCCESS` ; vtt-engine 27, dnd-engine 68, mythic-engine 18, mythic-server 9, vtt-server 223 tests, 0 échec
+- [pass] `npm run build` (`vtt-web/`) — `vue-tsc -b` et Vite : `✓ built`
+- [pass] Règle d'assemblage — `grep -rni mythic vtt-server/src vtt-web/src` : aucun résultat
