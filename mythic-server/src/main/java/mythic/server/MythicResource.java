@@ -19,11 +19,11 @@ import solovtt.module.ModuleData;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * L'oracle Mythic d'une campagne : son facteur de chaos, gardé dans les données du module, et les questions oui/non à
- * la table de destin. Le jet ne touche ni la partie ni son journal ; le client écrit le résultat dans la page ouverte.
+ * la table de destin, dont un événement aléatoire tire son sens dans les tables du joueur s'il les a importées. Le jet
+ * ne touche ni la partie ni son journal ; le client écrit le résultat dans la page ouverte.
  */
 @Path("/api/campaigns/{campaignId}/mythic")
 public class MythicResource {
@@ -37,10 +37,12 @@ public class MythicResource {
     record State(int chaos) {}
 
     private final ModuleData data;
+    private final MeaningStore meanings;
     private final Dice dice;
 
-    public MythicResource(ModuleData data, Dice dice) {
+    public MythicResource(ModuleData data, MeaningStore meanings, Dice dice) {
         this.data = data;
+        this.meanings = meanings;
         this.dice = dice;
     }
 
@@ -88,7 +90,7 @@ public class MythicResource {
         String question = request.question() == null || request.question().isBlank() ? null : request.question().strip();
         if (question != null && question.length() > MAX_QUESTION_LENGTH)
             throw new IllegalArgumentException("Question trop longue (" + MAX_QUESTION_LENGTH + " caractères au plus)");
-        return MythicDtos.AnswerDto.of(question, FateQuestion.ask(odds, chaos, Optional.empty(), dice));
+        return MythicDtos.AnswerDto.of(question, FateQuestion.ask(odds, chaos, meanings.find(), dice));
     }
 
     private ChaosFactor chaosOf(String campaignId) {
