@@ -30,3 +30,13 @@
 - [pass] Task 2 — Chaque issue et la clôture s'écrivent en citation dans la page, que la recherche trouve — Chrome, Vite 5174 → 8081 (chemins du scratchpad), campagne neuve, tables de test (mots inventés), Personnages « Garde Ylo », « Session 1 » verrouillée : citations « Scène attendue : On entre au donjon (chaos 5) / d10 : 10 → Scène attendue » ; « Ajustement : Retirer un objet (d10 : 5) » ; « Ajustements : Ajouter un objet · Intensifier une activité (d10 : 8, 10, 9, 6, 10, 7, 4) » ; « d10 : 8 → Scène interrompue / Événement aléatoire : PNJ négatif — action1-083 · action2-060 / Personnages : Choisir — ligne vide … (d10 : 3 → ligne 2) » ; « Fin de scène : contrôle perdu → chaos 9 (déjà au maximum) », « Fin de scène : contrôle gardé → chaos 9 → 8 » ; page restée verrouillée (`contenteditable=false`) ; recherche « donjon » → « 1 page, Session 1 » avec l'extrait
 - [pass] Task 3 — Le parcours du Test Scope passe au navigateur sur 5174 ; le chaos affiché suit la clôture — chaos 5 → 9 par +, puis 9 après « perdu », 8 après « gardé » ; rechargement : chaos 8, 19 citations gardées ; page déverrouillée, Tester puis Ctrl+Z : 20 → 19 citations (un pas) ; sans page ouverte : « Aucune page ouverte : ouvrir une page pour y écrire la scène. » et « … la fin de scène. », aucun appel `/scenes`, chaos 8 inchangé ; arrêt de 8081 et 5174, 8080 et 5173 toujours à l'écoute
 - [pass] Task 4 — Mémoire et story à jour ; `grep -ri mythic vtt-server/src vtt-web/src` vide ; `mvn -q verify` vert — `DESIGN.md`, `architecture.md`, `codebase-map.md`, `project-brief.md` et story `status: done` dans b43e752 ; `grep -ril mythic vtt-server/src vtt-web/src | wc -l` → 0 ; `mvn -q verify` exit 0, rapports surefire : 435 tests, 0 échec, 0 erreur
+
+## Final
+
+- Date: 2026-11-08
+- Validated on: b43e752
+
+- [pass] `mvn -q compile` — exit 0
+- [pass] `mvn -q test` — exit 0 ; rapports surefire : 435 tests, 0 échec, 0 erreur
+- [pass] `mvn -q verify` — exit 0 (phase 3)
+- [pass] `npm run build` dans `vtt-web/` — `✓ built in 758ms`, `vue-tsc` sans erreur

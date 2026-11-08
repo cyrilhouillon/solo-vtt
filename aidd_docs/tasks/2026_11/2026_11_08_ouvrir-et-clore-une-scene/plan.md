@@ -1,6 +1,6 @@
 ---
 objective: "Depuis le panneau Mythic, le joueur teste sa scène attendue au chaos de la campagne (attendue, modifiée avec son ajustement de scène, ou interrompue avec un événement aléatoire) puis la clôt en disant s'il a gardé le contrôle (chaos −1 ou +1, entre 1 et 9) ; chaque résultat s'écrit dans la page ouverte."
-status: in-progress
+status: implemented
 ---
 
 # Plan: ouvrir et clore une scène
