@@ -15,8 +15,7 @@ import {
 import {
   adjustmentsText,
   answerBlocks,
-  focusText,
-  listText,
+  eventLines,
   meaningBlocks,
   sceneBlocks,
   sceneEndBlocks,
@@ -172,7 +171,11 @@ async function endScene(inControl: boolean) {
   try {
     const end = await api.endScene(inControl)
     chaos.value = end.after
-    if (!write(sceneEndBlocks(end))) return
+    // La page a pu se fermer pendant l'appel : la scène est close quand même, le refus le dit.
+    if (!write(sceneEndBlocks(end))) {
+      error.value = `Scène close (${sceneEndText(end)}), mais non écrite : ${error.value}`
+      return
+    }
     last.value = { sceneEnd: end }
   } catch (e) {
     error.value = `Scène non close : ${reason(e)}`
@@ -286,15 +289,7 @@ async function ask() {
       <strong>{{ last.answer.answerLabel }}</strong>
       <span class="muted"> · d100 {{ last.answer.roll }} · {{ last.answer.odds.label }}, chaos {{ last.answer.chaos }}</span>
       <template v-if="last.answer.randomEvent">
-        <br />
-        Événement aléatoire : {{ focusText(last.answer.randomEvent) }}
-        <template v-if="last.answer.randomEvent.meaning">
-          — {{ last.answer.randomEvent.meaning.first }} · {{ last.answer.randomEvent.meaning.second }}
-        </template>
-        <template v-if="listText(last.answer.randomEvent.list)">
-          <br />
-          {{ listText(last.answer.randomEvent.list) }}
-        </template>
+        <template v-for="line in eventLines(last.answer.randomEvent)" :key="line"><br />{{ line }}</template>
       </template>
     </p>
     <p v-else-if="last && 'scene' in last" class="last" aria-live="polite">
@@ -305,15 +300,7 @@ async function ask() {
         {{ adjustmentsText(last.scene) }}
       </template>
       <template v-if="last.scene.randomEvent">
-        <br />
-        Événement aléatoire : {{ focusText(last.scene.randomEvent) }}
-        <template v-if="last.scene.randomEvent.meaning">
-          — {{ last.scene.randomEvent.meaning.first }} · {{ last.scene.randomEvent.meaning.second }}
-        </template>
-        <template v-if="listText(last.scene.randomEvent.list)">
-          <br />
-          {{ listText(last.scene.randomEvent.list) }}
-        </template>
+        <template v-for="line in eventLines(last.scene.randomEvent)" :key="line"><br />{{ line }}</template>
       </template>
     </p>
     <p v-else-if="last && 'sceneEnd' in last" class="last" aria-live="polite">

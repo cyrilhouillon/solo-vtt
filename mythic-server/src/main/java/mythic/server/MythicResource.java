@@ -40,7 +40,7 @@ import java.util.function.Function;
 public class MythicResource {
 
     static final String MODULE_ID = "mythic";
-    static final int MAX_QUESTION_LENGTH = 500;
+    static final int MAX_TEXT_LENGTH = 500;
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -199,8 +199,8 @@ public class MythicResource {
     private static String text(String value, String what) {
         if (value == null || value.isBlank()) return null;
         String text = value.strip();
-        if (text.length() > MAX_QUESTION_LENGTH)
-            throw new IllegalArgumentException(what + " trop longue (" + MAX_QUESTION_LENGTH + " caractères au plus)");
+        if (text.length() > MAX_TEXT_LENGTH)
+            throw new IllegalArgumentException(what + " trop longue (" + MAX_TEXT_LENGTH + " caractères au plus)");
         return text;
     }
 

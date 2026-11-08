@@ -26,6 +26,13 @@ export function listText(draw: ListDraw | null): string | null {
   return `${draw.listLabel} : ${draw.entryText}`
 }
 
+/** Un événement aléatoire en lignes de texte : son focus et son sens, puis l'entrée tirée dans sa liste, s'il y en a une. */
+export function eventLines(event: RandomEvent): string[] {
+  const meaning = event.meaning ? ` — ${words(event.meaning)}` : ''
+  const list = listText(event.list)
+  return [`Événement aléatoire : ${focusText(event)}${meaning}`, ...(list ? [list] : [])]
+}
+
 /**
  * Le tirage dans une liste, en paragraphe de page : l'entrée telle qu'écrite dans la liste (un lien reste un lien), ou
  * la règle de Mythic pour une ligne vide ou une liste pleine.
