@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: le panneau écrit l'entrée tirée avec l'événement
