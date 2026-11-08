@@ -1,5 +1,5 @@
 import type { JSONContent } from '@tiptap/core'
-import type { FateAnswer, ListDraw, Meaning, RandomEvent } from './api'
+import type { FateAnswer, ListDraw, Meaning, RandomEvent, Scene, SceneEnd } from './api'
 
 const paragraph = (...parts: JSONContent[]): JSONContent => ({ type: 'paragraph', content: parts })
 const text = (value: string): JSONContent => ({ type: 'text', text: value })
@@ -53,13 +53,53 @@ export function answerBlocks(answer: FateAnswer): JSONContent[] {
     ),
     paragraph(text(`d100 : ${answer.roll} → `), bold(answer.answerLabel)),
   ]
-  const event = answer.randomEvent
-  if (event) {
-    const meaning = event.meaning ? ` — ${words(event.meaning)}` : ''
-    lines.push(paragraph(bold('Événement aléatoire : '), text(focusText(event) + meaning)))
-    if (event.list && !event.list.empty) lines.push(listParagraph(event.list))
-  }
+  if (answer.randomEvent) lines.push(...eventParagraphs(answer.randomEvent))
   return [{ type: 'blockquote', content: lines }]
+}
+
+/** Un événement aléatoire en paragraphes : son focus et son sens, puis l'entrée tirée dans sa liste. */
+function eventParagraphs(event: RandomEvent): JSONContent[] {
+  const meaning = event.meaning ? ` — ${words(event.meaning)}` : ''
+  const lines = [paragraph(bold('Événement aléatoire : '), text(focusText(event) + meaning))]
+  if (event.list && !event.list.empty) lines.push(listParagraph(event.list))
+  return lines
+}
+
+/** Les ajustements d'une scène modifiée en texte : « Ajouter un personnage · Retirer un objet ». */
+export function adjustmentsText(scene: Scene): string {
+  return scene.adjustments.map((a) => a.label).join(' · ')
+}
+
+/**
+ * Le test d'une scène attendue en citation : la scène et le chaos, le d10 et l'issue, puis le ou les ajustements d'une
+ * scène modifiée avec leurs d10, ou l'événement d'une scène interrompue.
+ */
+export function sceneBlocks(scene: Scene): JSONContent[] {
+  const lines = [
+    paragraph(
+      bold('Scène attendue : '),
+      text(`${scene.expected ?? 'sans énoncé'} (chaos ${scene.chaos})`),
+    ),
+    paragraph(text(`d10 : ${scene.roll} → `), bold(scene.outcomeLabel)),
+  ]
+  if (scene.outcome === 'ALTERED') {
+    const label = scene.adjustments.length > 1 ? 'Ajustements : ' : 'Ajustement : '
+    lines.push(paragraph(bold(label), text(`${adjustmentsText(scene)} (d10 : ${scene.adjustmentRolls.join(', ')})`)))
+  }
+  if (scene.randomEvent) lines.push(...eventParagraphs(scene.randomEvent))
+  return [{ type: 'blockquote', content: lines }]
+}
+
+/** La fin d'une scène en texte : « contrôle gardé → chaos 5 → 4 », ou « chaos 9 (déjà au maximum) » à une borne. */
+export function sceneEndText(end: SceneEnd): string {
+  const control = end.inControl ? 'contrôle gardé' : 'contrôle perdu'
+  if (end.before === end.after) return `${control} → chaos ${end.after} (déjà au ${end.inControl ? 'minimum' : 'maximum'})`
+  return `${control} → chaos ${end.before} → ${end.after}`
+}
+
+/** La fin d'une scène en citation. */
+export function sceneEndBlocks(end: SceneEnd): JSONContent[] {
+  return [{ type: 'blockquote', content: [paragraph(bold('Fin de scène : '), text(sceneEndText(end)))] }]
 }
 
 /** Un sens tiré, en citation : la table et ses deux mots, puis leurs d100. */
