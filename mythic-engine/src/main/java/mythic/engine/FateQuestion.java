@@ -26,14 +26,7 @@ public final class FateQuestion {
         int roll = dice.roll(100);
         Answer answer = FateChart.cell(odds, chaos).answer(roll);
         Optional<RandomEvent> event = Optional.empty();
-        if (triggersRandomEvent(roll, chaos)) {
-            int focusRoll = dice.roll(100);
-            EventFocus focus = EventFocus.of(focusRoll);
-            Optional<Meaning> meaning = tables.map(t -> t.actions(dice));
-            Optional<ListDraw> draw = focus.list()
-                    .map(kind -> lists.apply(kind).draw(dice));
-            event = Optional.of(new RandomEvent(focus, focusRoll, meaning, draw));
-        }
+        if (triggersRandomEvent(roll, chaos)) event = Optional.of(RandomEvent.roll(tables, lists, dice));
         return new FateAnswer(roll, odds, chaos, answer, event);
     }
 
