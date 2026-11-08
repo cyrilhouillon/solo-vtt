@@ -27,4 +27,12 @@ class ChaosFactorTest {
         assertEquals(ChaosFactor.of(9), ChaosFactor.of(9).raise());
         assertEquals(ChaosFactor.of(1), ChaosFactor.of(1).lower());
     }
+
+    @Test
+    void enFinDeScene_leControleGardeBaisse_etPerduMonte_entre1Et9() {
+        assertEquals(ChaosFactor.of(4), ChaosFactor.of(5).afterScene(true));
+        assertEquals(ChaosFactor.of(6), ChaosFactor.of(5).afterScene(false));
+        assertEquals(ChaosFactor.of(1), ChaosFactor.of(1).afterScene(true));
+        assertEquals(ChaosFactor.of(9), ChaosFactor.of(9).afterScene(false));
+    }
 }

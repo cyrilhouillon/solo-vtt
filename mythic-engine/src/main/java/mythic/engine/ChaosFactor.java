@@ -25,4 +25,9 @@ public record ChaosFactor(int value) {
     public ChaosFactor lower() {
         return new ChaosFactor(Math.max(MIN, value - 1));
     }
+
+    /** Le chaos après une scène : un cran de moins si le joueur a gardé le contrôle, sinon un de plus, entre 1 et 9. */
+    public ChaosFactor afterScene(boolean inControl) {
+        return inControl ? lower() : raise();
+    }
 }
