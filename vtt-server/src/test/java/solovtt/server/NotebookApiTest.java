@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.empty;
@@ -506,7 +507,28 @@ class NotebookApiTest {
     }
 
     @Test
+    void lePortDesSections_neRendLeContenuQueDesRacinesVivantesDuModule_etLeTitreDesPagesVivantes() {
+        String contenu = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
+        String fils = sections.createSectionRoot(campagneId, "essai", "Fils", contenu).id();
+        String autre = sections.createSectionRoot(campagneId, "autre", "Liste", contenu).id();
+        String aldric = creer("Aldric");
+        String vessa = creer("Vessa");
+        supprimer(vessa, 204);
+
+        assertEquals(Optional.of(contenu), sections.sectionRootContent(campagneId, "essai", fils));
+        assertEquals(Optional.empty(), sections.sectionRootContent(campagneId, "essai", autre));
+        assertEquals(Optional.empty(), sections.sectionRootContent(campagneId, "essai", aldric));
+        assertEquals(Optional.empty(), sections.sectionRootContent(campagneId, "essai", "inconnue"));
+        assertEquals(Optional.of("Aldric"), sections.pageTitle(campagneId, aldric));
+        assertEquals(Optional.of("Fils"), sections.pageTitle(campagneId, fils));
+        assertEquals(Optional.empty(), sections.pageTitle(campagneId, vessa));
+        assertThrows(IllegalArgumentException.class, () -> sections.sectionRootContent(campagneId, "Essai/..", fils));
+    }
+
+    @Test
     void lePortDesSections_refuseUneCampagneInconnue() {
+        assertThrows(IllegalArgumentException.class, () -> sections.sectionRootContent("inconnue", "essai", "x"));
+        assertThrows(IllegalArgumentException.class, () -> sections.pageTitle("inconnue", "x"));
         assertThrows(IllegalArgumentException.class, () -> sections.sectionRoots("inconnue", "essai"));
         assertThrows(IllegalArgumentException.class, () -> sections.createSectionRoot("inconnue", "essai", "Fils", null));
     }

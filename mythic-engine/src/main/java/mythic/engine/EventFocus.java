@@ -1,5 +1,7 @@
 package mythic.engine;
 
+import java.util.Optional;
+
 /** Le focus d'un événement aléatoire, tiré au d100 dans la table de Mythic GME 2e. */
 public enum EventFocus {
     REMOTE_EVENT("Événement distant", 5),
@@ -26,6 +28,18 @@ public enum EventFocus {
 
     public String label() {
         return label;
+    }
+
+    /**
+     * La liste où ce focus tire : Personnages pour un PNJ existant, Fils pour un fil. Nouveau PNJ et les PJ n'en tirent
+     * aucune (un PJ se choisit).
+     */
+    public Optional<AdventureList.Kind> list() {
+        return switch (this) {
+            case NPC_ACTION, NPC_NEGATIVE, NPC_POSITIVE -> Optional.of(AdventureList.Kind.CHARACTERS);
+            case MOVE_TOWARD_A_THREAD, MOVE_AWAY_FROM_A_THREAD, CLOSE_A_THREAD -> Optional.of(AdventureList.Kind.THREADS);
+            default -> Optional.empty();
+        };
     }
 
     public static EventFocus of(int roll) {

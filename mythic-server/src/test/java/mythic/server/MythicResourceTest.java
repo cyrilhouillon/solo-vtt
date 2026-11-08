@@ -40,6 +40,9 @@ class MythicResourceTest {
         }
     }
 
+    private static final MythicDtos.ListDrawDto PERSONNAGES_VIDE = new MythicDtos.ListDrawDto("CHARACTERS", "Personnages",
+            true, false, null, null, null, null, false, null, null);
+
     private final Donnees donnees = new Donnees();
     private final DonneesCommunes communes = new DonneesCommunes();
     private final PagesDeTest pages = new PagesDeTest();
@@ -90,7 +93,8 @@ class MythicResourceTest {
         var reponse = oracle(33, 25).ask(STRAHD, new MythicDtos.QuestionRequest(null, "FIFTY_FIFTY"));
 
         assertNull(reponse.question());
-        assertEquals(new MythicDtos.RandomEventDto("NPC_ACTION", "Action d'un PNJ", 25, null), reponse.randomEvent());
+        assertEquals(new MythicDtos.RandomEventDto("NPC_ACTION", "Action d'un PNJ", 25, null, "CURRENT_CONTEXT",
+                "Contexte actuel", PERSONNAGES_VIDE), reponse.randomEvent());
     }
 
     @Test
@@ -198,5 +202,98 @@ class MythicResourceTest {
     void lesListesDUneCampagneInconnue_sont404() {
         assertThrows(NotFoundException.class, () -> oracle().lists("inconnue"));
         assertEquals(List.of(), pages.racines);
+    }
+
+    private static String liste(String... elements) {
+        StringBuilder items = new StringBuilder();
+        for (String element : elements) {
+            if (items.length() > 0) items.append(',');
+            items.append("{\"type\":\"listItem\",\"content\":[{\"type\":\"paragraph\"")
+                    .append(element.isEmpty() ? "" : ",\"content\":[" + element + "]").append("}]}");
+        }
+        return "{\"type\":\"doc\",\"content\":[{\"type\":\"bulletList\",\"content\":[" + items + "]}]}";
+    }
+
+    private static String texte(String texte) {
+        return "{\"type\":\"text\",\"text\":\"" + texte + "\"}";
+    }
+
+    private static final String LIEN_VESSA = "{\"type\":\"pageLink\",\"attrs\":{\"pageId\":\"vessa\",\"label\":null}}";
+
+    /** Les listes de la campagne, Personnages : « Garde Ylo », lien vers Vessa, « Garde Ylo », ligne vide. */
+    private MythicDtos.ListsDto listesEcrites() {
+        var listes = oracle().lists(STRAHD);
+        pages.ecrire(listes.charactersPageId(), liste(texte("Garde Ylo"), LIEN_VESSA, texte("Garde Ylo"), ""));
+        pages.pageOrdinaire(STRAHD, "vessa", "Vessa");
+        return listes;
+    }
+
+    @Test
+    void unFocusDePnj_tireDansPersonnages_etRendLEntree() {
+        listesEcrites();
+
+        var liste = oracle(33, 25, 5).ask(STRAHD, new MythicDtos.QuestionRequest(null, "FIFTY_FIFTY")).randomEvent().list();
+
+        assertEquals("CHARACTERS", liste.list());
+        assertEquals(3, liste.line());
+        assertEquals(5, liste.lineRoll());
+        assertNull(liste.sectionDie());
+        assertEquals("Garde Ylo", liste.entryText());
+        assertEquals("Garde Ylo", liste.entry().get(0).path("text").asText());
+    }
+
+    @Test
+    void laLigneTireeEstUnLien_lEntreeEstLeLienDOrigine_luParSonTitre() {
+        listesEcrites();
+
+        var evenement = oracle(33, 41, 3).ask(STRAHD, new MythicDtos.QuestionRequest(null, "FIFTY_FIFTY")).randomEvent();
+
+        assertEquals("NPC_NEGATIVE", evenement.effectiveFocus());
+        assertEquals("pageLink", evenement.list().entry().get(0).path("type").asText());
+        assertEquals("vessa", evenement.list().entry().get(0).path("attrs").path("pageId").asText());
+        assertEquals("Vessa", evenement.list().entryText());
+    }
+
+    @Test
+    void uneLigneVideTiree_vautChoisir_sansEntree() {
+        listesEcrites();
+
+        var liste = oracle(33, 25, 8).ask(STRAHD, new MythicDtos.QuestionRequest(null, "FIFTY_FIFTY")).randomEvent().list();
+
+        assertEquals(4, liste.line());
+        assertEquals(true, liste.blank());
+        assertNull(liste.entry());
+        assertNull(liste.entryText());
+    }
+
+    @Test
+    void filsVide_unFocusDeFil_devientContexteActuel_sansDeDePlus() {
+        listesEcrites();
+
+        var evenement = oracle(33, 60).ask(STRAHD, new MythicDtos.QuestionRequest(null, "FIFTY_FIFTY")).randomEvent();
+
+        assertEquals("MOVE_AWAY_FROM_A_THREAD", evenement.focus());
+        assertEquals("CURRENT_CONTEXT", evenement.effectiveFocus());
+        assertEquals(true, evenement.list().empty());
+        assertEquals("Fils", evenement.list().listLabel());
+    }
+
+    @Test
+    void desListesPerdues_ouUnContenuIllisible_sontVides() {
+        var listes = oracle().lists(STRAHD);
+        pages.ecrire(listes.charactersPageId(), "{pas du json");
+        assertEquals(true, oracle(33, 25).ask(STRAHD, new MythicDtos.QuestionRequest(null, "LIKELY")).randomEvent().list().empty());
+
+        donnees.fichiers.put(STRAHD + "/mythic", "{\"chaos\":5,\"charactersPageId\":\"pas-une-racine\"}");
+        assertEquals(true, oracle(33, 25).ask(STRAHD, new MythicDtos.QuestionRequest(null, "LIKELY")).randomEvent().list().empty());
+    }
+
+    @Test
+    void lesListesDUneAutreCampagne_neComptentPas() {
+        listesEcrites();
+
+        var liste = oracle(33, 25).ask(PHANDELVER, new MythicDtos.QuestionRequest(null, "LIKELY")).randomEvent().list();
+
+        assertEquals(true, liste.empty());
     }
 }

@@ -1,10 +1,15 @@
 package mythic.server;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import mythic.engine.AdventureList;
 import mythic.engine.FateAnswer;
+import mythic.engine.ListDraw;
 import mythic.engine.Meaning;
 import mythic.engine.Odds;
+import mythic.engine.RandomEvent;
 
 import java.util.List;
+import java.util.function.Function;
 
 /** Ce que l'oracle échange avec le client. Chaque code d'énumération voyage avec son libellé. */
 public final class MythicDtos {
@@ -49,16 +54,46 @@ public final class MythicDtos {
         }
     }
 
-    /** {@code meaning} : deux mots d'action, nul sans tables de sens importées. */
-    public record RandomEventDto(String focus, String focusLabel, int focusRoll, MeaningDto meaning) {}
+    /**
+     * Le tirage dans une liste. {@code empty} : aucune entrée, le focus devient Contexte actuel ; {@code full} : une entrée
+     * au-delà de la 25e ligne, rien n'est tiré. Sinon la ligne (1 à 25), ses dés ({@code sectionDie} et
+     * {@code sectionRoll} nuls avec une seule section active) et, si elle est écrite, son entrée : ses nœuds en ligne
+     * (texte, liens de page) et le texte qu'on y lit ; {@code blank} : ligne vide, « Choisir ».
+     */
+    public record ListDrawDto(String list, String listLabel, boolean empty, boolean full, Integer line, Integer sectionDie,
+                              Integer sectionRoll, Integer lineRoll, boolean blank, List<JsonNode> entry, String entryText) {
+        static ListDrawDto of(ListDraw draw, Function<AdventureList.Kind, List<ListLines.Line>> lines) {
+            String list = draw.kind().name();
+            String label = draw.kind().label();
+            return switch (draw) {
+                case ListDraw.Empty e -> new ListDrawDto(list, label, true, false, null, null, null, null, false, null, null);
+                case ListDraw.Full f -> new ListDrawDto(list, label, false, true, null, null, null, null, false, null, null);
+                case ListDraw.Line l -> {
+                    ListLines.Line entry = l.blank() ? null : lines.apply(draw.kind()).get(l.line() - 1);
+                    yield new ListDrawDto(list, label, false, false, l.line(), l.sectionDie(), l.sectionRoll(), l.lineRoll(),
+                            l.blank(), entry == null ? null : entry.inline(), entry == null ? null : entry.text());
+                }
+            };
+        }
+    }
+
+    /**
+     * {@code meaning} : deux mots d'action, nul sans tables de sens importées. {@code effectiveFocus} : Contexte actuel
+     * quand la liste visée est vide, sinon le focus tiré. {@code list} : nul si le focus ne vise aucune liste.
+     */
+    public record RandomEventDto(String focus, String focusLabel, int focusRoll, MeaningDto meaning, String effectiveFocus,
+                                 String effectiveFocusLabel, ListDrawDto list) {
+        static RandomEventDto of(RandomEvent event, Function<AdventureList.Kind, List<ListLines.Line>> lines) {
+            return new RandomEventDto(event.focus().name(), event.focus().label(), event.focusRoll(),
+                    event.meaning().map(MeaningDto::of).orElse(null), event.effectiveFocus().name(),
+                    event.effectiveFocus().label(), event.draw().map(d -> ListDrawDto.of(d, lines)).orElse(null));
+        }
+    }
 
     public record AnswerDto(String question, int roll, OddsDto odds, int chaos, String answer, String answerLabel,
                             RandomEventDto randomEvent) {
-        static AnswerDto of(String question, FateAnswer fate) {
-            RandomEventDto event = fate.randomEvent()
-                    .map(e -> new RandomEventDto(e.focus().name(), e.focus().label(), e.focusRoll(),
-                            e.meaning().map(MeaningDto::of).orElse(null)))
-                    .orElse(null);
+        static AnswerDto of(String question, FateAnswer fate, Function<AdventureList.Kind, List<ListLines.Line>> lines) {
+            RandomEventDto event = fate.randomEvent().map(e -> RandomEventDto.of(e, lines)).orElse(null);
             return new AnswerDto(question, fate.roll(), OddsDto.of(fate.odds()), fate.chaos().value(),
                     fate.answer().name(), fate.answer().label(), event);
         }

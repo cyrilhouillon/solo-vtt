@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import type { NotebookContext } from '../../src/modules/notebookModule'
 import { meaningApi, mythicApi, type FateAnswer, type Meaning, type MeaningTable, type MeaningTables, type Odds } from './api'
-import { answerBlocks, meaningBlocks } from './result'
+import { answerBlocks, focusText, listText, meaningBlocks } from './result'
 
 /**
  * L'oracle Mythic dans le Carnet : le facteur de chaos de la campagne, une question oui/non, et deux mots tirés dans
@@ -203,9 +203,13 @@ async function ask() {
       <span class="muted"> · d100 {{ last.answer.roll }} · {{ last.answer.odds.label }}, chaos {{ last.answer.chaos }}</span>
       <template v-if="last.answer.randomEvent">
         <br />
-        Événement aléatoire : {{ last.answer.randomEvent.focusLabel }}
+        Événement aléatoire : {{ focusText(last.answer.randomEvent) }}
         <template v-if="last.answer.randomEvent.meaning">
           — {{ last.answer.randomEvent.meaning.first }} · {{ last.answer.randomEvent.meaning.second }}
+        </template>
+        <template v-if="listText(last.answer.randomEvent.list)">
+          <br />
+          {{ listText(last.answer.randomEvent.list) }}
         </template>
       </template>
     </p>

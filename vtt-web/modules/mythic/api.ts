@@ -1,3 +1,4 @@
+import type { JSONContent } from '@tiptap/core'
 import { request } from '../../src/api'
 
 /** Une probabilité, d'« Impossible » à « Certain ». */
@@ -27,12 +28,36 @@ export interface MeaningTables {
   tables: MeaningTable[]
 }
 
+/**
+ * Le tirage dans la liste que vise le focus. `empty` : aucune entrée, le focus devient Contexte actuel ; `full` : une
+ * entrée au-delà de la 25e ligne, rien n'est tiré. Sinon la ligne et ses dés (`sectionDie` nul avec une seule section
+ * active) ; `blank` : ligne vide, « Choisir » ; sinon l'entrée, en nœuds de page tels qu'écrits et en texte.
+ */
+export interface ListDraw {
+  list: 'THREADS' | 'CHARACTERS'
+  listLabel: string
+  empty: boolean
+  full: boolean
+  line: number | null
+  sectionDie: number | null
+  sectionRoll: number | null
+  lineRoll: number | null
+  blank: boolean
+  entry: JSONContent[] | null
+  entryText: string | null
+}
+
 export interface RandomEvent {
   focus: string
   focusLabel: string
   focusRoll: number
   /** Deux mots d'action, `null` sans tables de sens importées. */
   meaning: Meaning | null
+  /** Le focus qui s'applique : Contexte actuel quand la liste visée est vide. */
+  effectiveFocus: string
+  effectiveFocusLabel: string
+  /** `null` quand le focus ne vise aucune liste. */
+  list: ListDraw | null
 }
 
 /** La réponse de l'oracle, telle que le serveur la tire. */
