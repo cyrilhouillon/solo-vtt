@@ -10,3 +10,6 @@ legendary-armour-shop-v0-7n3tqdwsuczh1.webp
 # État local d'impeccable ; sa configuration (config.json) est partagée
 vtt-web/.impeccable/hook.cache.json
 vtt-web/.impeccable/live/
+
+# Livre de Mythic GME et autres documents commerciaux de l'utilisateur : jamais dans le dépôt
+documents/
