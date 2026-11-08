@@ -6,6 +6,7 @@ import solovtt.engine.Dice;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -13,27 +14,28 @@ class FateQuestionTest {
 
     private static final ChaosFactor CHAOS_5 = ChaosFactor.of(5);
     private static final Optional<MeaningTables> SANS_TABLES = Optional.empty();
+    private static final Function<AdventureList.Kind, AdventureList> SANS_LISTES = AdventureList::empty;
     /** Sans listes, un focus de PNJ trouve Personnages vide. */
     private static final Optional<ListDraw> PERSONNAGES_VIDE = Optional.of(new ListDraw.Empty(AdventureList.Kind.CHARACTERS));
 
     @Test
     void probable_auChaos5_sousLeSeuil_oui_sansEvenement() {
-        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Dice.scripted(42));
+        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(42));
 
         assertEquals(new FateAnswer(42, Odds.LIKELY, CHAOS_5, Answer.YES, Optional.empty()), reponse);
     }
 
     @Test
     void chaqueSeuil_donneSaReponse() {
-        assertEquals(Answer.EXCEPTIONAL_YES, FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Dice.scripted(13)).answer());
-        assertEquals(Answer.YES, FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Dice.scripted(65)).answer());
-        assertEquals(Answer.NO, FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Dice.scripted(70)).answer());
-        assertEquals(Answer.EXCEPTIONAL_NO, FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Dice.scripted(94)).answer());
+        assertEquals(Answer.EXCEPTIONAL_YES, FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(13)).answer());
+        assertEquals(Answer.YES, FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(65)).answer());
+        assertEquals(Answer.NO, FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(70)).answer());
+        assertEquals(Answer.EXCEPTIONAL_NO, FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(94)).answer());
     }
 
     @Test
     void unDoubleSousLeChaos_declencheUnEvenement_dontUnSecondD100TireLeFocus() {
-        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Dice.scripted(33, 25));
+        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(33, 25));
 
         assertEquals(Answer.YES, reponse.answer());
         assertEquals(Optional.of(new RandomEvent(EventFocus.NPC_ACTION, 25, Optional.empty(), PERSONNAGES_VIDE)), reponse.randomEvent());
@@ -41,24 +43,24 @@ class FateQuestionTest {
 
     @Test
     void unDoubleAuChaos_declencheUnEvenement() {
-        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Dice.scripted(55, 1));
+        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(55, 1));
 
-        assertEquals(Optional.of(new RandomEvent(EventFocus.REMOTE_EVENT, 1, Optional.empty())), reponse.randomEvent());
+        assertEquals(Optional.of(new RandomEvent(EventFocus.REMOTE_EVENT, 1, Optional.empty(), Optional.empty())), reponse.randomEvent());
     }
 
     @Test
     void unDoubleAuDessusDuChaos_neDeclencheRien() {
-        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Dice.scripted(66));
+        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(66));
 
         assertEquals(Optional.empty(), reponse.randomEvent());
     }
 
     @Test
     void cent_estLeDouble00_etDeclencheToujours_memeAuChaos1() {
-        var reponse = FateQuestion.ask(Odds.FIFTY_FIFTY, ChaosFactor.of(1), SANS_TABLES, Dice.scripted(100, 90));
+        var reponse = FateQuestion.ask(Odds.FIFTY_FIFTY, ChaosFactor.of(1), SANS_TABLES, SANS_LISTES, Dice.scripted(100, 90));
 
         assertEquals(Answer.EXCEPTIONAL_NO, reponse.answer());
-        assertEquals(Optional.of(new RandomEvent(EventFocus.CURRENT_CONTEXT, 90, Optional.empty())), reponse.randomEvent());
+        assertEquals(Optional.of(new RandomEvent(EventFocus.CURRENT_CONTEXT, 90, Optional.empty(), Optional.empty())), reponse.randomEvent());
     }
 
     @Test
@@ -72,7 +74,8 @@ class FateQuestionTest {
 
     @Test
     void avecLesTables_unEvenementTireSonSensDansLesActions() {
-        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, Optional.of(TablesDeTest.tables()), Dice.scripted(33, 25, 4, 90));
+        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, Optional.of(TablesDeTest.tables()), SANS_LISTES,
+                Dice.scripted(33, 25, 4, 90));
 
         assertEquals(Optional.of(new RandomEvent(EventFocus.NPC_ACTION, 25,
                 Optional.of(new Meaning("Actions", "action1-004", 4, "action2-090", 90)), PERSONNAGES_VIDE)), reponse.randomEvent());
@@ -80,21 +83,21 @@ class FateQuestionTest {
 
     @Test
     void sansTables_unEvenementNaPasDeSens_etNeLancePasDeDeDePlus() {
-        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Dice.scripted(33, 25));
+        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(33, 25));
 
         assertEquals(Optional.of(new RandomEvent(EventFocus.NPC_ACTION, 25, Optional.empty(), PERSONNAGES_VIDE)), reponse.randomEvent());
     }
 
     @Test
     void avecLesTables_sansEvenement_aucunSensNEstTire() {
-        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, Optional.of(TablesDeTest.tables()), Dice.scripted(42));
+        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, Optional.of(TablesDeTest.tables()), SANS_LISTES, Dice.scripted(42));
 
         assertEquals(Optional.empty(), reponse.randomEvent());
     }
 
-    private static final Map<AdventureList.Kind, AdventureList> LISTES = Map.of(
+    private static final Function<AdventureList.Kind, AdventureList> LISTES = Map.of(
             AdventureList.Kind.CHARACTERS, new AdventureList(AdventureList.Kind.CHARACTERS, List.of(true, true)),
-            AdventureList.Kind.THREADS, new AdventureList(AdventureList.Kind.THREADS, List.of(true, true, true, true, true, true)));
+            AdventureList.Kind.THREADS, new AdventureList(AdventureList.Kind.THREADS, List.of(true, true, true, true, true, true)))::get;
 
     @Test
     void unFocusDePnj_tireDansPersonnages_apresLesDesDuSens() {
@@ -116,7 +119,7 @@ class FateQuestionTest {
 
     @Test
     void uneListeViseeAbsente_estVide_etLeFocusDevientContexteActuel_sansDeDePlus() {
-        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, Map.of(), Dice.scripted(33, 43));
+        var reponse = FateQuestion.ask(Odds.LIKELY, CHAOS_5, SANS_TABLES, SANS_LISTES, Dice.scripted(33, 43));
 
         var evenement = reponse.randomEvent().orElseThrow();
         assertEquals(EventFocus.NPC_NEGATIVE, evenement.focus());

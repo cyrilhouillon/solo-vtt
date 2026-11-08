@@ -8,11 +8,6 @@ import java.util.Optional;
  */
 public record RandomEvent(EventFocus focus, int focusRoll, Optional<Meaning> meaning, Optional<ListDraw> draw) {
 
-    /** Un événement dont le focus ne tire dans aucune liste. */
-    public RandomEvent(EventFocus focus, int focusRoll, Optional<Meaning> meaning) {
-        this(focus, focusRoll, meaning, Optional.empty());
-    }
-
     /** Le focus qui s'applique : « Contexte actuel » quand la liste visée est vide, sinon le focus tiré. */
     public EventFocus effectiveFocus() {
         return draw.filter(ListDraw.Empty.class::isInstance).isPresent() ? EventFocus.CURRENT_CONTEXT : focus;

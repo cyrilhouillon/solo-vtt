@@ -2,7 +2,7 @@ package mythic.engine;
 
 import solovtt.engine.Dice;
 
-import java.util.Map;
+import java.util.function.Function;
 import java.util.Optional;
 
 /**
@@ -17,12 +17,12 @@ public final class FateQuestion {
     private FateQuestion() {
     }
 
-    public static FateAnswer ask(Odds odds, ChaosFactor chaos, Optional<MeaningTables> tables, Dice dice) {
-        return ask(odds, chaos, tables, Map.of(), dice);
-    }
-
+    /**
+     * @param lists la liste d'une sorte, lue seulement si le focus d'un événement la vise ; une liste absente est
+     *              {@link AdventureList#empty vide}
+     */
     public static FateAnswer ask(Odds odds, ChaosFactor chaos, Optional<MeaningTables> tables,
-                                 Map<AdventureList.Kind, AdventureList> lists, Dice dice) {
+                                 Function<AdventureList.Kind, AdventureList> lists, Dice dice) {
         int roll = dice.roll(100);
         Answer answer = FateChart.cell(odds, chaos).answer(roll);
         Optional<RandomEvent> event = Optional.empty();
@@ -31,7 +31,7 @@ public final class FateQuestion {
             EventFocus focus = EventFocus.of(focusRoll);
             Optional<Meaning> meaning = tables.map(t -> t.actions(dice));
             Optional<ListDraw> draw = focus.list()
-                    .map(kind -> lists.getOrDefault(kind, AdventureList.empty(kind)).draw(dice));
+                    .map(kind -> lists.apply(kind).draw(dice));
             event = Optional.of(new RandomEvent(focus, focusRoll, meaning, draw));
         }
         return new FateAnswer(roll, odds, chaos, answer, event);

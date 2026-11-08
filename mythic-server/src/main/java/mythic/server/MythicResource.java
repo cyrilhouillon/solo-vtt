@@ -12,6 +12,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import mythic.engine.AdventureList;
 import mythic.engine.ChaosFactor;
+import mythic.engine.FateAnswer;
 import mythic.engine.FateQuestion;
 import mythic.engine.Odds;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -22,8 +23,10 @@ import solovtt.module.ModuleData;
 import solovtt.module.NotebookPages;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * L'oracle Mythic d'une campagne : son facteur de chaos, gardé dans les données du module, et les questions oui/non à
@@ -144,19 +147,26 @@ public class MythicResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = MythicDtos.AnswerDto.class)))
     @APIResponse(responseCode = "400", description = "Probabilité absente ou inconnue, ou question trop longue")
     public MythicDtos.AnswerDto ask(@PathParam("campaignId") String campaignId, MythicDtos.QuestionRequest request) {
-        ChaosFactor chaos = chaosOf(campaignId);
+        known(campaignId);
+        State state = state(campaignId);
         Odds odds = odds(request == null ? null : request.odds());
         String question = request.question() == null || request.question().isBlank() ? null : request.question().strip();
         if (question != null && question.length() > MAX_QUESTION_LENGTH)
             throw new IllegalArgumentException("Question trop longue (" + MAX_QUESTION_LENGTH + " caractères au plus)");
-        State state = state(campaignId);
-        Map<AdventureList.Kind, List<ListLines.Line>> lines = Map.of(
-                AdventureList.Kind.THREADS, lines(campaignId, state.threadsPageId()),
-                AdventureList.Kind.CHARACTERS, lines(campaignId, state.charactersPageId()));
-        Map<AdventureList.Kind, AdventureList> lists = Map.of(
-                AdventureList.Kind.THREADS, adventureList(AdventureList.Kind.THREADS, lines),
-                AdventureList.Kind.CHARACTERS, adventureList(AdventureList.Kind.CHARACTERS, lines));
-        return MythicDtos.AnswerDto.of(question, FateQuestion.ask(odds, chaos, meanings.find(), lists, dice), lines::get);
+        // Une liste n'est lue que si le focus d'un événement la vise ; ses lignes servent ensuite à rendre l'entrée.
+        Map<AdventureList.Kind, List<ListLines.Line>> lines = new EnumMap<>(AdventureList.Kind.class);
+        Function<AdventureList.Kind, AdventureList> lists = kind -> new AdventureList(kind,
+                lines.computeIfAbsent(kind, k -> lines(campaignId, pageId(state, k))).stream()
+                        .map(ListLines.Line::written).toList());
+        FateAnswer fate = FateQuestion.ask(odds, chaos(state), meanings.find(), lists, dice);
+        return MythicDtos.AnswerDto.of(question, fate, lines::get);
+    }
+
+    private static String pageId(State state, AdventureList.Kind kind) {
+        return switch (kind) {
+            case THREADS -> state.threadsPageId();
+            case CHARACTERS -> state.charactersPageId();
+        };
     }
 
     /** Les lignes de la page de liste ; aucune si la page n'est plus une racine de la section. */
@@ -167,13 +177,13 @@ public class MythicResource {
                 .orElse(List.of());
     }
 
-    private static AdventureList adventureList(AdventureList.Kind kind, Map<AdventureList.Kind, List<ListLines.Line>> lines) {
-        return new AdventureList(kind, lines.get(kind).stream().map(ListLines.Line::written).toList());
-    }
-
     private ChaosFactor chaosOf(String campaignId) {
         known(campaignId);
-        Integer chaos = state(campaignId).chaos();
+        return chaos(state(campaignId));
+    }
+
+    private static ChaosFactor chaos(State state) {
+        Integer chaos = state.chaos();
         try {
             return chaos == null ? ChaosFactor.INITIAL : ChaosFactor.of(chaos);
         } catch (IllegalArgumentException e) {
