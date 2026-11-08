@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: le serveur Mythic lit les listes du Carnet et rend l'entrée tirée
