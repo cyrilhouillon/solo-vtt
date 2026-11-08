@@ -30,3 +30,11 @@
 - [pass] Task 2 — L'entrée, « Choisir » ou Contexte actuel s'écrit dans la page, lien compris, et la recherche la trouve — Chrome, Vite 5174 → 8081 (chemins du scratchpad), thème clair, 1568×778, campagne « Essai listes » (Personnages : Garde Ylo, [[Vessa]], Garde Ylo, ligne vide ; Fils vide), page « Session 1 » créée, chaos 9, « Demander » répété (218 questions) : citations « Événement aléatoire : PNJ positif / Personnages : Garde Ylo (d10 : 5 → ligne 3) » ; « Personnages : Vessa (d10 : 4 → ligne 2) », où Vessa est un `<a href=…/carnet/352a8963…>` ; « Personnages : Choisir — ligne vide : l'entrée la plus logique, ou relancez (d10 : 8 → ligne 4) » ; « Événement aléatoire : Loin d'un fil → Contexte actuel (liste Fils vide) », sans ligne de liste. Page verrouillée, clic sur ce Vessa → adresse et onglet de Vessa, dont « Pages qui renvoient ici » liste Personnages et Session 1. Recherche « ylo » → « 2 pages » : Personnages, et Session 1 avec l'extrait « Personnages : Garde Ylo (d10 : 5 → ligne 3) ». Ctrl+Z après une réponse seule (à plus de 500 ms de la précédente) : 257 → 256 citations, la ligne « Personnages : Garde Ylo » partie avec sa citation, aucun paragraphe de liste laissé.
 - [pass] Task 3 — Le panneau montre la même entrée que la page — dernier résultat du panneau : « Non exceptionnel · d100 99 · 50/50, chaos 9 / Événement aléatoire : PNJ positif / Personnages : Vessa », comme la dernière citation de la page ; puis « Personnages : Garde Ylo » pour la réponse suivante.
 - [pass] Task 4 — La mémoire et la story disent le tirage ; `grep -ri mythic vtt-server/src vtt-web/src` vide — `architecture.md` (écrit de l'entrée et du focus effectif, panneau), `project-brief.md` (tirage dans Fils / Personnages), story `status: done` ; `grep -ril mythic vtt-server/src vtt-web/src` : 0 fichier. Teardown : 8081 et 5174 arrêtés ; 8080 et 5173 non touchés.
+
+## Final
+
+- Date: 2026-11-08
+- Validated on: d83226f (code de 338cb75 ; seul du Markdown diffère)
+
+- [pass] `mvn verify` — exit 0 ; `vtt-engine` 27, `dnd-engine` 68, `mythic-engine` 51, `mythic-server` 33, `vtt-server` 232 tests, 0 échec, 0 erreur.
+- [pass] `npm run build` dans `vtt-web/` — vue-tsc puis Vite : `✓ built in 929ms`.

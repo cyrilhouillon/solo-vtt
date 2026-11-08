@@ -1,6 +1,6 @@
 ---
 objective: "Un événement aléatoire dont le focus vise un PNJ ou un fil tire une ligne de la liste Personnages ou Fils du Carnet selon la règle de Mythic GME 2e (sections actives, d4 à d10 puis d10), et l'entrée tirée (lien `[[…]]` compris), « Choisir » sur une ligne vide, ou « Contexte actuel » pour une liste vide s'écrit avec l'événement dans la page ouverte."
-status: in-progress
+status: implemented
 ---
 
 # Plan: laisser un événement aléatoire tirer dans ses listes
