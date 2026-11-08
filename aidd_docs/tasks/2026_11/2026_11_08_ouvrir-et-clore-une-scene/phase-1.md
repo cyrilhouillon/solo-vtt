@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 ---
 
 # Instruction: le moteur Mythic teste une scène attendue et ajuste le chaos en fin de scène
