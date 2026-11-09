@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
- * Une campagne par dossier {@code <racine>/<id>/} : {@code campagne.json} (id et nom), {@code partie.json} et
+ * Une campagne par dossier {@code <racine>/<id>/} : {@code campagne.json} (id, nom et modules actifs), {@code partie.json} et
  * {@code cartes.json}, son Carnet dans {@code carnet/} et les données de chaque module dans {@code modules/<module>.json}. Un dossier sans {@code campagne.json} lisible est ignoré,
  * jamais écrasé.
  */
@@ -66,8 +66,8 @@ public final class FileCampaignStore implements CampaignStore {
     }
 
     @Override
-    public synchronized Campaign create(String name) {
-        var campaign = new Campaign(UUID.randomUUID().toString(), name);
+    public synchronized Campaign create(String name, List<String> modules) {
+        var campaign = new Campaign(UUID.randomUUID().toString(), name, modules);
         Path dir = root.resolve(campaign.id());
         try {
             Files.createDirectories(dir);

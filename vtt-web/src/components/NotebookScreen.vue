@@ -12,11 +12,11 @@ import SearchResults from './SearchResults.vue'
 import PageTabs from './PageTabs.vue'
 import DeletePageDialog from './DeletePageDialog.vue'
 import TrashDialog from './TrashDialog.vue'
-import { ancestors, branch } from '../notebook/tree'
+import { ancestors, branch, visiblePages } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
-import { notebookModules, panelModules } from '../modules/registry'
-import type { NotebookContext } from '../modules/notebookModule'
+import { notebookModules } from '../modules/registry'
+import type { NotebookContext, NotebookModule } from '../modules/notebookModule'
 import type { CampaignView, NotebookView, PageDeletion, PageDocument, PageView, SearchResult, TrashedPage } from '../types'
 
 /** `pageId` : la page de l'adresse, `null` sans page. */
@@ -381,13 +381,30 @@ async function open(pageId: string) {
   void router.push({ name: 'notebook', params: { campaignId: props.campaign.id, pageId } })
 }
 
-/** Chaque module prépare le Carnet avant sa lecture (les pages de sa section) ; un refus va au bandeau, sans bloquer. */
-async function prepareModules() {
-  const results = await Promise.allSettled(notebookModules.map((module) => module.prepare?.(props.campaign.id)))
+/** Les ids des modules actifs dans la campagne, relus au serveur à chaque montage ; aucun tant qu'ils ne sont pas lus. */
+const activeModuleIds = ref<string[]>([])
+/** Les modules du client actifs dans la campagne : seuls eux montrent panneau et section, et préparent le Carnet. */
+const activeModules = computed(() => notebookModules.filter((module) => activeModuleIds.value.includes(module.id)))
+const activePanelModules = computed(() => activeModules.value.filter((module) => module.panel))
+/** L'arbre et le dialogue Déplacer taisent les sections des modules inactifs ; les liens, eux, voient toutes les pages. */
+const treePages = computed(() => visiblePages(notebook.value?.pages ?? [], activeModuleIds.value))
+
+/** Lit les modules actifs ; un échec va au bandeau, et le Carnet s'ouvre sans module. */
+async function readModules() {
+  try {
+    activeModuleIds.value = await api.modules()
+  } catch (e) {
+    error.value = `Modules illisibles (${e instanceof Error ? e.message : String(e)})`
+  }
+}
+
+/** Chaque module actif prépare le Carnet avant sa lecture (les pages de sa section) ; un refus va au bandeau, sans bloquer. */
+async function prepareModules(modules: readonly NotebookModule[]) {
+  const results = await Promise.allSettled(modules.map((module) => module.prepare?.(props.campaign.id)))
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
       const reason = result.reason instanceof Error ? result.reason.message : String(result.reason)
-      error.value = `${notebookModules[i].title} : Carnet non préparé (${reason})`
+      error.value = `${modules[i].title} : Carnet non préparé (${reason})`
     }
   })
 }
@@ -396,7 +413,8 @@ onMounted(() => {
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('pagehide', onPageHide)
   void call(async () => {
-    await prepareModules()
+    await readModules()
+    await prepareModules(activeModules.value)
     notebook.value = await api.notebook()
     // Le serveur ne rend que des onglets dont la page existe. Tous fermés, ils le restent.
     const { pages, openPageIds, activePageId } = notebook.value
@@ -676,7 +694,7 @@ function leave(target: 'home' | 'combat') {
       </section>
     </main>
 
-    <div v-else class="content" :class="{ 'with-modules': panelModules.length }">
+    <div v-else class="content" :class="{ 'with-modules': activePanelModules.length }">
       <nav class="pages" aria-labelledby="pages-title">
         <h2 id="pages-title" class="panel-title">Pages</h2>
         <hr class="tapered" />
@@ -703,7 +721,7 @@ function leave(target: 'home' | 'combat') {
         <PageTree
           v-else
           ref="tree"
-          :pages="notebook.pages"
+          :pages="treePages"
           :current-id="page?.id ?? null"
           :expanded="expanded"
           :busy="busy"
@@ -798,14 +816,14 @@ function leave(target: 'home' | 'combat') {
         </article>
         <p v-else-if="!busy" class="hint">Aucune page ouverte. Choisir une page dans l'arbre.</p>
       </main>
-      <aside v-if="panelModules.length" class="modules" aria-label="Modules du Carnet">
-        <section v-for="module in panelModules" :key="module.id" :aria-labelledby="`module-${module.id}`">
+      <aside v-if="activePanelModules.length" class="modules" aria-label="Modules du Carnet">
+        <section v-for="module in activePanelModules" :key="module.id" :aria-labelledby="`module-${module.id}`">
           <h2 :id="`module-${module.id}`" class="panel-title">{{ module.title }}</h2>
           <hr class="tapered" />
           <component :is="module.panel" :context="moduleContext" />
         </section>
       </aside>
-      <MovePageDialog :pages="notebook.pages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
+      <MovePageDialog :pages="treePages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
     </div>
     <DeletePageDialog
       :page="notebook?.pages.find((p) => p.id === deleting) ?? null"

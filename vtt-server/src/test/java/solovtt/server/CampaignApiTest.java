@@ -106,4 +106,49 @@ class CampaignApiTest {
                 .post(a + "/decisions/" + decision).then().statusCode(200);
         given().get(a + "/creatures/magicienne-1").then().body("hitPoints", equalTo(2));
     }
+
+    private static String creerAvec(String name, List<String> modules) {
+        return given().contentType(ContentType.JSON).body(Map.of("name", name, "modules", modules))
+                .post("/api/campaigns").then().statusCode(201).body("modules", equalTo(modules)).extract().path("id");
+    }
+
+    @Test
+    void lesModulesChoisisALaCreation_sontLesSeulsActifs() {
+        String avec = "/api/campaigns/" + creerAvec("Avec Mythic " + UUID.randomUUID(), List.of("mythic"));
+        String sans = "/api/campaigns/" + creerAvec("Sans module " + UUID.randomUUID(), List.of());
+
+        given().get(avec + "/modules").then().statusCode(200).body("modules", equalTo(List.of("mythic")));
+        given().get(avec + "/mythic/chaos").then().statusCode(200).body("chaos", equalTo(5));
+        given().get(sans + "/modules").then().statusCode(200).body("modules", empty());
+        given().get(sans + "/mythic/chaos").then().statusCode(404)
+                .body("message", equalTo("Module inactif dans cette campagne : mythic"));
+        given().post(sans + "/mythic/lists").then().statusCode(404);
+        // Les routes communes d'un module ne dépendent d'aucune campagne.
+        given().get("/api/mythic/meaning-tables").then().statusCode(200);
+        // Le reste de la campagne n'est pas touché.
+        given().get(sans + "/notebook").then().statusCode(200);
+    }
+
+    @Test
+    void sansListeDeModules_tousLesModulesInstallesSontActifs() {
+        String id = creer("Sans choix " + UUID.randomUUID());
+        given().get("/api/campaigns/" + id + "/modules").then().statusCode(200).body("modules", hasItem("mythic"));
+        List<Map<String, Object>> listees = given().get("/api/campaigns").then().statusCode(200).extract().jsonPath().getList("$");
+        assertEquals(true, listees.stream().anyMatch(c -> c.get("id").equals(id) && ((List<?>) c.get("modules")).contains("mythic")));
+    }
+
+    @Test
+    void unModuleInconnuOuInvalide_400_etAucuneCampagneCreee() {
+        int avant = given().get("/api/campaigns").then().extract().jsonPath().getList("$").size();
+        given().contentType(ContentType.JSON).body(Map.of("name", "X", "modules", List.of("inconnu"))).post("/api/campaigns")
+                .then().statusCode(400).body("message", equalTo("Module inconnu : inconnu"));
+        given().contentType(ContentType.JSON).body(Map.of("name", "X", "modules", List.of("Mythic/.."))).post("/api/campaigns")
+                .then().statusCode(400);
+        assertEquals(avant, given().get("/api/campaigns").then().extract().jsonPath().getList("$").size());
+    }
+
+    @Test
+    void lesModulesDUneCampagneInconnue_404() {
+        given().get("/api/campaigns/inconnue/modules").then().statusCode(404);
+    }
 }

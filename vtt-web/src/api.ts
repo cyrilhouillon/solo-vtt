@@ -64,7 +64,9 @@ export const api = {
   /** Les campagnes, triées par nom. */
   campaigns: () => request<CampaignView[]>('/api/campaigns'),
 
-  createCampaign: (name: string) => request<CampaignView>('/api/campaigns', { method: 'POST', body: JSON.stringify({ name }) }),
+  /** Crée une campagne avec ces modules actifs. */
+  createCampaign: (name: string, modules: string[]) =>
+    request<CampaignView>('/api/campaigns', { method: 'POST', body: JSON.stringify({ name, modules }) }),
 
   catalog: () => request<CatalogEntry[]>('/api/catalog'),
 
@@ -78,6 +80,9 @@ export function campaignApi(campaignId: string) {
   const base = `/api/campaigns/${encodeURIComponent(campaignId)}`
   return {
     ...api,
+    /** Les ids des modules actifs dans la campagne. */
+    modules: async () => (await request<{ modules: string[] }>(`${base}/modules`)).modules,
+
     /** Les pages du Carnet et ses onglets ouverts. */
     notebook: () => request<NotebookView>(`${base}/notebook`),
 

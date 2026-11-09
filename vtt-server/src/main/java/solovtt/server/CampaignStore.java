@@ -17,8 +17,16 @@ public interface CampaignStore {
     /** Les campagnes, triées par nom. */
     List<Campaign> list();
 
-    /** Crée une campagne sous ce nom ; deux campagnes peuvent porter le même nom. */
-    Campaign create(String name);
+    /**
+     * Crée une campagne sous ce nom, avec ces modules actifs ({@code null} : tous les modules installés) ; deux campagnes
+     * peuvent porter le même nom.
+     */
+    Campaign create(String name, List<String> modules);
+
+    /** Crée une campagne sous ce nom, avec tous les modules installés. */
+    default Campaign create(String name) {
+        return create(name, null);
+    }
 
     /** La campagne de cet id, vide si aucune. */
     default Optional<Campaign> find(String id) {
@@ -79,8 +87,8 @@ public interface CampaignStore {
             }
 
             @Override
-            public Campaign create(String name) {
-                var campaign = new Campaign(UUID.randomUUID().toString(), name);
+            public Campaign create(String name, List<String> modules) {
+                var campaign = new Campaign(UUID.randomUUID().toString(), name, modules);
                 campaigns.put(campaign.id(), new Content(campaign, GameStore.inMemory(), MapStore.inMemory(), NotebookStore.inMemory(), new ConcurrentHashMap<>()));
                 return campaign;
             }
