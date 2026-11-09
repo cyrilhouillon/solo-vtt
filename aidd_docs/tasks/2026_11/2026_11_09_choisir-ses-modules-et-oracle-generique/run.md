@@ -36,10 +36,23 @@
 - [pass] Task 2 — Les lignes system du Test Scope passent ; `mvn -q verify` vert — `OracleListsTest` (6 tests) : `POST lists` deux fois → une racine, même id, liste à puces vide ; renommée → même id ; données perdues → reprise par le titre. Sous-pages `[humeurs, Lieux]`, sous-sous-page ignorée ; autre campagne : aucune liste, tirage 404. « Tour », vide, « Port », « Forêt » : d3 2 → « Port », ligne 3, `sides` 3 ; 1 → Tour ; 3 → ligne 4. Lien → nœud `pageLink`, texte « Taverne du Gué ». Liste sans ligne écrite ou sans contenu → 400 « La liste Vide est vide : y écrire des lignes ». Sous-sous-page, page ordinaire, corbeille, Listes elle-même, campagne inconnue → 404. `mvn verify` exit 0 : 27 + 68 + 65 + 43 + 10 + 241 tests, 0 échec.
 - [pass] Task 3 — Sur 5174 : les lignes browser du Test Scope ; `npm run build` vert — Chrome, Vite 5174 → 8081, 1568×733, campagne « Oracle seul » : à l'ouverture, section « Oracle » avec « Listes » ; panneau : « Aucune liste : ajouter une sous-page à « Listes »… ». Lieux créée sous Listes (Tour, ligne vide, [[Session 1]]), « Relire les listes » → choix « Lieux ». Tirer ×4, page verrouillée : « Lieux : Session 1 (d2 : 2 → ligne 3) » avec un `a.page-link`, puis « Lieux : Tour (d2 : 1 → ligne 1) » ×3 ; rappel « Lieux : Tour · d2 1, ligne 1 ». « Humeurs » créée pendant que le panneau est ouvert : proposée dès l'ouverture du choix (`Humeurs`, `Lieux`) ; Tirer sur Humeurs → « Jet non tiré : La liste Humeurs est vide : y écrire des lignes », aucune citation de plus (7). Onglet fermé puis Tirer → « Aucune page ouverte : ouvrir une page pour y écrire le jet. ». `npm run build` : `✓ built in 940ms` ; `grep -rniE "mythic|['\"]oracle['\"]" vtt-server/src/main vtt-web/src` vide.
 
+## Revue · corrections
+
+- Date: 2026-11-09
+- Validated on: c1c59ce
+
+- [pass] Majeur 1 — une moitié de module absente n'empêche pas de créer une campagne — `GET /api/modules` → `["mythic","oracle"]` (`CampaignApiTest.lesModulesInstalles_seListent`). Chrome, 5174 → 8081 : `/api/modules` simulé à `["mythic"]`, l'accueil ne propose que « Mythic » (coché) ; « Moitie absente » créée sans erreur, `modules: ["mythic"]`.
+- [pass] Décision utilisateur — un module installé plus tard n'est jamais actif d'office — `CampaignModulesAtStartupTest` : fiche sans `modules` → `[mythic, oracle]`, fiche choisie inchangée ; second démarrage avec un module « nouveau » : rien ne change. Serveur 8081 démarré sur une fiche `{"id":"0000aaaa-legacy","name":"Ancienne"}` : réécrite `"modules" : [ "mythic", "oracle" ]`. `POST /api/campaigns` sans `modules` écrit la liste installée.
+- [pass] Mineur 2 — l'erreur d'enregistrement des modules ne se perd pas — `PUT …/modules` simulé à 1,5 s puis 400 « Refus simulé » : pendant l'envoi, Annuler désactivé, Échap et `cancel` sans effet (dialogue ouvert) ; après, dialogue ouvert avec « Refus simulé ». Le dialogue propose Mythic et Oracle.
+- [pass] Mineur 4 — le filtre ne relit plus toutes les fiches — `FileCampaignStore.find` lit `<id>/campagne.json` seul (id `[A-Za-z0-9-]+`) ; `FileCampaignStoreTest` (inconnue, `../id` refusé, fiche relue) vert.
+- [pass] Mineur 5 — « Listes illisibles » s'efface après une relecture réussie — `GET …/oracle/lists` simulé à 500 : « Listes illisibles : panne » ; relecture réelle : message effacé, choix `Humeurs`, `Lieux`.
+- [pass] Mineur 6 — documentation — `architecture.md` (routes `modules`, liste figée, démarrage, `find`, `availableModules`, dialogue), `codebase-map.md` (routes, `ModuleResource`, `CampaignModulesAtStartup`, `CampaignModulesDialog`, `visiblePages`, coquille), `project-brief.md`.
+- [pass] Régression Mythic sur HEAD — « Avec Mythic », « Session 1 » : panneau Mythic seul, section Fils / Personnages ; Demander → « Oracle : question sans énoncé (50/50, chaos 7) / d100 : 16 → Oui ». `mvn verify` exit 0 : 27 + 68 + 65 + 43 + 10 + 243 tests, 0 échec ; `npm run build` `✓ built in 915ms` ; `grep -rniE "mythic|['\"]oracle['\"]" vtt-server/src/main vtt-web/src` vide.
+
 ## Final
 
 - Date: 2026-11-09
-- Validated on: c091f84
+- Validated on: c1c59ce
 
-- [pass] `mvn verify` — exit 0 ; `vtt-engine` 27, `dnd-engine` 68, `mythic-engine` 65, `mythic-server` 43, `oracle-server` 10, `vtt-server` 241 tests, 0 échec, 0 erreur.
-- [pass] `npm run build` dans `vtt-web/` — vue-tsc puis Vite : `✓ built in 940ms`.
+- [pass] `mvn verify` — exit 0 ; `vtt-engine` 27, `dnd-engine` 68, `mythic-engine` 65, `mythic-server` 43, `oracle-server` 10, `vtt-server` 243 tests, 0 échec, 0 erreur.
+- [pass] `npm run build` dans `vtt-web/` — vue-tsc puis Vite : `✓ built in 915ms`.
