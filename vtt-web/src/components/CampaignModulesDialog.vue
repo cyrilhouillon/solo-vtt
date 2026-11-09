@@ -6,7 +6,7 @@ import type { NotebookModule } from '../modules/notebookModule'
  * Les modules de la campagne : une case par module du client, cochée s'il est actif. Enregistrer remplace la liste ; un
  * module décoché garde ses données, qu'il retrouve recoché. Un refus du serveur s'affiche ici, le dialogue reste ouvert.
  */
-const props = defineProps<{ open: boolean; available: NotebookModule[]; active: string[]; busy: boolean; error: string | null }>()
+const props = defineProps<{ open: boolean; available: NotebookModule[] | null; active: string[]; busy: boolean; error: string | null }>()
 const emit = defineEmits<{ save: [modules: string[]]; close: [] }>()
 
 const dialog = ref<HTMLDialogElement | null>(null)
@@ -45,7 +45,8 @@ watch(
     <h2 id="campaign-modules-title" class="panel-title">Modules de la campagne</h2>
     <hr class="tapered" />
     <form @submit.prevent="emit('save', chosen)">
-      <p v-if="!available.length" class="hint">Aucun module installé.</p>
+      <p v-if="!available" class="hint">Modules installés illisibles : réessayer en rouvrant le Carnet.</p>
+      <p v-else-if="!available.length" class="hint">Aucun module installé.</p>
       <label v-for="module in available" :key="module.id" class="module">
         <input v-model="chosen" type="checkbox" :value="module.id" :disabled="busy" />
         {{ module.title }}
@@ -53,7 +54,7 @@ watch(
       <p v-if="error" class="error-text" role="alert">{{ error }}</p>
       <div class="actions">
         <button type="button" :disabled="busy" @click="close">Annuler</button>
-        <button type="submit" :disabled="busy">Enregistrer</button>
+        <button type="submit" :disabled="busy || !available">Enregistrer</button>
       </div>
     </form>
   </dialog>

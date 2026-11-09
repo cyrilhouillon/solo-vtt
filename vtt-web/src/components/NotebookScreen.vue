@@ -385,7 +385,7 @@ async function open(pageId: string) {
 /** Les ids des modules actifs dans la campagne, relus au serveur à chaque montage ; aucun tant qu'ils ne sont pas lus. */
 const activeModuleIds = ref<string[]>([])
 /** Les modules que le dialogue Modules propose : installés côté client et serveur. */
-const offeredModules = ref<NotebookModule[]>([])
+const offeredModules = ref<NotebookModule[] | null>(null)
 /** Les modules du client actifs dans la campagne : seuls eux montrent panneau et section, et préparent le Carnet. */
 const activeModules = computed(() => notebookModules.filter((module) => activeModuleIds.value.includes(module.id)))
 const activePanelModules = computed(() => activeModules.value.filter((module) => module.panel))
@@ -432,7 +432,8 @@ async function readModules() {
   void api
     .installedModules()
     .then((installed) => (offeredModules.value = availableModules(installed)))
-    .catch((e) => (error.value = `Modules installés illisibles (${e instanceof Error ? e.message : String(e)})`))
+    // Un message déjà affiché (modules actifs, préparation) passe d'abord.
+    .catch((e) => (error.value ??= `Modules installés illisibles (${e instanceof Error ? e.message : String(e)})`))
   try {
     activeModuleIds.value = await api.modules()
   } catch (e) {
