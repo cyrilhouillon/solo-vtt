@@ -3,6 +3,8 @@ import type {
   CampaignView,
   CatalogEntry,
   Combat,
+  CombatEntry,
+  CombatReplay,
   CreatureSheet,
   Decision,
   DistanceUnit,
@@ -191,5 +193,15 @@ export function campaignApi(campaignId: string) {
 
     /** Termine le combat : plus de tours ; les créatures restent avec leurs PV. */
     endCombat: () => request<ActionResult>(`${base}/combat/end`, { method: 'POST' }),
+
+    /** Un combat de la campagne et sa carte, telle qu'il l'a laissée. */
+    combatEntry: (combatId: string) => request<CombatEntry>(`${base}/combats/${encodeURIComponent(combatId)}`),
+
+    /** Reprend un combat en cours là où il en était : il remplace la partie de la carte en cours. */
+    resumeCombat: (combatId: string) =>
+      request<void>(`${base}/combats/${encodeURIComponent(combatId)}/resume`, { method: 'POST' }),
+
+    /** Le rejeu d'un combat terminé, pas à pas. */
+    combatReplay: (combatId: string) => request<CombatReplay>(`${base}/combats/${encodeURIComponent(combatId)}/replay`),
   }
 }

@@ -58,14 +58,16 @@ export interface PageDocument {
 }
 
 /**
- * Une page du Carnet, telle que l'arbre la montre : `parentId` est `null` à la racine ; `section`, l'id du module dont
- * elle est une racine de section (elle ne se déplace ni ne se supprime), `null` pour toute autre page.
+ * Une page du Carnet, telle que l'arbre la montre : `parentId` est `null` à la racine ; `section`, l'id de la section
+ * dont elle est une racine (elle ne se déplace ni ne se supprime), `null` pour toute autre page ; `combatId`, le combat
+ * dont elle est l'entrée (sans texte ni sous-page), `null` pour une page.
  */
 export interface PageSummary {
   id: string
   title: string
   parentId: string | null
   section: string | null
+  combatId: string | null
 }
 
 /** Une page ouverte : `content` est `null` pour une page neuve. */
@@ -204,6 +206,37 @@ export interface Combat {
    * (aucune créature active, ou système qui ne limite pas le déplacement). Le client n'y ajoute aucune règle.
    */
   movementLeft: number | null
+}
+
+/**
+ * Un combat de la campagne : `ended` s'il est terminé (il se rejoue), `current` s'il est la partie de la carte en cours,
+ * et sa carte telle qu'il l'a laissée.
+ */
+export interface CombatEntry {
+  id: string
+  ended: boolean
+  current: boolean
+  scene: SceneView
+}
+
+/**
+ * Un pas du rejeu : une action entière, ce qu'elle a ajouté au journal, sa cible et ses PV après coup (`null` sans
+ * cible), puis l'état après le pas. Le pas 0 est l'état au lancement, sans entrée.
+ */
+export interface ReplayStep {
+  entries: JournalEntry[]
+  targetId: string | null
+  targetHitPoints: number | null
+  targetMaxHitPoints: number | null
+  scene: SceneView
+  combat: Combat | null
+  sheets: CreatureSheet[]
+}
+
+/** Le rejeu d'un combat terminé, pas à pas. */
+export interface CombatReplay {
+  id: string
+  steps: ReplayStep[]
 }
 
 /** Ce qu'une action (attaque, combat) ou sa reprise a produit. */
