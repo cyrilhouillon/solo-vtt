@@ -28,6 +28,13 @@ public interface CampaignStore {
         return create(name, null);
     }
 
+    /**
+     * Remplace les modules actifs de la campagne ; leurs données (Carnet, données de module) ne changent pas.
+     *
+     * @throws IllegalArgumentException si aucune campagne n'a cet id
+     */
+    Campaign setModules(String id, List<String> modules);
+
     /** La campagne de cet id, vide si aucune. */
     default Optional<Campaign> find(String id) {
         return list().stream().filter(c -> c.id().equals(id)).findFirst();
@@ -90,6 +97,14 @@ public interface CampaignStore {
             public Campaign create(String name, List<String> modules) {
                 var campaign = new Campaign(UUID.randomUUID().toString(), name, modules);
                 campaigns.put(campaign.id(), new Content(campaign, GameStore.inMemory(), MapStore.inMemory(), NotebookStore.inMemory(), new ConcurrentHashMap<>()));
+                return campaign;
+            }
+
+            @Override
+            public Campaign setModules(String id, List<String> modules) {
+                Content content = content(id);
+                var campaign = new Campaign(id, content.campaign().name(), modules);
+                campaigns.put(id, new Content(campaign, content.games(), content.maps(), content.notebook(), content.modules()));
                 return campaign;
             }
 

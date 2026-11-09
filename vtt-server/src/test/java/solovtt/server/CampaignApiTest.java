@@ -151,4 +151,38 @@ class CampaignApiTest {
     void lesModulesDUneCampagneInconnue_404() {
         given().get("/api/campaigns/inconnue/modules").then().statusCode(404);
     }
+
+    private static void modules(String campagne, String corps, int statut) {
+        given().contentType(ContentType.JSON).body(corps).put(campagne + "/modules").then().statusCode(statut);
+    }
+
+    @Test
+    void desactiverPuisReactiverUnModule_gardeSesDonnees_sansToucherLesAutresCampagnes() {
+        String a = "/api/campaigns/" + creerAvec("A " + UUID.randomUUID(), List.of("mythic"));
+        String b = "/api/campaigns/" + creerAvec("B " + UUID.randomUUID(), List.of("mythic"));
+        given().contentType(ContentType.JSON).body("{\"chaos\":7}").put(a + "/mythic/chaos").then().statusCode(200);
+        String fils = given().post(a + "/mythic/lists").then().statusCode(200).extract().path("threadsPageId");
+
+        given().contentType(ContentType.JSON).body("{\"modules\":[]}").put(a + "/modules")
+                .then().statusCode(200).body("modules", empty());
+        given().get(a + "/modules").then().body("modules", empty());
+        given().get(a + "/mythic/chaos").then().statusCode(404);
+        given().get(b + "/mythic/chaos").then().statusCode(200);
+        // La page Fils reste dans le Carnet, lisible par ses liens.
+        given().get(a + "/notebook/pages/" + fils).then().statusCode(200);
+
+        given().contentType(ContentType.JSON).body("{\"modules\":[\"mythic\"]}").put(a + "/modules")
+                .then().statusCode(200).body("modules", equalTo(List.of("mythic")));
+        given().get(a + "/mythic/chaos").then().statusCode(200).body("chaos", equalTo(7));
+        given().post(a + "/mythic/lists").then().statusCode(200).body("threadsPageId", equalTo(fils));
+    }
+
+    @Test
+    void changerLesModules_refuseUnModuleInconnuUneListeAbsenteEtUneCampagneInconnue() {
+        String a = "/api/campaigns/" + creerAvec("A " + UUID.randomUUID(), List.of("mythic"));
+        modules(a, "{\"modules\":[\"inconnu\"]}", 400);
+        modules(a, "{}", 400);
+        given().get(a + "/modules").then().body("modules", equalTo(List.of("mythic")));
+        modules("/api/campaigns/inconnue", "{\"modules\":[]}", 404);
+    }
 }

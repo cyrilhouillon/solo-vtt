@@ -12,6 +12,7 @@ import SearchResults from './SearchResults.vue'
 import PageTabs from './PageTabs.vue'
 import DeletePageDialog from './DeletePageDialog.vue'
 import TrashDialog from './TrashDialog.vue'
+import CampaignModulesDialog from './CampaignModulesDialog.vue'
 import { ancestors, branch, visiblePages } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
@@ -389,6 +390,40 @@ const activePanelModules = computed(() => activeModules.value.filter((module) =>
 /** L'arbre et le dialogue Déplacer taisent les sections des modules inactifs ; les liens, eux, voient toutes les pages. */
 const treePages = computed(() => visiblePages(notebook.value?.pages ?? [], activeModuleIds.value))
 
+/** Le dialogue des modules de la campagne, et la raison d'un refus du serveur, affichée dans le dialogue. */
+const modulesOpen = ref(false)
+const modulesError = ref<string | null>(null)
+
+function openModules() {
+  if (busy.value) return
+  modulesError.value = null
+  modulesOpen.value = true
+}
+
+/**
+ * Enregistre les modules choisis : la frappe en attente part d'abord. Un module activé prépare le Carnet (les pages de sa
+ * section) avant que l'arbre ne soit relu ; un module désactivé disparaît, ses données restent au serveur.
+ */
+function saveModules(modules: string[]) {
+  modulesError.value = null
+  void call(async () => {
+    if (!(await saved())) {
+      modulesError.value = 'La page ouverte n’est pas enregistrée : modules inchangés.'
+      return
+    }
+    const before = activeModuleIds.value
+    try {
+      activeModuleIds.value = await api.setModules(modules)
+    } catch (e) {
+      modulesError.value = e instanceof Error ? e.message : String(e)
+      return
+    }
+    modulesOpen.value = false
+    await prepareModules(activeModules.value.filter((module) => !before.includes(module.id)))
+    notebook.value = await api.notebook()
+  })
+}
+
 /** Lit les modules actifs ; un échec va au bandeau, et le Carnet s'ouvre sans module. */
 async function readModules() {
   try {
@@ -662,6 +697,9 @@ function leave(target: 'home' | 'combat') {
       <h1 class="app-name">Solo VTT</h1>
       <p class="campaign-name">{{ campaign.name }}</p>
       <span class="spacer" />
+      <button type="button" title="Modules de la campagne" :disabled="busy || !notebook" @click="openModules">
+        Modules
+      </button>
       <button type="button" class="combat-button" title="Écran de combat de la campagne" @click="leave('combat')">
         <AppIcon name="combat" />
         Combat
@@ -831,6 +869,14 @@ function leave(target: 'home' | 'combat') {
       :busy="busy"
       @confirm="confirmDelete"
       @close="cancelDelete"
+    />
+    <CampaignModulesDialog
+      :open="modulesOpen"
+      :active="activeModuleIds"
+      :busy="busy"
+      :error="modulesError"
+      @save="saveModules"
+      @close="modulesOpen = false"
     />
     <TrashDialog :open="trashOpen" :entries="trashEntries" :busy="busy" @restore="restore" @empty="emptyTrash" @close="closeTrash" />
   </div>

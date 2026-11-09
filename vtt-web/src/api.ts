@@ -82,6 +82,9 @@ export function campaignApi(campaignId: string) {
     ...api,
     /** Les ids des modules actifs dans la campagne. */
     modules: async () => (await request<{ modules: string[] }>(`${base}/modules`)).modules,
+    /** Remplace les modules actifs ; rend ceux que le serveur garde. */
+    setModules: async (modules: string[]) =>
+      (await request<{ modules: string[] }>(`${base}/modules`, { method: 'PUT', body: JSON.stringify({ modules }) })).modules,
 
     /** Les pages du Carnet et ses onglets ouverts. */
     notebook: () => request<NotebookView>(`${base}/notebook`),

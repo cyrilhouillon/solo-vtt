@@ -88,6 +88,20 @@ class FileCampaignStoreTest {
     }
 
     @Test
+    void changerLesModules_reecritLaFiche_sansToucherLesDonnees() {
+        Path root = dir.resolve("campagnes");
+        var store = new FileCampaignStore(root);
+        var strahd = store.create("Strahd", List.of("mythic"));
+        store.writeModuleData(strahd.id(), "mythic", "{\"chaos\":7}");
+
+        assertEquals(new Campaign(strahd.id(), "Strahd", List.of()), store.setModules(strahd.id(), List.of()));
+        var relu = new FileCampaignStore(root);
+        assertEquals(Optional.of(List.of()), relu.find(strahd.id()).map(Campaign::modules));
+        assertEquals(Optional.of("{\"chaos\":7}"), relu.readModuleData(strahd.id(), "mythic"));
+        assertThrows(IllegalArgumentException.class, () -> store.setModules("inconnue", List.of()));
+    }
+
+    @Test
     void memeNom_deuxCampagnesDistinctes() {
         var store = new FileCampaignStore(dir);
         store.create("Strahd");

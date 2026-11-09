@@ -3,6 +3,7 @@ package solovtt.server;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -62,6 +63,18 @@ public class CampaignResource {
     @APIResponse(responseCode = "404", description = "Campagne inconnue")
     public Dtos.CampaignModulesDto modules(@PathParam("campaignId") String campaignId) {
         return new Dtos.CampaignModulesDto(modules.activeIn(known(campaignId)));
+    }
+
+    /** Remplace les modules actifs de la campagne ; un module désactivé garde ses données, qu'il retrouve réactivé. */
+    @PUT
+    @Path("/{campaignId}/modules")
+    @APIResponse(responseCode = "200", description = "Les modules actifs gardés, dans l'ordre des modules installés")
+    @APIResponse(responseCode = "400", description = "Liste absente, ou module inconnu")
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public Dtos.CampaignModulesDto setModules(@PathParam("campaignId") String campaignId, Dtos.CampaignModulesDto request) {
+        known(campaignId);
+        List<String> chosen = modules.check(request == null ? null : request.modules());
+        return new Dtos.CampaignModulesDto(modules.activeIn(campaigns.setModules(campaignId, chosen)));
     }
 
     private Campaign known(String campaignId) {
