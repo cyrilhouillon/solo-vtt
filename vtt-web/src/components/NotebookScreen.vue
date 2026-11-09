@@ -12,11 +12,12 @@ import SearchResults from './SearchResults.vue'
 import PageTabs from './PageTabs.vue'
 import DeletePageDialog from './DeletePageDialog.vue'
 import TrashDialog from './TrashDialog.vue'
-import { ancestors, branch } from '../notebook/tree'
+import CampaignModulesDialog from './CampaignModulesDialog.vue'
+import { ancestors, branch, visiblePages } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
-import { notebookModules, panelModules } from '../modules/registry'
-import type { NotebookContext } from '../modules/notebookModule'
+import { availableModules, notebookModules } from '../modules/registry'
+import type { NotebookContext, NotebookModule } from '../modules/notebookModule'
 import type { CampaignView, NotebookView, PageDeletion, PageDocument, PageView, SearchResult, TrashedPage } from '../types'
 
 /** `pageId` : la page de l'adresse, `null` sans page. */
@@ -381,13 +382,72 @@ async function open(pageId: string) {
   void router.push({ name: 'notebook', params: { campaignId: props.campaign.id, pageId } })
 }
 
-/** Chaque module prépare le Carnet avant sa lecture (les pages de sa section) ; un refus va au bandeau, sans bloquer. */
-async function prepareModules() {
-  const results = await Promise.allSettled(notebookModules.map((module) => module.prepare?.(props.campaign.id)))
+/** Les ids des modules actifs dans la campagne, relus au serveur à chaque montage ; aucun tant qu'ils ne sont pas lus. */
+const activeModuleIds = ref<string[]>([])
+/** Les modules que le dialogue Modules propose : installés côté client et serveur. */
+const offeredModules = ref<NotebookModule[] | null>(null)
+/** Les modules du client actifs dans la campagne : seuls eux montrent panneau et section, et préparent le Carnet. */
+const activeModules = computed(() => notebookModules.filter((module) => activeModuleIds.value.includes(module.id)))
+const activePanelModules = computed(() => activeModules.value.filter((module) => module.panel))
+/** L'arbre et le dialogue Déplacer taisent les sections des modules inactifs ; les liens, eux, voient toutes les pages. */
+const treePages = computed(() => visiblePages(notebook.value?.pages ?? [], activeModuleIds.value))
+
+/** Le dialogue des modules de la campagne, et la raison d'un refus du serveur, affichée dans le dialogue. */
+const modulesOpen = ref(false)
+const modulesError = ref<string | null>(null)
+
+function openModules() {
+  if (busy.value) return
+  modulesError.value = null
+  modulesOpen.value = true
+}
+
+/**
+ * Enregistre les modules choisis : la frappe en attente part d'abord. Un module activé prépare le Carnet (les pages de sa
+ * section) avant que l'arbre ne soit relu ; un module désactivé disparaît, ses données restent au serveur.
+ */
+function saveModules(modules: string[]) {
+  modulesError.value = null
+  void call(async () => {
+    if (!(await saved())) {
+      modulesError.value = 'La page ouverte n’est pas enregistrée : modules inchangés.'
+      return
+    }
+    const before = activeModuleIds.value
+    try {
+      activeModuleIds.value = await api.setModules(modules)
+    } catch (e) {
+      modulesError.value = e instanceof Error ? e.message : String(e)
+      return
+    }
+    modulesOpen.value = false
+    await prepareModules(activeModules.value.filter((module) => !before.includes(module.id)))
+    notebook.value = await api.notebook()
+  })
+}
+
+/** Lit les modules actifs ; un échec va au bandeau, et le Carnet s'ouvre sans module. */
+async function readModules() {
+  // Les modules installés ne servent qu'au dialogue Modules : leur échec ne retire rien au Carnet.
+  void api
+    .installedModules()
+    .then((installed) => (offeredModules.value = availableModules(installed)))
+    // Un message déjà affiché (modules actifs, préparation) passe d'abord.
+    .catch((e) => (error.value ??= `Modules installés illisibles (${e instanceof Error ? e.message : String(e)})`))
+  try {
+    activeModuleIds.value = await api.modules()
+  } catch (e) {
+    error.value = `Modules illisibles (${e instanceof Error ? e.message : String(e)})`
+  }
+}
+
+/** Chaque module actif prépare le Carnet avant sa lecture (les pages de sa section) ; un refus va au bandeau, sans bloquer. */
+async function prepareModules(modules: readonly NotebookModule[]) {
+  const results = await Promise.allSettled(modules.map((module) => module.prepare?.(props.campaign.id)))
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
       const reason = result.reason instanceof Error ? result.reason.message : String(result.reason)
-      error.value = `${notebookModules[i].title} : Carnet non préparé (${reason})`
+      error.value = `${modules[i].title} : Carnet non préparé (${reason})`
     }
   })
 }
@@ -396,7 +456,8 @@ onMounted(() => {
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('pagehide', onPageHide)
   void call(async () => {
-    await prepareModules()
+    await readModules()
+    await prepareModules(activeModules.value)
     notebook.value = await api.notebook()
     // Le serveur ne rend que des onglets dont la page existe. Tous fermés, ils le restent.
     const { pages, openPageIds, activePageId } = notebook.value
@@ -644,6 +705,9 @@ function leave(target: 'home' | 'combat') {
       <h1 class="app-name">Solo VTT</h1>
       <p class="campaign-name">{{ campaign.name }}</p>
       <span class="spacer" />
+      <button type="button" title="Modules de la campagne" :disabled="busy || !notebook" @click="openModules">
+        Modules
+      </button>
       <button type="button" class="combat-button" title="Écran de combat de la campagne" @click="leave('combat')">
         <AppIcon name="combat" />
         Combat
@@ -676,7 +740,7 @@ function leave(target: 'home' | 'combat') {
       </section>
     </main>
 
-    <div v-else class="content" :class="{ 'with-modules': panelModules.length }">
+    <div v-else class="content" :class="{ 'with-modules': activePanelModules.length }">
       <nav class="pages" aria-labelledby="pages-title">
         <h2 id="pages-title" class="panel-title">Pages</h2>
         <hr class="tapered" />
@@ -703,7 +767,7 @@ function leave(target: 'home' | 'combat') {
         <PageTree
           v-else
           ref="tree"
-          :pages="notebook.pages"
+          :pages="treePages"
           :current-id="page?.id ?? null"
           :expanded="expanded"
           :busy="busy"
@@ -798,14 +862,14 @@ function leave(target: 'home' | 'combat') {
         </article>
         <p v-else-if="!busy" class="hint">Aucune page ouverte. Choisir une page dans l'arbre.</p>
       </main>
-      <aside v-if="panelModules.length" class="modules" aria-label="Modules du Carnet">
-        <section v-for="module in panelModules" :key="module.id" :aria-labelledby="`module-${module.id}`">
+      <aside v-if="activePanelModules.length" class="modules" aria-label="Modules du Carnet">
+        <section v-for="module in activePanelModules" :key="module.id" :aria-labelledby="`module-${module.id}`">
           <h2 :id="`module-${module.id}`" class="panel-title">{{ module.title }}</h2>
           <hr class="tapered" />
           <component :is="module.panel" :context="moduleContext" />
         </section>
       </aside>
-      <MovePageDialog :pages="notebook.pages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
+      <MovePageDialog :pages="treePages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
     </div>
     <DeletePageDialog
       :page="notebook?.pages.find((p) => p.id === deleting) ?? null"
@@ -813,6 +877,15 @@ function leave(target: 'home' | 'combat') {
       :busy="busy"
       @confirm="confirmDelete"
       @close="cancelDelete"
+    />
+    <CampaignModulesDialog
+      :open="modulesOpen"
+      :available="offeredModules"
+      :active="activeModuleIds"
+      :busy="busy"
+      :error="modulesError"
+      @save="saveModules"
+      @close="modulesOpen = false"
     />
     <TrashDialog :open="trashOpen" :entries="trashEntries" :busy="busy" @restore="restore" @empty="emptyTrash" @close="closeTrash" />
   </div>

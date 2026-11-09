@@ -69,6 +69,44 @@ class FileCampaignStoreTest {
     }
 
     @Test
+    void lesModulesChoisis_seRelisent_uneFicheSansModules_seLitAvecTous() throws IOException {
+        Path root = dir.resolve("campagnes");
+        var store = new FileCampaignStore(root);
+        var avec = store.create("Avec Mythic", List.of("mythic"));
+        var sans = store.create("Sans module", List.of());
+        var ancienne = store.create("D'avant");
+
+        var relu = new FileCampaignStore(root);
+        assertEquals(Optional.of(List.of("mythic")), relu.find(avec.id()).map(Campaign::modules));
+        assertEquals(Optional.of(List.of()), relu.find(sans.id()).map(Campaign::modules));
+        assertEquals(Optional.empty(), relu.find(ancienne.id()).map(Campaign::modules));
+        assertEquals(false, Files.readString(root.resolve(ancienne.id()).resolve("campagne.json")).contains("modules"));
+
+        Files.writeString(root.resolve(ancienne.id()).resolve("campagne.json"),
+                "{\"id\":\"%s\",\"name\":\"D'avant\"}".formatted(ancienne.id()));
+        assertEquals(Optional.of(new Campaign(ancienne.id(), "D'avant", null)), new FileCampaignStore(root).find(ancienne.id()));
+    }
+
+    @Test
+    void changerLesModules_reecritLaFiche_sansToucherLesDonnees() {
+        Path root = dir.resolve("campagnes");
+        var store = new FileCampaignStore(root);
+        var strahd = store.create("Strahd", List.of("mythic"));
+        store.writeModuleData(strahd.id(), "mythic", "{\"chaos\":7}");
+
+        assertEquals(new Campaign(strahd.id(), "Strahd", List.of()), store.setModules(strahd.id(), List.of()));
+        var relu = new FileCampaignStore(root);
+        assertEquals(Optional.of(List.of()), relu.find(strahd.id()).map(Campaign::modules));
+        assertEquals(Optional.of("{\"chaos\":7}"), relu.readModuleData(strahd.id(), "mythic"));
+        assertThrows(IllegalArgumentException.class, () -> store.setModules("inconnue", List.of()));
+        // Un id qui n'en est pas un ne lit aucune fiche hors du dossier de la campagne.
+        assertEquals(Optional.empty(), store.find("../" + strahd.id()));
+        assertEquals(Optional.empty(), store.find(strahd.id() + "\\..\\" + strahd.id()));
+        assertEquals(Optional.empty(), store.find(strahd.id().toUpperCase()));
+        assertEquals(Optional.empty(), store.find(null));
+    }
+
+    @Test
     void memeNom_deuxCampagnesDistinctes() {
         var store = new FileCampaignStore(dir);
         store.create("Strahd");

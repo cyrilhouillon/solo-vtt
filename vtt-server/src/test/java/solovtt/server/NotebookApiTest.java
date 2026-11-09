@@ -526,6 +526,40 @@ class NotebookApiTest {
     }
 
     @Test
+    void lePortDesSections_litLesSousPagesEtLeContenuDeToutePageDeSaSection() {
+        String contenu = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
+        String listes = sections.createSectionRoot(campagneId, "essai", "Listes", contenu).id();
+        String lieux = creerSous("Lieux", listes);
+        String humeurs = creerSous("humeurs", listes);
+        String ports = creerSous("Ports", lieux);
+        String jetee = creerSous("Jetée", ports);
+        String perdue = creerSous("Perdue", listes);
+        supprimer(perdue, 204);
+        String aldric = creer("Aldric");
+        String sousAldric = creerSous("Sous Aldric", aldric);
+        String autre = sections.createSectionRoot(campagneId, "autre", "Autre", contenu).id();
+        given().contentType(ContentType.JSON).body("{\"content\":{\"type\":\"doc\",\"content\":[]}}")
+                .put(carnet() + "/pages/" + lieux + "/content").then().statusCode(204);
+
+        assertEquals(List.of(new NotebookPages.SectionPage(humeurs, "humeurs"), new NotebookPages.SectionPage(lieux, "Lieux")),
+                sections.childPages(campagneId, "essai", listes));
+        assertEquals(List.of(new NotebookPages.SectionPage(jetee, "Jetée")), sections.childPages(campagneId, "essai", ports));
+        assertEquals(List.of(), sections.childPages(campagneId, "essai", aldric));
+        assertEquals(List.of(), sections.childPages(campagneId, "autre", listes));
+        assertEquals(List.of(), sections.childPages(campagneId, "essai", perdue));
+        assertEquals(List.of(), sections.childPages(campagneId, "essai", autre));
+
+        assertEquals(Optional.of("{\"type\":\"doc\",\"content\":[]}"), sections.sectionPageContent(campagneId, "essai", lieux));
+        assertEquals(Optional.of(contenu), sections.sectionPageContent(campagneId, "essai", listes));
+        assertEquals(Optional.empty(), sections.sectionPageContent(campagneId, "essai", humeurs));
+        assertEquals(Optional.empty(), sections.sectionPageContent(campagneId, "essai", sousAldric));
+        assertEquals(Optional.empty(), sections.sectionPageContent(campagneId, "essai", perdue));
+        assertEquals(Optional.empty(), sections.sectionPageContent(campagneId, "autre", lieux));
+        assertThrows(IllegalArgumentException.class, () -> sections.childPages("inconnue", "essai", listes));
+        assertThrows(IllegalArgumentException.class, () -> sections.childPages(campagneId, "Essai/..", listes));
+    }
+
+    @Test
     void lePortDesSections_refuseUneCampagneInconnue() {
         assertThrows(IllegalArgumentException.class, () -> sections.sectionRootContent("inconnue", "essai", "x"));
         assertThrows(IllegalArgumentException.class, () -> sections.pageTitle("inconnue", "x"));

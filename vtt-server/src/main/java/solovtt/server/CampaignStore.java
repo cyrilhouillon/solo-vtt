@@ -17,8 +17,23 @@ public interface CampaignStore {
     /** Les campagnes, triées par nom. */
     List<Campaign> list();
 
-    /** Crée une campagne sous ce nom ; deux campagnes peuvent porter le même nom. */
-    Campaign create(String name);
+    /**
+     * Crée une campagne sous ce nom, avec ces modules actifs ({@code null} : tous les modules installés) ; deux campagnes
+     * peuvent porter le même nom.
+     */
+    Campaign create(String name, List<String> modules);
+
+    /** Crée une campagne sous ce nom, avec tous les modules installés. */
+    default Campaign create(String name) {
+        return create(name, null);
+    }
+
+    /**
+     * Remplace les modules actifs de la campagne ; leurs données (Carnet, données de module) ne changent pas.
+     *
+     * @throws IllegalArgumentException si aucune campagne n'a cet id
+     */
+    Campaign setModules(String id, List<String> modules);
 
     /** La campagne de cet id, vide si aucune. */
     default Optional<Campaign> find(String id) {
@@ -79,9 +94,17 @@ public interface CampaignStore {
             }
 
             @Override
-            public Campaign create(String name) {
-                var campaign = new Campaign(UUID.randomUUID().toString(), name);
+            public Campaign create(String name, List<String> modules) {
+                var campaign = new Campaign(UUID.randomUUID().toString(), name, modules);
                 campaigns.put(campaign.id(), new Content(campaign, GameStore.inMemory(), MapStore.inMemory(), NotebookStore.inMemory(), new ConcurrentHashMap<>()));
+                return campaign;
+            }
+
+            @Override
+            public Campaign setModules(String id, List<String> modules) {
+                Content content = content(id);
+                var campaign = new Campaign(id, content.campaign().name(), modules);
+                campaigns.put(id, new Content(campaign, content.games(), content.maps(), content.notebook(), content.modules()));
                 return campaign;
             }
 

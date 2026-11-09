@@ -60,6 +60,27 @@ export function splitSections(nodes: readonly PageNode[]): { ordinary: PageNode[
   return { ordinary, sections }
 }
 
+/**
+ * Les pages que montrent l'arbre et le dialogue Déplacer : sans celles des sections dont le module n'est pas actif. Une
+ * page est dans une section si sa racine en est une.
+ */
+export function visiblePages(pages: readonly PageSummary[], activeModules: readonly string[]): PageSummary[] {
+  const byId = new Map(pages.map((p) => [p.id, p]))
+  const rootOf = (page: PageSummary): PageSummary => {
+    const seen = new Set<string>()
+    let current = page
+    while (current.parentId !== null && byId.has(current.parentId) && !seen.has(current.id)) {
+      seen.add(current.id)
+      current = byId.get(current.parentId)!
+    }
+    return current
+  }
+  return pages.filter((page) => {
+    const section = rootOf(page).section
+    return section === null || activeModules.includes(section)
+  })
+}
+
 /** Les ancêtres de la page, du parent à la racine. */
 export function ancestors(pages: readonly PageSummary[], id: string): string[] {
   const parents = new Map(pages.map((p) => [p.id, p.parentId]))

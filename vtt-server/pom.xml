@@ -46,6 +46,10 @@
             <artifactId>mythic-server</artifactId>
         </dependency>
         <dependency>
+            <groupId>oracle</groupId>
+            <artifactId>oracle-server</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>

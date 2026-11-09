@@ -47,6 +47,8 @@ export interface SceneView {
 export interface CampaignView {
   id: string
   name: string
+  /** Les ids des modules actifs dans la campagne. */
+  modules: string[]
 }
 
 /** Le document d'une page, tel que l'éditeur le produit (JSON de Tiptap) ; le serveur le garde sans l'interpréter. */

@@ -3,6 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
 import ThemeButton from './ThemeButton.vue'
+import { availableModules } from '../modules/registry'
+import type { NotebookModule } from '../modules/notebookModule'
 import type { CampaignView } from '../types'
 
 const router = useRouter()
@@ -13,6 +15,10 @@ const MAX_NAME_LENGTH = 80
 /** Les campagnes, `null` tant qu'elles ne sont pas lues. */
 const campaigns = ref<CampaignView[] | null>(null)
 const name = ref('')
+/** Les modules que l'on peut activer (installés côté client et serveur) ; `null` tant que le serveur n'a pas répondu. */
+const offered = ref<NotebookModule[] | null>(null)
+/** Les modules choisis pour la prochaine campagne : tous, tant que le joueur n'en décoche aucun. */
+const chosenModules = ref<string[]>([])
 const trimmed = computed(() => name.value.trim())
 const busy = ref(false)
 const error = ref<string | null>(null)
@@ -28,17 +34,26 @@ async function call(action: () => Promise<void>) {
   }
 }
 
-onMounted(() =>
-  call(async () => {
+onMounted(() => {
+  void call(async () => {
     campaigns.value = await api.campaigns()
-  }),
-)
+  })
+  // Sans la liste des modules, l'accueil reste utilisable : la création laisse le serveur choisir les modules installés.
+  void api
+    .installedModules()
+    .then((installed) => {
+      offered.value = availableModules(installed)
+      chosenModules.value = offered.value.map((module) => module.id)
+    })
+    .catch(() => {})
+})
 
 function create() {
   if (!trimmed.value || busy.value) return
   error.value = null
   call(async () => {
-    await api.createCampaign(trimmed.value)
+    // Modules illisibles : le serveur prend ceux qu'il a installés.
+    await api.createCampaign(trimmed.value, offered.value ? chosenModules.value : undefined)
     name.value = ''
     campaigns.value = await api.campaigns()
   })
@@ -76,10 +91,17 @@ function create() {
         <h2 id="new-campaign-title" class="panel-title">Nouvelle campagne</h2>
         <hr class="tapered" />
         <form class="create" @submit.prevent="create">
-          <label>
+          <label class="name-field">
             Nom
             <input v-model="name" type="text" :maxlength="MAX_NAME_LENGTH" required />
           </label>
+          <fieldset v-if="offered?.length" class="modules">
+            <legend>Modules</legend>
+            <label v-for="module in offered" :key="module.id" class="module">
+              <input v-model="chosenModules" type="checkbox" :value="module.id" />
+              {{ module.title }}
+            </label>
+          </fieldset>
           <button type="submit" :disabled="!trimmed || busy">Créer</button>
         </form>
       </section>
@@ -145,16 +167,36 @@ section .tapered {
 }
 .create {
   display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.9rem;
 }
-label {
-  flex: 1;
-  min-width: 0;
+.create > button {
+  align-self: flex-end;
+}
+.name-field {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   color: var(--ink-muted);
+}
+.modules {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+}
+.modules legend {
+  padding: 0;
+  margin-bottom: 0.35rem;
+  color: var(--ink-muted);
+}
+.module {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink);
 }
 input[type='text'] {
   width: 100%;

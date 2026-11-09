@@ -3,6 +3,7 @@ package solovtt.server;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -24,32 +25,61 @@ public class CampaignResource {
     private final CampaignStore campaigns;
     private final CampaignSessions sessions;
     private final ImageStore images;
+    private final InstalledModules modules;
 
-    public CampaignResource(CampaignStore campaigns, CampaignSessions sessions, ImageStore images) {
+    public CampaignResource(CampaignStore campaigns, CampaignSessions sessions, ImageStore images, InstalledModules modules) {
         this.campaigns = campaigns;
         this.sessions = sessions;
         this.images = images;
+        this.modules = modules;
     }
 
     @GET
     @APIResponse(responseCode = "200", description = "Les campagnes, triées par nom")
     public List<Dtos.CampaignDto> list() {
-        return campaigns.list().stream().map(Dtos.CampaignDto::of).toList();
+        return campaigns.list().stream().map(campaign -> Dtos.CampaignDto.of(campaign, modules)).toList();
     }
 
-    /** Crée une campagne neuve : ni carte, ni combat, ni carte enregistrée. */
+    /** Crée une campagne neuve : ni carte, ni combat, ni carte enregistrée ; sans liste de modules, tous les modules installés. */
     @POST
     @ResponseStatus(201)
     @APIResponse(responseCode = "201", description = "La campagne créée",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.CampaignDto.class)))
-    @APIResponse(responseCode = "400", description = "Nom absent, vide ou trop long")
-    public Dtos.CampaignDto create(Dtos.CampaignNameRequest request) {
+    @APIResponse(responseCode = "400", description = "Nom absent, vide ou trop long, ou module inconnu")
+    public Dtos.CampaignDto create(Dtos.CreateCampaignRequest request) {
         String name = request == null || request.name() == null ? "" : request.name().strip();
         if (name.isEmpty()) throw new IllegalArgumentException("Donner un nom à la campagne");
         if (name.length() > MAX_NAME_LENGTH) {
             throw new IllegalArgumentException("Nom trop long (" + MAX_NAME_LENGTH + " caractères au plus)");
         }
-        return Dtos.CampaignDto.of(campaigns.create(name));
+        // Sans choix : les modules installés aujourd'hui, figés, pour qu'un module installé plus tard ne s'active pas d'office.
+        List<String> chosen = request.modules() == null ? modules.ids() : modules.check(request.modules());
+        return Dtos.CampaignDto.of(campaigns.create(name, chosen), modules);
+    }
+
+    /** Les modules actifs de la campagne. */
+    @GET
+    @Path("/{campaignId}/modules")
+    @APIResponse(responseCode = "200", description = "Les ids des modules actifs, dans l'ordre des modules installés")
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public Dtos.CampaignModulesDto modules(@PathParam("campaignId") String campaignId) {
+        return new Dtos.CampaignModulesDto(modules.activeIn(known(campaignId)));
+    }
+
+    /** Remplace les modules actifs de la campagne ; un module désactivé garde ses données, qu'il retrouve réactivé. */
+    @PUT
+    @Path("/{campaignId}/modules")
+    @APIResponse(responseCode = "200", description = "Les modules actifs gardés, dans l'ordre des modules installés")
+    @APIResponse(responseCode = "400", description = "Liste absente, ou module inconnu")
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public Dtos.CampaignModulesDto setModules(@PathParam("campaignId") String campaignId, Dtos.CampaignModulesDto request) {
+        known(campaignId);
+        List<String> chosen = modules.check(request == null ? null : request.modules());
+        return new Dtos.CampaignModulesDto(modules.activeIn(campaigns.setModules(campaignId, chosen)));
+    }
+
+    private Campaign known(String campaignId) {
+        return campaigns.find(campaignId).orElseThrow(() -> new NotFoundException("Campagne inconnue : " + campaignId));
     }
 
     @Path("/{campaignId}/scene")

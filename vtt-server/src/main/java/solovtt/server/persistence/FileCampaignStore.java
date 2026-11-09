@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
- * Une campagne par dossier {@code <racine>/<id>/} : {@code campagne.json} (id et nom), {@code partie.json} et
+ * Une campagne par dossier {@code <racine>/<id>/} : {@code campagne.json} (id, nom et modules actifs), {@code partie.json} et
  * {@code cartes.json}, son Carnet dans {@code carnet/} et les données de chaque module dans {@code modules/<module>.json}. Un dossier sans {@code campagne.json} lisible est ignoré,
  * jamais écrasé.
  */
@@ -65,19 +65,47 @@ public final class FileCampaignStore implements CampaignStore {
         return campaigns.stream().sorted(BY_NAME).toList();
     }
 
+    /** Lit la seule fiche de la campagne, sans relire les autres : le filtre des modules l'appelle à chaque requête. */
     @Override
-    public synchronized Campaign create(String name) {
-        var campaign = new Campaign(UUID.randomUUID().toString(), name);
+    public synchronized Optional<Campaign> find(String id) {
+        if (id == null || !id.matches("[A-Za-z0-9-]+")) return Optional.empty();
+        Path file = root.resolve(id).resolve(CAMPAIGN_FILE);
+        if (!Files.exists(file)) return Optional.empty();
+        try {
+            Campaign campaign = mapper.readValue(file.toFile(), Campaign.class);
+            return campaign.id() != null && campaign.id().equals(id) && campaign.name() != null
+                    ? Optional.of(campaign) : Optional.empty();
+        } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public synchronized Campaign create(String name, List<String> modules) {
+        var campaign = new Campaign(UUID.randomUUID().toString(), name, modules);
+        write(campaign);
+        return campaign;
+    }
+
+    @Override
+    public synchronized Campaign setModules(String id, List<String> modules) {
+        Campaign known = find(id).orElseThrow(() -> new IllegalArgumentException("Campagne inconnue : " + id));
+        var campaign = new Campaign(known.id(), known.name(), modules);
+        write(campaign);
+        return campaign;
+    }
+
+    /** Écrit la fiche de la campagne, atomiquement. */
+    private void write(Campaign campaign) {
         Path dir = root.resolve(campaign.id());
         try {
             Files.createDirectories(dir);
             Path temporary = dir.resolve(CAMPAIGN_FILE + ".tmp");
             mapper.writeValue(temporary.toFile(), campaign);
-            Files.move(temporary, dir.resolve(CAMPAIGN_FILE), StandardCopyOption.ATOMIC_MOVE);
+            Files.move(temporary, dir.resolve(CAMPAIGN_FILE), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            throw new UncheckedIOException("Impossible de créer la campagne : " + dir, e);
+            throw new UncheckedIOException("Impossible d'écrire la campagne : " + dir, e);
         }
-        return campaign;
     }
 
     @Override

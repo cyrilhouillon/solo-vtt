@@ -10,5 +10,10 @@ export const notebookModules: readonly NotebookModule[] = Object.values(found)
   .map((module) => module.default)
   .sort((a, b) => a.id.localeCompare(b.id))
 
-/** Les modules qui montrent un panneau dans le Carnet. */
-export const panelModules = notebookModules.filter((module) => module.panel)
+/**
+ * Les modules du client que le serveur a aussi installés : les seuls que l'on peut activer. Un module dont une moitié
+ * manque à l'assemblage n'est jamais proposé.
+ */
+export function availableModules(installed: readonly string[]): NotebookModule[] {
+  return notebookModules.filter((module) => installed.includes(module.id))
+}

@@ -48,7 +48,11 @@ final class Dtos {
     record MapNameRequest(String name) {}
 
     /** Le nom d'une campagne à créer. */
-    record CampaignNameRequest(String name) {}
+    /** Une campagne à créer : son nom, et ses modules actifs ({@code null} : tous les modules installés). */
+    record CreateCampaignRequest(String name, List<String> modules) {}
+
+    /** Les modules actifs d'une campagne, par id. */
+    record CampaignModulesDto(List<String> modules) {}
 
     /** Le nouveau titre d'une page ; {@code null} si absent. */
     record PageTitleRequest(String title) {}
@@ -110,9 +114,10 @@ final class Dtos {
         }
     }
 
-    record CampaignDto(String id, String name) {
-        static CampaignDto of(Campaign campaign) {
-            return new CampaignDto(campaign.id(), campaign.name());
+    /** Une campagne, avec ses modules actifs. */
+    record CampaignDto(String id, String name, List<String> modules) {
+        static CampaignDto of(Campaign campaign, InstalledModules installed) {
+            return new CampaignDto(campaign.id(), campaign.name(), installed.activeIn(campaign));
         }
     }
 

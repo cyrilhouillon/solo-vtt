@@ -43,6 +43,24 @@ public interface NotebookPages {
      */
     Optional<String> pageTitle(String campaignId, String pageId);
 
-    /** Une racine de section : son id de page et son titre actuel. */
+    /**
+     * Les sous-pages directes et vivantes d'une page de la section du module (racine ou descendante), triées par titre ;
+     * aucune si la page n'est pas une page vivante de cette section.
+     *
+     * @param moduleId l'id du module, en minuscules, chiffres et tirets
+     * @throws IllegalArgumentException si aucune campagne n'a cet id, ou si l'id du module est invalide
+     */
+    List<SectionPage> childPages(String campaignId, String moduleId, String pageId);
+
+    /**
+     * Le contenu (document JSON de l'éditeur) d'une page vivante de la section du module, racine ou descendante ; vide pour
+     * toute autre page, une page à la corbeille ou une page sans contenu.
+     *
+     * @param moduleId l'id du module, en minuscules, chiffres et tirets
+     * @throws IllegalArgumentException si aucune campagne n'a cet id, ou si l'id du module est invalide
+     */
+    Optional<String> sectionPageContent(String campaignId, String moduleId, String pageId);
+
+    /** Une page de section : son id et son titre actuel. */
     record SectionPage(String id, String title) {}
 }
