@@ -123,6 +123,8 @@ class CampaignApiTest {
         given().get(sans + "/mythic/chaos").then().statusCode(404)
                 .body("message", equalTo("Module inactif dans cette campagne : mythic"));
         given().post(sans + "/mythic/lists").then().statusCode(404);
+        given().contentType(ContentType.JSON).body("{}").post(sans + "/oracle/yes-no").then().statusCode(404);
+        given().contentType(ContentType.JSON).body("{}").post(avec + "/oracle/d100").then().statusCode(404);
         // Les routes communes d'un module ne dépendent d'aucune campagne.
         given().get("/api/mythic/meaning-tables").then().statusCode(200);
         // Le reste de la campagne n'est pas touché.
@@ -132,7 +134,10 @@ class CampaignApiTest {
     @Test
     void sansListeDeModules_tousLesModulesInstallesSontActifs() {
         String id = creer("Sans choix " + UUID.randomUUID());
-        given().get("/api/campaigns/" + id + "/modules").then().statusCode(200).body("modules", hasItem("mythic"));
+        given().get("/api/campaigns/" + id + "/modules").then().statusCode(200).body("modules", equalTo(List.of("mythic", "oracle")));
+        dice.script(37);
+        given().contentType(ContentType.JSON).body("{\"question\":\"Le pont tient ?\"}").post("/api/campaigns/" + id + "/oracle/yes-no")
+                .then().statusCode(200).body("question", equalTo("Le pont tient ?")).body("roll", equalTo(37)).body("yes", equalTo(true));
         List<Map<String, Object>> listees = given().get("/api/campaigns").then().statusCode(200).extract().jsonPath().getList("$");
         assertEquals(true, listees.stream().anyMatch(c -> c.get("id").equals(id) && ((List<?>) c.get("modules")).contains("mythic")));
     }

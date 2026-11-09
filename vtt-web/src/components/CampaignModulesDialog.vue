@@ -87,7 +87,7 @@ form {
 }
 .error-text {
   margin: 0;
-  color: var(--danger, #b3261e);
+  color: var(--danger);
   overflow-wrap: anywhere;
 }
 .actions {
