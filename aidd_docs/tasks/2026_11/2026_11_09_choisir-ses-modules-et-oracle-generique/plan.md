@@ -1,6 +1,6 @@
 ---
 objective: "Le joueur choisit les modules de chaque campagne à sa création et les change ensuite ; un oracle générique sans marque (oui/non à 50/50, d100, tirage dans des listes tenues en pages du Carnet de la campagne) est le second module."
-status: pending
+status: implemented
 ---
 
 # Plan: choisir ses modules et un oracle générique

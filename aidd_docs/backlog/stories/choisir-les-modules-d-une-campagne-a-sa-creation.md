@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 ---
 
 # Story : choisir les modules d'une campagne à sa création

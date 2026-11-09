@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 depends_on:
   - aidd_docs/backlog/stories/poser-une-question-oui-non-ou-lancer-un-d100-avec-l-oracle-generique.md
 ---

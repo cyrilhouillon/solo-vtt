@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 ---
 
 # Story : poser une question oui/non ou lancer un d100 avec l'oracle générique

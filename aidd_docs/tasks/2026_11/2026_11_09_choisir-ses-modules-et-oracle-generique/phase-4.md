@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: l'oracle générique tire une ligne dans une liste du Carnet

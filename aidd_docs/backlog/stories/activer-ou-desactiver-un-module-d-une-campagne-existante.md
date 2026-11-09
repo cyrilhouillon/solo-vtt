@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 depends_on:
   - aidd_docs/backlog/stories/choisir-les-modules-d-une-campagne-a-sa-creation.md
 ---
