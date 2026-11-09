@@ -44,15 +44,27 @@
 - [pass] Majeur 1 — une moitié de module absente n'empêche pas de créer une campagne — `GET /api/modules` → `["mythic","oracle"]` (`CampaignApiTest.lesModulesInstalles_seListent`). Chrome, 5174 → 8081 : `/api/modules` simulé à `["mythic"]`, l'accueil ne propose que « Mythic » (coché) ; « Moitie absente » créée sans erreur, `modules: ["mythic"]`.
 - [pass] Décision utilisateur — un module installé plus tard n'est jamais actif d'office — `CampaignModulesAtStartupTest` : fiche sans `modules` → `[mythic, oracle]`, fiche choisie inchangée ; second démarrage avec un module « nouveau » : rien ne change. Serveur 8081 démarré sur une fiche `{"id":"0000aaaa-legacy","name":"Ancienne"}` : réécrite `"modules" : [ "mythic", "oracle" ]`. `POST /api/campaigns` sans `modules` écrit la liste installée.
 - [pass] Mineur 2 — l'erreur d'enregistrement des modules ne se perd pas — `PUT …/modules` simulé à 1,5 s puis 400 « Refus simulé » : pendant l'envoi, Annuler désactivé, Échap et `cancel` sans effet (dialogue ouvert) ; après, dialogue ouvert avec « Refus simulé ». Le dialogue propose Mythic et Oracle.
-- [pass] Mineur 4 — le filtre ne relit plus toutes les fiches — `FileCampaignStore.find` lit `<id>/campagne.json` seul (id `[A-Za-z0-9-]+`) ; `FileCampaignStoreTest` (inconnue, `../id` refusé, fiche relue) vert.
+- [pass] Mineur 4 — le filtre ne relit plus toutes les fiches — `FileCampaignStore.find` lit `<id>/campagne.json` seul (id `[A-Za-z0-9-]+`) ; `FileCampaignStoreTest` vert (id inconnu ; les ids hors format sont testés en « Revue 2 »).
 - [pass] Mineur 5 — « Listes illisibles » s'efface après une relecture réussie — `GET …/oracle/lists` simulé à 500 : « Listes illisibles : panne » ; relecture réelle : message effacé, choix `Humeurs`, `Lieux`.
 - [pass] Mineur 6 — documentation — `architecture.md` (routes `modules`, liste figée, démarrage, `find`, `availableModules`, dialogue), `codebase-map.md` (routes, `ModuleResource`, `CampaignModulesAtStartup`, `CampaignModulesDialog`, `visiblePages`, coquille), `project-brief.md`.
 - [pass] Régression Mythic sur HEAD — « Avec Mythic », « Session 1 » : panneau Mythic seul, section Fils / Personnages ; Demander → « Oracle : question sans énoncé (50/50, chaos 7) / d100 : 16 → Oui ». `mvn verify` exit 0 : 27 + 68 + 65 + 43 + 10 + 243 tests, 0 échec ; `npm run build` `✓ built in 915ms` ; `grep -rniE "mythic|['\"]oracle['\"]" vtt-server/src/main vtt-web/src` vide.
 
+## Revue 2 · corrections
+
+- Date: 2026-11-09
+- Validated on: 7dd170a
+
+- [pass] M1 — un module retiré de l'assemblage n'est plus actif et n'empêche pas d'enregistrer — `CampaignModulesAtStartupTest.unModuleRetireDeLAssemblage_nEstPlusActif_sansQueLaFicheChange` : fiche `[mythic, oracle]`, installé `[mythic]` → actifs `[mythic]`, fiche inchangée ; `null` → installés. Filtre, `GET …/modules`, DTO et dialogue passent par `activeIn` : le dialogue part de `[mythic]`, que `check` accepte.
+- [pass] m1 — un échec de `/api/modules` ne cache plus les campagnes — Chrome, 5174 → 8081 : `/api/modules` simulé à 500, accueil : 7 campagnes listées, pas de bandeau, pas de cases (la création laisse le serveur choisir).
+- [pass] m2 — le Carnet garde ses modules actifs — même simulation, Carnet « Avec Mythic » : panneau Mythic, section Fils / Personnages, bandeau « Modules installés illisibles (panne) ».
+- [pass] m3 — une erreur d'E/S au figement ne bloque pas le démarrage — `CampaignModulesAtStartupTest.uneErreurDuMagasin_nEmpechePasLeDemarrage` : écriture en panne → 0 campagne figée, sans exception ; lecture en panne → 0, sans exception.
+- [pass] m4 — `find` refuse les ids hors format — `FileCampaignStoreTest.changerLesModules_reecritLaFiche_sansToucherLesDonnees` : `../<id>`, `<id>\\..\\<id>`, `<ID>` en majuscules, `null` → vide.
+- [pass] Suites — `mvn verify` exit 0 : 27 + 68 + 65 + 43 + 10 + 245 tests, 0 échec ; `npm run build` `✓ built in 873ms` ; `grep -rniE "mythic|['\"]oracle['\"]" vtt-server/src/main vtt-web/src` vide.
+
 ## Final
 
 - Date: 2026-11-09
-- Validated on: c1c59ce
+- Validated on: 7dd170a
 
-- [pass] `mvn verify` — exit 0 ; `vtt-engine` 27, `dnd-engine` 68, `mythic-engine` 65, `mythic-server` 43, `oracle-server` 10, `vtt-server` 243 tests, 0 échec, 0 erreur.
-- [pass] `npm run build` dans `vtt-web/` — vue-tsc puis Vite : `✓ built in 915ms`.
+- [pass] `mvn verify` — exit 0 ; `vtt-engine` 27, `dnd-engine` 68, `mythic-engine` 65, `mythic-server` 43, `oracle-server` 10, `vtt-server` 245 tests, 0 échec, 0 erreur.
+- [pass] `npm run build` dans `vtt-web/` — vue-tsc puis Vite : `✓ built in 873ms`.
