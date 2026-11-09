@@ -1,0 +1,11 @@
+# Run
+
+## Phase 1 · Choisir les modules d'une campagne à sa création
+
+- Date: 2026-11-09
+- Validated on: 9f89d90
+
+- [pass] Task 1 — `InstalledModules.ids()` rend `["mythic"]` sous `@QuarkusTest` ; `grep -rn mythic vtt-server/src/main` vide — `CampaignApiTest.sansListeDeModules_tousLesModulesInstallesSontActifs` : `GET …/modules` contient `mythic` ; `grep -rniE "mythic|['\"]oracle['\"]" vtt-server/src/main vtt-web/src` : aucune ligne.
+- [pass] Task 2 — Une fiche sans `modules` se relit ; une fiche avec `modules` les relit après un nouveau `FileCampaignStore` — `FileCampaignStoreTest.lesModulesChoisis_seRelisent_uneFicheSansModules_seLitAvecTous` : `["mythic"]`, `[]` relus ; création sans liste : `campagne.json` sans `modules`, relue `null` ; fiche écrite à la main `{id, name}` relue `null`.
+- [pass] Task 3 — Les lignes api du Test Scope passent dans `CampaignApiTest` ; `mvn -q test` vert — `CampaignApiTest` 9 tests : `modules: ["mythic"]` → `…/mythic/chaos` 200 ; `modules: []` → `…/mythic/chaos` et `POST …/mythic/lists` 404 « Module inactif dans cette campagne : mythic » (corps `ErrorDto` via `ErrorMapper`) ; `/api/mythic/meaning-tables` 200 ; `…/notebook` 200 ; `inconnu` 400 « Module inconnu : inconnu », `Mythic/..` 400, aucune campagne créée ; `/api/campaigns/inconnue/modules` 404. `mvn test` exit 0 : `vtt-engine` 27, `dnd-engine` 68, `mythic-engine` 65, `mythic-server` 43, `vtt-server` 237 tests, 0 échec.
+- [pass] Task 4 — Sur 5174 : campagne sans Mythic sans panneau ni section ; avec Mythic, comme avant ; `npm run build` vert — Chrome, Vite 5174 → 8081 (chemins du scratchpad), 1568×778, thème clair : l'accueil montre « Modules » avec « Mythic » coché ; « Sans Mythic » créée Mythic décoché → `GET /api/campaigns` `modules: []` ; son Carnet : aucune colonne de modules, aucune section, après création de « Session 1 » arbre « Session 1 » seul, pas de `.with-modules`. « Avec Mythic » (coché) → `modules: ["mythic"]` ; son Carnet : panneau « Mythic », section Mythic avec Fils et Personnages. `npm run build` : `✓ built in 1.35s`. Écart au plan : `PageTree.vue` inchangé, le filtrage passe par `visiblePages` dans `NotebookScreen`.
