@@ -15,6 +15,11 @@ export interface NotebookContext {
    * comme une frappe. Rend la raison d'un refus, `null` une fois écrit.
    */
   writeToOpenPage: (blocks: JSONContent[]) => string | null
+  /**
+   * Écrit le résultat d'un module, sans jamais le refuser : dans la page ouverte comme `writeToOpenPage` ; sans page,
+   * il s'affiche dans un dialogue et se copie au presse-papiers, prêt à coller dans une page.
+   */
+  writeResult: (blocks: JSONContent[]) => void
 }
 
 /**
