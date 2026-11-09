@@ -3,7 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
 import ThemeButton from './ThemeButton.vue'
-import { notebookModules } from '../modules/registry'
+import { availableModules } from '../modules/registry'
+import type { NotebookModule } from '../modules/notebookModule'
 import type { CampaignView } from '../types'
 
 const router = useRouter()
@@ -14,8 +15,10 @@ const MAX_NAME_LENGTH = 80
 /** Les campagnes, `null` tant qu'elles ne sont pas lues. */
 const campaigns = ref<CampaignView[] | null>(null)
 const name = ref('')
+/** Les modules que l'on peut activer (installés côté client et serveur) ; `null` tant que le serveur n'a pas répondu. */
+const offered = ref<NotebookModule[] | null>(null)
 /** Les modules choisis pour la prochaine campagne : tous, tant que le joueur n'en décoche aucun. */
-const chosenModules = ref<string[]>(notebookModules.map((module) => module.id))
+const chosenModules = ref<string[]>([])
 const trimmed = computed(() => name.value.trim())
 const busy = ref(false)
 const error = ref<string | null>(null)
@@ -33,7 +36,10 @@ async function call(action: () => Promise<void>) {
 
 onMounted(() =>
   call(async () => {
-    campaigns.value = await api.campaigns()
+    const [all, installed] = await Promise.all([api.campaigns(), api.installedModules()])
+    campaigns.value = all
+    offered.value = availableModules(installed)
+    chosenModules.value = offered.value.map((module) => module.id)
   }),
 )
 
@@ -41,7 +47,8 @@ function create() {
   if (!trimmed.value || busy.value) return
   error.value = null
   call(async () => {
-    await api.createCampaign(trimmed.value, chosenModules.value)
+    // Modules illisibles : le serveur prend ceux qu'il a installés.
+    await api.createCampaign(trimmed.value, offered.value ? chosenModules.value : undefined)
     name.value = ''
     campaigns.value = await api.campaigns()
   })
@@ -83,9 +90,9 @@ function create() {
             Nom
             <input v-model="name" type="text" :maxlength="MAX_NAME_LENGTH" required />
           </label>
-          <fieldset v-if="notebookModules.length" class="modules">
+          <fieldset v-if="offered?.length" class="modules">
             <legend>Modules</legend>
-            <label v-for="module in notebookModules" :key="module.id" class="module">
+            <label v-for="module in offered" :key="module.id" class="module">
               <input v-model="chosenModules" type="checkbox" :value="module.id" />
               {{ module.title }}
             </label>

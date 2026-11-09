@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
-import { notebookModules } from '../modules/registry'
+import type { NotebookModule } from '../modules/notebookModule'
 
 /**
  * Les modules de la campagne : une case par module du client, cochée s'il est actif. Enregistrer remplace la liste ; un
  * module décoché garde ses données, qu'il retrouve recoché. Un refus du serveur s'affiche ici, le dialogue reste ouvert.
  */
-const props = defineProps<{ open: boolean; active: string[]; busy: boolean; error: string | null }>()
+const props = defineProps<{ open: boolean; available: NotebookModule[]; active: string[]; busy: boolean; error: string | null }>()
 const emit = defineEmits<{ save: [modules: string[]]; close: [] }>()
 
 const dialog = ref<HTMLDialogElement | null>(null)
 const chosen = ref<string[]>([])
+
+/** Fermer attend la fin de l'envoi : sa réponse, refus compris, doit s'afficher ici. */
+function close() {
+  if (!props.busy) emit('close')
+}
 
 watch(
   () => props.open,
@@ -34,20 +39,20 @@ watch(
     ref="dialog"
     class="campaign-modules"
     aria-labelledby="campaign-modules-title"
-    @cancel.prevent="emit('close')"
-    @keydown.esc.prevent="emit('close')"
+    @cancel.prevent="close"
+    @keydown.esc.prevent="close"
   >
     <h2 id="campaign-modules-title" class="panel-title">Modules de la campagne</h2>
     <hr class="tapered" />
     <form @submit.prevent="emit('save', chosen)">
-      <p v-if="!notebookModules.length" class="hint">Aucun module installé.</p>
-      <label v-for="module in notebookModules" :key="module.id" class="module">
+      <p v-if="!available.length" class="hint">Aucun module installé.</p>
+      <label v-for="module in available" :key="module.id" class="module">
         <input v-model="chosen" type="checkbox" :value="module.id" :disabled="busy" />
         {{ module.title }}
       </label>
       <p v-if="error" class="error-text" role="alert">{{ error }}</p>
       <div class="actions">
-        <button type="button" @click="emit('close')">Annuler</button>
+        <button type="button" :disabled="busy" @click="close">Annuler</button>
         <button type="submit" :disabled="busy">Enregistrer</button>
       </div>
     </form>

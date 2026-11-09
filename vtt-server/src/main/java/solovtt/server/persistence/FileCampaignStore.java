@@ -65,6 +65,21 @@ public final class FileCampaignStore implements CampaignStore {
         return campaigns.stream().sorted(BY_NAME).toList();
     }
 
+    /** Lit la seule fiche de la campagne, sans relire les autres : le filtre des modules l'appelle à chaque requête. */
+    @Override
+    public synchronized Optional<Campaign> find(String id) {
+        if (id == null || !id.matches("[A-Za-z0-9-]+")) return Optional.empty();
+        Path file = root.resolve(id).resolve(CAMPAIGN_FILE);
+        if (!Files.exists(file)) return Optional.empty();
+        try {
+            Campaign campaign = mapper.readValue(file.toFile(), Campaign.class);
+            return campaign.id() != null && campaign.id().equals(id) && campaign.name() != null
+                    ? Optional.of(campaign) : Optional.empty();
+        } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
+
     @Override
     public synchronized Campaign create(String name, List<String> modules) {
         var campaign = new Campaign(UUID.randomUUID().toString(), name, modules);

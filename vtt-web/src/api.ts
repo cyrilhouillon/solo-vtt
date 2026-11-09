@@ -64,9 +64,12 @@ export const api = {
   /** Les campagnes, triées par nom. */
   campaigns: () => request<CampaignView[]>('/api/campaigns'),
 
-  /** Crée une campagne avec ces modules actifs. */
-  createCampaign: (name: string, modules: string[]) =>
+  /** Crée une campagne avec ces modules actifs ; sans liste, ceux que le serveur a installés. */
+  createCampaign: (name: string, modules?: string[]) =>
     request<CampaignView>('/api/campaigns', { method: 'POST', body: JSON.stringify({ name, modules }) }),
+
+  /** Les ids des modules installés dans le serveur. */
+  installedModules: () => request<string[]>('/api/modules'),
 
   catalog: () => request<CatalogEntry[]>('/api/catalog'),
 

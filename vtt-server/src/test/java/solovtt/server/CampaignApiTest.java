@@ -153,6 +153,11 @@ class CampaignApiTest {
     }
 
     @Test
+    void lesModulesInstalles_seListent() {
+        given().get("/api/modules").then().statusCode(200).body("$", equalTo(List.of("mythic", "oracle")));
+    }
+
+    @Test
     void lesModulesDUneCampagneInconnue_404() {
         given().get("/api/campaigns/inconnue/modules").then().statusCode(404);
     }

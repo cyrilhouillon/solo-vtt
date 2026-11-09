@@ -2,6 +2,7 @@ package solovtt.server;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 import solovtt.module.InstalledModule;
 
 import java.util.LinkedHashSet;
@@ -14,8 +15,14 @@ public class InstalledModules {
 
     private final List<String> ids;
 
+    @Inject
     public InstalledModules(Instance<InstalledModule> modules) {
-        this.ids = modules.stream().map(InstalledModule::id).map(CampaignStore::checkModuleId).distinct().sorted().toList();
+        this(modules.stream().map(InstalledModule::id).toList());
+    }
+
+    /** Ces modules, tels qu'ils se déclarent : sert aussi aux tests, sans Quarkus. */
+    InstalledModules(List<String> ids) {
+        this.ids = ids.stream().map(CampaignStore::checkModuleId).distinct().sorted().toList();
     }
 
     /** Les ids des modules installés, triés. */

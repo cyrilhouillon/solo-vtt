@@ -40,7 +40,7 @@ public class CampaignResource {
         return campaigns.list().stream().map(campaign -> Dtos.CampaignDto.of(campaign, modules)).toList();
     }
 
-    /** Crée une campagne neuve : ni carte, ni combat, ni carte enregistrée ; sans liste de modules, tous sont actifs. */
+    /** Crée une campagne neuve : ni carte, ni combat, ni carte enregistrée ; sans liste de modules, tous les modules installés. */
     @POST
     @ResponseStatus(201)
     @APIResponse(responseCode = "201", description = "La campagne créée",
@@ -52,7 +52,8 @@ public class CampaignResource {
         if (name.length() > MAX_NAME_LENGTH) {
             throw new IllegalArgumentException("Nom trop long (" + MAX_NAME_LENGTH + " caractères au plus)");
         }
-        List<String> chosen = request.modules() == null ? null : modules.check(request.modules());
+        // Sans choix : les modules installés aujourd'hui, figés, pour qu'un module installé plus tard ne s'active pas d'office.
+        List<String> chosen = request.modules() == null ? modules.ids() : modules.check(request.modules());
         return Dtos.CampaignDto.of(campaigns.create(name, chosen), modules);
     }
 

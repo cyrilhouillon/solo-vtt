@@ -56,6 +56,7 @@ async function roll<T>(
 async function readLists() {
   try {
     lists.value = await api.lists()
+    if (error.value?.startsWith('Listes illisibles')) error.value = null
     if (!lists.value.some((list) => list.id === chosenList.value)) chosenList.value = lists.value[0]?.id ?? ''
   } catch (e) {
     error.value = `Listes illisibles : ${reason(e)}`

@@ -16,7 +16,7 @@ import CampaignModulesDialog from './CampaignModulesDialog.vue'
 import { ancestors, branch, visiblePages } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
-import { notebookModules } from '../modules/registry'
+import { availableModules, notebookModules } from '../modules/registry'
 import type { NotebookContext, NotebookModule } from '../modules/notebookModule'
 import type { CampaignView, NotebookView, PageDeletion, PageDocument, PageView, SearchResult, TrashedPage } from '../types'
 
@@ -384,6 +384,8 @@ async function open(pageId: string) {
 
 /** Les ids des modules actifs dans la campagne, relus au serveur à chaque montage ; aucun tant qu'ils ne sont pas lus. */
 const activeModuleIds = ref<string[]>([])
+/** Les modules que le dialogue Modules propose : installés côté client et serveur. */
+const offeredModules = ref<NotebookModule[]>([])
 /** Les modules du client actifs dans la campagne : seuls eux montrent panneau et section, et préparent le Carnet. */
 const activeModules = computed(() => notebookModules.filter((module) => activeModuleIds.value.includes(module.id)))
 const activePanelModules = computed(() => activeModules.value.filter((module) => module.panel))
@@ -427,7 +429,9 @@ function saveModules(modules: string[]) {
 /** Lit les modules actifs ; un échec va au bandeau, et le Carnet s'ouvre sans module. */
 async function readModules() {
   try {
-    activeModuleIds.value = await api.modules()
+    const [active, installed] = await Promise.all([api.modules(), api.installedModules()])
+    activeModuleIds.value = active
+    offeredModules.value = availableModules(installed)
   } catch (e) {
     error.value = `Modules illisibles (${e instanceof Error ? e.message : String(e)})`
   }
@@ -872,6 +876,7 @@ function leave(target: 'home' | 'combat') {
     />
     <CampaignModulesDialog
       :open="modulesOpen"
+      :available="offeredModules"
       :active="activeModuleIds"
       :busy="busy"
       :error="modulesError"
