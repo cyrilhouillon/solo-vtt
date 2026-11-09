@@ -132,12 +132,6 @@ let saving: Promise<void> = Promise.resolve()
 /** Ce que le Carnet offre aux panneaux des modules. */
 const moduleContext: NotebookContext = {
   campaignId: props.campaign.id,
-  hasOpenPage: () => page.value !== null && editor.value !== null,
-  writeToOpenPage: (blocks) => {
-    if (!page.value || !editor.value) return 'Aucune page ouverte : ouvrir une page pour y écrire.'
-    editor.value.insertBlocks(blocks)
-    return null
-  },
   writeResult: (blocks) => {
     if (page.value && editor.value) editor.value.insertBlocks(blocks)
     else showResult(blocks)
