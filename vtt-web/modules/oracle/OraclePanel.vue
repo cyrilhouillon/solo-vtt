@@ -6,7 +6,7 @@ import { d100Blocks, drawBlocks, drawText, yesNoBlocks, yesNoText } from './resu
 
 /**
  * L'oracle générique dans le Carnet : une question oui/non à chances égales, un d100, ou une ligne tirée dans une liste
- * du joueur ; chaque jet, tiré au serveur, s'écrit dans la page ouverte.
+ * du joueur ; chaque jet, tiré au serveur, s'écrit dans la page ouverte, ou s'affiche et se copie sans page.
  */
 const props = defineProps<{ context: NotebookContext }>()
 const api = oracleApi(props.context.campaignId)
@@ -25,25 +25,17 @@ const busy = ref(false)
 
 const reason = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-/** Tire au serveur puis écrit dans la page ; refusé avant tout appel sans page ouverte. */
+/** Tire au serveur puis écrit le résultat : dans la page ouverte, sinon dans un dialogue et au presse-papiers. */
 async function roll<T>(
   draw: (question: string) => Promise<T>,
-  blocks: (result: T) => Parameters<NotebookContext['writeToOpenPage']>[0],
+  blocks: (result: T) => Parameters<NotebookContext['writeResult']>[0],
   keep: (result: T) => void,
 ) {
   error.value = null
-  if (!props.context.hasOpenPage()) {
-    error.value = 'Aucune page ouverte : ouvrir une page pour y écrire le jet.'
-    return
-  }
   busy.value = true
   try {
     const result = await draw(question.value)
-    const refusal = props.context.writeToOpenPage(blocks(result))
-    if (refusal) {
-      error.value = refusal
-      return
-    }
+    props.context.writeResult(blocks(result))
     keep(result)
   } catch (e) {
     error.value = `Jet non tiré : ${reason(e)}`

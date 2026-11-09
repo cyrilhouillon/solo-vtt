@@ -4,7 +4,7 @@ import { oracleApi } from './api'
 
 /**
  * Un oracle générique, sans marque : oui/non à chances égales, d100, et une ligne tirée dans les listes du joueur, les
- * sous-pages de « Listes » dans sa section de l'arbre ; chaque jet s'écrit dans la page ouverte.
+ * sous-pages de « Listes » dans sa section de l'arbre ; chaque jet s'écrit dans la page ouverte, ou s'affiche et se copie sans page.
  */
 const oracle: NotebookModule = {
   id: 'oracle',

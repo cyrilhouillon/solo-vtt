@@ -24,7 +24,8 @@ import {
 
 /**
  * L'oracle Mythic dans le Carnet : le facteur de chaos de la campagne, le test et la fin d'une scène, une question
- * oui/non, et deux mots tirés dans les tables de sens du joueur ; chaque résultat s'écrit dans la page ouverte.
+ * oui/non, et deux mots tirés dans les tables de sens du joueur ; chaque résultat s'écrit dans la page ouverte, ou
+ * s'affiche et se copie sans page.
  */
 const props = defineProps<{ context: NotebookContext }>()
 const api = mythicApi(props.context.campaignId)
@@ -99,19 +100,10 @@ async function drawMeaning() {
   error.value = null
   const table = meaningTables.value?.tables.find((t) => tableKey(t) === chosenTable.value)
   if (!table) return
-  // Refusé avant le tirage : sans page, les mots n'auraient nulle part où s'écrire.
-  if (!props.context.hasOpenPage()) {
-    error.value = 'Aucune page ouverte : ouvrir une page pour y écrire le sens.'
-    return
-  }
   busy.value = true
   try {
     const meaning = await meaningApi.draw(table)
-    const refusal = props.context.writeToOpenPage(meaningBlocks(meaning))
-    if (refusal) {
-      error.value = refusal
-      return
-    }
+    props.context.writeResult(meaningBlocks(meaning))
     last.value = { meaning }
   } catch (e) {
     error.value = `Sens non tiré : ${reason(e)}`
@@ -133,24 +125,12 @@ async function changeChaos(step: number) {
   }
 }
 
-/** Écrit les blocs dans la page ; rend vrai une fois écrits, sinon met la raison du refus en erreur. */
-function write(blocks: Parameters<NotebookContext['writeToOpenPage']>[0]): boolean {
-  const refusal = props.context.writeToOpenPage(blocks)
-  if (refusal) error.value = refusal
-  return !refusal
-}
-
 async function testScene() {
   error.value = null
-  // Refusé avant le jet : sans page, l'issue n'aurait nulle part où s'écrire.
-  if (!props.context.hasOpenPage()) {
-    error.value = 'Aucune page ouverte : ouvrir une page pour y écrire la scène.'
-    return
-  }
   busy.value = true
   try {
     const scene = await api.testScene(expectedScene.value.trim())
-    if (!write(sceneBlocks(scene))) return
+    props.context.writeResult(sceneBlocks(scene))
     last.value = { scene }
     expectedScene.value = ''
   } catch (e) {
@@ -162,20 +142,11 @@ async function testScene() {
 
 async function endScene(inControl: boolean) {
   error.value = null
-  // Refusé avant tout appel : sans page, le chaos changerait sans trace.
-  if (!props.context.hasOpenPage()) {
-    error.value = 'Aucune page ouverte : ouvrir une page pour y écrire la fin de scène.'
-    return
-  }
   busy.value = true
   try {
     const end = await api.endScene(inControl)
     chaos.value = end.after
-    // La page a pu se fermer pendant l'appel : la scène est close quand même, le refus le dit.
-    if (!write(sceneEndBlocks(end))) {
-      error.value = `Scène close (${sceneEndText(end)}), mais non écrite : ${error.value}`
-      return
-    }
+    props.context.writeResult(sceneEndBlocks(end))
     last.value = { sceneEnd: end }
   } catch (e) {
     error.value = `Scène non close : ${reason(e)}`
@@ -186,19 +157,10 @@ async function endScene(inControl: boolean) {
 
 async function ask() {
   error.value = null
-  // Refusé avant le jet : sans page, la réponse n'aurait nulle part où s'écrire.
-  if (!props.context.hasOpenPage()) {
-    error.value = 'Aucune page ouverte : ouvrir une page pour y écrire la réponse.'
-    return
-  }
   busy.value = true
   try {
     const answer = await api.ask(question.value.trim(), chosen.value)
-    const refusal = props.context.writeToOpenPage(answerBlocks(answer))
-    if (refusal) {
-      error.value = refusal
-      return
-    }
+    props.context.writeResult(answerBlocks(answer))
     last.value = { answer }
     question.value = ''
   } catch (e) {

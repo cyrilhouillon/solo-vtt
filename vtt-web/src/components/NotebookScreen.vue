@@ -13,11 +13,14 @@ import PageTabs from './PageTabs.vue'
 import DeletePageDialog from './DeletePageDialog.vue'
 import TrashDialog from './TrashDialog.vue'
 import CampaignModulesDialog from './CampaignModulesDialog.vue'
+import ResultDialog from './ResultDialog.vue'
+import { copyBlocks } from '../notebook/clipboard'
 import { ancestors, branch, visiblePages } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
 import { IMAGE_TYPES } from '../images'
 import { availableModules, notebookModules } from '../modules/registry'
 import type { NotebookContext, NotebookModule } from '../modules/notebookModule'
+import type { JSONContent } from '@tiptap/core'
 import type { CampaignView, NotebookView, PageDeletion, PageDocument, PageView, SearchResult, TrashedPage } from '../types'
 
 /** `pageId` : la page de l'adresse, `null` sans page. */
@@ -129,12 +132,33 @@ let saving: Promise<void> = Promise.resolve()
 /** Ce que le Carnet offre aux panneaux des modules. */
 const moduleContext: NotebookContext = {
   campaignId: props.campaign.id,
-  hasOpenPage: () => page.value !== null && editor.value !== null,
-  writeToOpenPage: (blocks) => {
-    if (!page.value || !editor.value) return 'Aucune page ouverte : ouvrir une page pour y écrire.'
-    editor.value.insertBlocks(blocks)
-    return null
+  writeResult: (blocks) => {
+    if (page.value && editor.value) editor.value.insertBlocks(blocks)
+    else showResult(blocks)
   },
+}
+
+/** Le résultat d'un module montré sans page, `null` sans dialogue ; l'état de sa copie, comme `ResultDialog` l'attend. */
+const result = ref<JSONContent[] | null>(null)
+const copyError = ref<string | null | undefined>(undefined)
+
+/** Montre le résultat et le copie aussitôt : le clic qui l'a tiré est encore récent. */
+function showResult(blocks: JSONContent[]) {
+  result.value = blocks
+  void copyResult()
+}
+
+async function copyResult() {
+  const blocks = result.value
+  if (!blocks) return
+  copyError.value = undefined
+  const reason = await copyBlocks(blocks, notebook.value?.pages ?? [])
+  if (result.value === blocks) copyError.value = reason
+}
+
+function openFromResult(pageId: string) {
+  result.value = null
+  void open(pageId)
 }
 
 function onChange(content: PageDocument) {
@@ -886,6 +910,15 @@ function leave(target: 'home' | 'combat') {
       :error="modulesError"
       @save="saveModules"
       @close="modulesOpen = false"
+    />
+    <ResultDialog
+      :blocks="result"
+      :pages="notebook?.pages ?? []"
+      :page-href="pageHref"
+      :copy-error="copyError"
+      @copy="copyResult"
+      @open="openFromResult"
+      @close="result = null"
     />
     <TrashDialog :open="trashOpen" :entries="trashEntries" :busy="busy" @restore="restore" @empty="emptyTrash" @close="closeTrash" />
   </div>

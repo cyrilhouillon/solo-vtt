@@ -1,0 +1,31 @@
+# Run
+
+## Phase 1 · Cœur et Oracle : écrire ou afficher et copier
+
+- Date: 2026-11-09
+- Validated on: 425a3dc
+
+- [pass] Task 1 — `npm run build` passe ; `NotebookContext` expose `writeResult` — `npm run build` (vue-tsc + vite) : `✓ built in 1.23s`, sans erreur ; `writeResult` déclaré dans `src/modules/notebookModule.ts`
+- [pass] Task 2 — coller rend citation et lien `[[…]]` ; texte sur deux lignes — Chrome, 5174/8081 : `copyBlocks` (import Vite, `clipboard.write` espionné) produit `<blockquote><p><strong>Lieux : </strong>Chez <a data-page-link="35301bfd…">Personnages</a> (d1 : 1 → ligne 1)</p><p>d100 : 37</p></blockquote>` et le texte `Lieux : Chez Personnages (d1 : 1 → ligne 1)\nd100 : 37` (ligne vide de tête corrigée par 425a3dc) ; ce HTML collé (événement `paste`) dans Personnages déverrouillée est enregistré avec `blockquote`, `bold` et `{"type":"pageLink","attrs":{"pageId":"35301bfd…","label":null}}` (relu par `GET …/pages/{id}`). Le Ctrl+V clavier réel n'a pas pu être rejoué : la lecture du presse-papiers demande une permission (`clipboard-read: prompt`) que l'automatisation ne donne pas ; `clipboard-write: granted`
+- [pass] Task 3 — le dialogue montre le résultat, l'état de la copie, se ferme par Échap et Fermer, un lien ouvre sa page — sans page, clic réel sur Oui/non : dialogue ouvert, « Oracle : sans énoncé / d100 : 53 → Non », « Copié dans le presse-papiers. », focus sur Fermer ; Fermer le referme ; Échap (touche réelle) le referme (`dialog.open` false, observé aussi sur d7186cf) ; `clipboard.write` forcé en échec puis Copier : « Copie automatique impossible (Document is not focused.) : cliquer Copier. », Copier de nouveau : « Copié… » ; clic réel sur le lien « Personnages » du tirage Lieux : dialogue fermé, adresse et titre sur Personnages. Le focus revient à `body` à la fermeture : le bouton cliqué est désactivé (`busy`) pendant l'appel, avant l'ouverture, comme avant ce changement
+- [pass] Task 4 — page ouverte : écriture inchangée, aucun dialogue ; sans page : dialogue et presse-papiers — Personnages verrouillée : d100 écrit « d100 : 8 » en fin de page, toujours verrouillée, pas de dialogue ; déverrouillée : Oui/non ajoute une citation (2 → 3), pas de dialogue ; sans onglet : dialogue + « Copié dans le presse-papiers. »
+- [pass] Task 5 — Oracle sans page : Oui/non, d100, Tirer ouvrent le dialogue et copient ; liste vide : erreur sans dialogue — sans page : Oui/non (dialogue, « Copié »), Tirer sur Lieux (dialogue avec le lien, « Copié »), d100 via le même `roll` ; Tirer sur Vide : « Jet non tiré : La liste Vide est vide : y écrire des lignes », `dialog.open` false
+- [pass] Task 6 — la mémoire nomme `writeResult`, `ResultDialog`, `clipboard.ts` et ne dit plus l'Oracle refusé sans page — `architecture.md` (contrat `NotebookContext`, Oracle « écrit une citation par `writeResult`, avec ou sans page »), `codebase-map.md` (`ResultDialog.vue`, `clipboard.ts`), `project-brief.md` (Oracle générique : dialogue et presse-papiers sans page)
+
+## Phase 2 · Mythic : tirer sans page
+
+- Date: 2026-11-09
+- Validated on: 0e6f4ff
+
+- [pass] Task 1 — sans page, Demander, Tester la scène, Contrôle gardé/perdu et Tirer un sens ouvrent le dialogue et copient ; le chaos suit la fin de scène — Chrome, 5174/8081, tables de sens inventées importées : sans onglet, chaque geste ouvre le dialogue (« Oracle : Le garde ment-il ? (50/50, chaos 5) / d100 : 39 → Oui », « Scène attendue … → Scène modifiée / Ajustement : Ajouter un objet (d10 : 6) », « Fin de scène : contrôle perdu → chaos 5 → 6 », « … gardé → chaos 6 → 5 », « Sens (Actions) : act1mot72 · act2mot97 ») et le dernier résultat du panneau suit ; chaos affiché 5 → 6 → 5. Clic réel sur Contrôle perdu : « Fin de scène : contrôle perdu → chaos 8 → 9 », « Copié dans le presse-papiers. ». Événement aléatoire (chaos 9) tiré dans Personnages : le dialogue montre « Personnages : Voir le fil (d10 : 2 → ligne 1) » avec le lien ; Copier produit `<a data-page-link="4f70972b…" data-label="le fil">le fil</a>` ; clic réel sur le lien : Fils s'ouvre, dialogue fermé. Avec Fils ouverte déverrouillée : Demander deux fois (23 ms) ajoute 2 citations, un Ctrl+Z réel les retire toutes deux ; Tester la scène, Contrôle perdu/gardé et Tirer écrivent leurs 4 citations dans la page, sans dialogue. Défaut trouvé puis corrigé (0e6f4ff) : l'événement `close` différé d'un dialogue fermé refermait le résultat suivant, une fois sur deux
+- [pass] Task 2 — `npm run build` passe ; aucune occurrence de `hasOpenPage` ni `writeToOpenPage` — `npm run build` : `✓ built in 792ms`, exit 0 ; `grep -rn "hasOpenPage\|writeToOpenPage" src modules` : 0 ligne
+- [pass] Task 3 — `architecture.md` et `project-brief.md` ne disent plus qu'un tirage Mythic est refusé sans page — `grep` de `writeToOpenPage|hasOpenPage` dans la mémoire : 0 ; `refus[ée]* sans page` : 0 ; Mythic : « pose la question, avec ou sans page ouverte », Scène « avec ou sans page », Sens « tire, avec ou sans page » ; brief : « sans page, le résultat s'affiche dans un dialogue et se copie au presse-papiers »
+
+## Final
+
+- Date: 2026-11-09
+- Validated on: 0e6f4ff
+
+- [pass] `mvn -q compile` — exit 0
+- [pass] `mvn test` — `Tests run: 245, Failures: 0, Errors: 0, Skipped: 0` (vtt-server), `BUILD SUCCESS`
+- [pass] `npm run build` dans `vtt-web/` — `✓ built in 792ms`, exit 0 (avertissement de taille de chunk préexistant)

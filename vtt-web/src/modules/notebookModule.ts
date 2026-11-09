@@ -2,19 +2,18 @@ import type { JSONContent } from '@tiptap/core'
 import type { Component } from 'vue'
 
 /**
- * Ce que le Carnet offre au panneau d'un module : la campagne, et l'écriture dans la page ouverte. Un module n'écrit que
+ * Ce que le Carnet offre au panneau d'un module : la campagne, et l'écriture de ses résultats. Un module n'écrit que
  * des nœuds standard (paragraphe, citation, liste, texte) : la recherche, les liens entrants et l'enregistrement les
  * lisent sans rien apprendre.
  */
 export interface NotebookContext {
   campaignId: string
-  /** Vrai si une page est ouverte : sans elle, un module ne peut rien écrire. */
-  hasOpenPage: () => boolean
   /**
-   * Écrit les blocs au curseur de la page ouverte déverrouillée, ou à sa fin si elle est verrouillée, puis l'enregistre
-   * comme une frappe. Rend la raison d'un refus, `null` une fois écrit.
+   * Écrit le résultat d'un module, sans jamais le refuser : au curseur de la page ouverte déverrouillée, ou à sa fin si
+   * elle est verrouillée, puis l'enregistre comme une frappe ; sans page, il s'affiche dans un dialogue et se copie au
+   * presse-papiers, prêt à coller dans une page.
    */
-  writeToOpenPage: (blocks: JSONContent[]) => string | null
+  writeResult: (blocks: JSONContent[]) => void
 }
 
 /**
