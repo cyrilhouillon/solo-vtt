@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Serveur : rejeu pas à pas d'un combat terminé
