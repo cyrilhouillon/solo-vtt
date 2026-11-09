@@ -577,14 +577,22 @@ public class SceneSession {
     }
 
     private void replay(SavedGame game) {
+        for (SavedGame.SavedCommand command : game.commands()) replayNext(command);
+    }
+
+    /**
+     * Rejoue une commande de plus, avec ses dés, sans rien garder : le rejeu pas à pas d'un combat ({@link CombatReplay})
+     * observe la session entre deux commandes.
+     *
+     * @throws RuntimeException si la commande ne se rejoue pas à l'identique
+     */
+    synchronized void replayNext(SavedGame.SavedCommand command) {
         replaying = true;
         try {
-            for (SavedGame.SavedCommand command : game.commands()) {
-                ReplayDice replayDice = new ReplayDice(command.rolls());
-                source = replayDice;
-                replay(command);
-                if (!replayDice.used()) throw new IllegalStateException("Dés non consommés au rejeu de " + command);
-            }
+            ReplayDice replayDice = new ReplayDice(command.rolls());
+            source = replayDice;
+            replay(command);
+            if (!replayDice.used()) throw new IllegalStateException("Dés non consommés au rejeu de " + command);
         } finally {
             replaying = false;
             source = dice;
