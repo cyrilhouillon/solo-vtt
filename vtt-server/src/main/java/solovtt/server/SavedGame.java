@@ -40,7 +40,13 @@ public record SavedGame(List<SavedCommand> commands) {
 
         record Attack(String attackerId, String attackId, String targetId, List<Integer> rolls) implements SavedCommand {}
 
-        record StartCombat(List<Integer> rolls) implements SavedCommand {}
+        /** {@code combatId} : le combat lancé ({@link CombatStore}), {@code null} dans les parties gardées avant les combats enregistrés. */
+        record StartCombat(String combatId, List<Integer> rolls) implements SavedCommand {
+            /** Un lancement sans combat enregistré, comme avant les combats enregistrés. */
+            public StartCombat(List<Integer> rolls) {
+                this(null, rolls);
+            }
+        }
 
         record EndTurn(List<Integer> rolls) implements SavedCommand {}
 

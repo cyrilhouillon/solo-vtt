@@ -72,6 +72,11 @@ class CampaignModulesAtStartupTest {
             }
 
             @Override
+            public CombatStore combats(String id) {
+                return memoire.combats(id);
+            }
+
+            @Override
             public NotebookStore notebook(String id) {
                 return memoire.notebook(id);
             }
@@ -111,6 +116,11 @@ class CampaignModulesAtStartupTest {
 
             @Override
             public MapStore maps(String id) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CombatStore combats(String id) {
                 throw new UnsupportedOperationException();
             }
 
