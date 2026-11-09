@@ -34,3 +34,12 @@
 - [pass] Task 2 — En rejeu, aucun geste ne modifie la partie — Chrome : `fetch` espionné après le chargement, puis Début, →×3, ←, glisser un jeton, Suppr, Fin : aucune requête (`calls: []`) ; le jeton glissé ne bouge pas ; tableau sans colonne de retrait, feuilles sans bouton d'attaque, aucun outil ni contrôle de combat
 - [pass] Task 3 — Les cinq commandes donnent l'état attendu ; en lecture, chaque pas part 2 s après la fin de l'animation du précédent ; `npm run build` passe — Chrome, combat de 19 pas (3 créatures, 6 attaques) : ouverture sur « Pas 19/19 » (Gobelin à terre, Guerrière 1/12) ; Début → « Lancement », PV pleins, aucune piste ; pas avant → déplacement du Gobelin, puis attaque : d20 3D sur la carte, piste posée à l'arrêt ; pas arrière instantané (« Pas 8/19 », journal tronqué) ; lecture mesurée : pas sans dés à +2,00 s, +2,05 s ; pas d'attaque 5,4 s (animation puis 2 s) ; Pause arrête (« Pas 9/19 » trois secondes après) ; écran en direct inchangé après l'extraction de `dice/tray.ts` (piste relue du journal) ; `npm run build` ✓ built. Non vérifié au navigateur : `prefers-reduced-motion` (le lancer se résout alors aussitôt, `MapView.rollDice`)
 - [pass] Task 4 — Les trois fichiers de mémoire décrivent combats, rejeu, reprise et section « Combats » — `architecture.md` (agrégat combat, entrée du Carnet, routes, rejeu client, « nouvelle carte » qui garde le combat), `codebase-map.md` (`CombatStore`, `CombatsResource`, `CombatReplay`, routes, `ReplayScreen`, `CombatEntryView`, `CombatThumbnail`, `dice/tray.ts`), `project-brief.md` (fonctionnalité), `DESIGN.md` (écran de rejeu, entrée du Carnet), commit 959c6d4
+
+## Final
+
+- Date: 2026-11-09
+- Validated on: b144269
+
+- [pass] `mvn -q verify` — exit 0
+- [pass] `mvn test` — `Tests run: 268, Failures: 0, Errors: 0, Skipped: 0` (vtt-server)
+- [pass] `npm run build` dans `vtt-web/` — ✓ built, `vue-tsc` sans erreur

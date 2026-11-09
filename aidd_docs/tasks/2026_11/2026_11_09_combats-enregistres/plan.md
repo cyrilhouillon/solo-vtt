@@ -1,6 +1,6 @@
 ---
 objective: "Chaque combat d'une campagne est une entrée du Carnet, nommée, déplaçable, liable et supprimable, qu'on reprend tant qu'il est en cours et qu'on rejoue pas à pas en lecture seule une fois terminé."
-status: in-progress
+status: implemented
 ---
 
 # Plan: Combats enregistrés et rejouables
