@@ -326,8 +326,7 @@ onBeforeUnmount(() => {
     <div ref="root" class="tree" @pointerdown="onTreePointerDown">
       <PageBranch :nodes="groups.ordinary" :depth="0" />
       <section v-for="section in groups.sections" :key="section.id" class="section" :aria-labelledby="`section-${section.id}`">
-        <h3 :id="`section-${section.id}`" class="panel-title section-title">{{ section.title }}</h3>
-        <hr class="tapered" />
+        <h3 :id="`section-${section.id}`" class="section-title">{{ section.title }}</h3>
         <PageBranch :nodes="section.nodes" :depth="0" />
       </section>
     </div>
@@ -352,10 +351,17 @@ onBeforeUnmount(() => {
   margin: -2px;
 }
 .section {
-  margin-top: 1rem;
+  margin-top: 1.1rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--rule);
 }
 .section-title {
-  font-size: 1rem;
+  margin: 0 0 0.35rem 0.15rem;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
 }
 .drop-root {
   position: absolute;

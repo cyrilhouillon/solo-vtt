@@ -162,9 +162,11 @@ watch(
 .page-editor :deep(.page-text) {
   min-height: 12rem;
   outline: none;
+  max-width: 42rem;
   color: var(--ink);
-  font-size: 1.1rem;
-  line-height: 1.6;
+  font-family: var(--font-text);
+  font-size: 1.2rem;
+  line-height: 1.65;
   overflow-wrap: anywhere;
   cursor: text;
 }
@@ -172,15 +174,15 @@ watch(
   cursor: default;
 }
 .page-editor :deep(.page-text:focus-visible) {
-  outline: 2px solid var(--control-border);
-  outline-offset: 0.5rem;
+  outline: 1px dashed var(--rule);
+  outline-offset: 0.75rem;
   border-radius: 2px;
 }
 .page-editor :deep(.page-text > :first-child) {
   margin-top: 0;
 }
 .page-editor :deep(p) {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.9rem;
 }
 .page-editor :deep(h1),
 .page-editor :deep(h2),
@@ -188,17 +190,17 @@ watch(
 .page-editor :deep(h4),
 .page-editor :deep(h5),
 .page-editor :deep(h6) {
-  margin: 1.4rem 0 0.6rem;
+  margin: 2rem 0 0.6rem;
   font-family: var(--font-title);
   font-weight: 700;
   line-height: 1.25;
   color: var(--ink);
 }
 .page-editor :deep(h1) {
-  font-size: 1.6rem;
+  font-size: 1.65rem;
 }
 .page-editor :deep(h2) {
-  font-size: 1.35rem;
+  font-size: 1.4rem;
 }
 .page-editor :deep(h3),
 .page-editor :deep(h4),
@@ -214,12 +216,26 @@ watch(
 .page-editor :deep(li > p) {
   margin: 0 0 0.25rem;
 }
+/*
+ * Une citation, et d'abord ce que l'oracle a répondu : une fiche glissée dans la page, en sans-serif, qui se distingue
+ * du récit écrit à la main en serif.
+ */
 .page-editor :deep(blockquote) {
-  margin: 0 0 0.75rem;
-  padding: 0.1rem 0 0.1rem 1rem;
+  margin: 0.25rem 0 1.1rem;
+  padding: 0.6rem 1rem 0.6rem 1rem;
   border-left: 3px solid var(--rule);
-  color: var(--ink-muted);
-  font-style: italic;
+  border-radius: 0 4px 4px 0;
+  background: var(--wood);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1.02rem;
+  line-height: 1.5;
+}
+.page-editor :deep(blockquote p) {
+  margin: 0 0 0.2rem;
+}
+.page-editor :deep(blockquote p:last-child) {
+  margin-bottom: 0;
 }
 .page-editor :deep(strong) {
   font-weight: 700;

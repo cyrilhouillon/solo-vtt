@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** Icônes dessinées pour Solo VTT : trait de 1,75, même grille de 24. Décoratives : le bouton porte le nom. */
-export type IconName = 'home' | 'catalog' | 'map' | 'saved' | 'grid' | 'sun' | 'moon' | 'keys' | 'notebook' | 'combat' | 'lock' | 'unlock' | 'more' | 'chevron-right' | 'chevron-down' | 'image' | 'trash' | 'remove'
+export type IconName = 'home' | 'catalog' | 'map' | 'saved' | 'grid' | 'sun' | 'moon' | 'keys' | 'notebook' | 'combat' | 'lock' | 'unlock' | 'more' | 'chevron-right' | 'chevron-down' | 'image' | 'trash' | 'remove' | 'plus' | 'modules' | 'chevron-left'
 defineProps<{ name: IconName }>()
 </script>
 
@@ -75,6 +75,9 @@ defineProps<{ name: IconName }>()
     <template v-else-if="name === 'chevron-right'">
       <path d="M9.5 6l6 6-6 6" />
     </template>
+    <template v-else-if="name === 'chevron-left'">
+      <path d="M14.5 6l-6 6 6 6" />
+    </template>
     <template v-else-if="name === 'chevron-down'">
       <path d="M6 9.5l6 6 6-6" />
     </template>
@@ -85,6 +88,15 @@ defineProps<{ name: IconName }>()
     </template>
     <template v-else-if="name === 'trash'">
       <path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13h9l1-13M10.5 10v6.5M13.5 10v6.5" />
+    </template>
+    <template v-else-if="name === 'plus'">
+      <path d="M12 5v14M5 12h14" />
+    </template>
+    <template v-else-if="name === 'modules'">
+      <rect x="4" y="4" width="7" height="7" rx="1.5" />
+      <rect x="13" y="4" width="7" height="7" rx="1.5" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" />
+      <path d="M16.5 13.5v6M13.5 16.5h6" />
     </template>
     <template v-else>
       <path d="M6 6l12 12M18 6L6 18" />

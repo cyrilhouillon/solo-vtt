@@ -13,6 +13,8 @@ import PageTabs from './PageTabs.vue'
 import DeletePageDialog from './DeletePageDialog.vue'
 import TrashDialog from './TrashDialog.vue'
 import CampaignModulesDialog from './CampaignModulesDialog.vue'
+import FoldSection from './FoldSection.vue'
+import CampaignColumn from './CampaignColumn.vue'
 import ResultDialog from './ResultDialog.vue'
 import { copyBlocks } from '../notebook/clipboard'
 import { ancestors, branch, visiblePages } from '../notebook/tree'
@@ -385,6 +387,13 @@ async function closeTabs(pageIds: ReadonlySet<string>) {
   await persistTabs(next)
 }
 
+/** Les signets dans un nouvel ordre, gardés au serveur ; un échec va au bandeau, l'ordre reste celui montré. */
+function reorderTabs(order: string[]) {
+  if (busy.value) return
+  tabs.value = order
+  void persistTabs()
+}
+
 /** Un échec laisse la liste absente, sans fermer la page. */
 async function readCiting(pageId: string) {
   try {
@@ -526,7 +535,26 @@ function createPage(newTitle: string, parentId: string | null, done = () => {}) 
 }
 
 function create() {
-  createPage(trimmed.value, null, () => (title.value = ''))
+  createPage(trimmed.value, null, () => {
+    title.value = ''
+    creating.value = false
+  })
+}
+
+/** Le champ « Nouvelle page » de la colonne, ouvert à la demande. */
+const creating = ref(false)
+const newTitle = ref<HTMLInputElement | null>(null)
+
+async function toggleCreating() {
+  creating.value = !creating.value
+  if (!creating.value) return
+  await nextTick()
+  newTitle.value?.focus()
+}
+
+function cancelCreating() {
+  creating.value = false
+  title.value = ''
 }
 
 function rename(pageId: string, newTitle: string) {
@@ -715,109 +743,122 @@ function keepFiles(e: DragEvent) {
 }
 
 /** La garde de sortie attend la frappe : si elle n'a pas pu partir, on reste à l'écran, avec l'erreur. */
-function leave(target: 'home' | 'combat') {
+function leave(target: 'home' | 'notebook' | 'combat') {
+  if (target === 'notebook') return
   void router.push(target === 'home' ? { name: 'home' } : { name: 'combat', params: { campaignId: props.campaign.id } })
 }
 </script>
 
 <template>
-  <div class="notebook" @dragover="keepFiles" @drop="keepFiles">
-    <header class="bar">
-      <button type="button" class="icon-button" aria-label="Accueil" title="Accueil : changer de campagne" @click="leave('home')">
-        <AppIcon name="home" />
-      </button>
-      <h1 class="app-name">Solo VTT</h1>
-      <p class="campaign-name">{{ campaign.name }}</p>
-      <span class="spacer" />
-      <button type="button" title="Modules de la campagne" :disabled="busy || !notebook" @click="openModules">
-        Modules
-      </button>
-      <button type="button" class="combat-button" title="Écran de combat de la campagne" @click="leave('combat')">
-        <AppIcon name="combat" />
-        Combat
-      </button>
-      <ThemeButton />
-    </header>
-    <div v-if="error" class="error" role="alert">
-      <p>{{ error }}</p>
-      <button type="button" @click="error = null">Fermer</button>
-    </div>
-
-    <p v-if="notebook === null" class="loading">{{ error ? 'Carnet illisible.' : 'Lecture du Carnet…' }}</p>
-
-    <main v-else-if="!notebook.pages.length" class="empty">
-      <section aria-labelledby="first-page-title">
-        <h2 id="first-page-title" class="panel-title">Carnet</h2>
-        <hr class="tapered" />
-        <p class="hint">Aucune page. Créer la première page du Carnet.</p>
-        <form class="create" @submit.prevent="create">
-          <label>
-            Titre
-            <input ref="firstTitle" v-model="title" type="text" :maxlength="MAX_TITLE_LENGTH" required />
-          </label>
-          <button type="submit" :disabled="!trimmed || busy">Créer</button>
-        </form>
-        <button ref="trashButton" type="button" class="trash-button" :disabled="busy" @click="openTrash">
-          <AppIcon name="trash" />
-          Corbeille
-        </button>
-      </section>
-    </main>
-
-    <div v-else class="content" :class="{ 'with-modules': activePanelModules.length }">
-      <nav class="pages" aria-labelledby="pages-title">
-        <h2 id="pages-title" class="panel-title">Pages</h2>
-        <hr class="tapered" />
+  <div class="notebook" :class="{ 'with-modules': notebook?.pages.length && activePanelModules.length }" @dragover="keepFiles" @drop="keepFiles">
+    <CampaignColumn :campaign-name="campaign.name" current="notebook" @navigate="leave">
+      <template v-if="notebook?.pages.length">
         <div class="search">
           <input
             ref="searchField"
             v-model="query"
             type="search"
-            placeholder="Chercher"
+            placeholder="Chercher dans le Carnet"
             aria-label="Chercher dans le Carnet"
             @keydown.esc.prevent="clearSearch"
           />
-          <button v-if="query" type="button" class="icon-button" aria-label="Effacer la recherche" title="Effacer la recherche" @click="clearSearch">
+          <button v-if="query" type="button" class="icon-button ghost clear" aria-label="Effacer la recherche" title="Effacer la recherche" @click="clearSearch">
             <AppIcon name="remove" />
           </button>
         </div>
-        <SearchResults
-          v-if="searching"
-          :results="found?.results ?? null"
-          :query="found?.query ?? query"
-          :pages="notebook.pages"
-          @open="open"
-        />
-        <PageTree
-          v-else
-          ref="tree"
-          :pages="treePages"
-          :current-id="page?.id ?? null"
-          :expanded="expanded"
-          :busy="busy"
-          :page-href="pageHref"
-          @open="open"
-          @toggle="toggle"
-          @create="createPage"
-          @rename="rename"
-          @move="(pageId) => (moving = pageId)"
-          @delete="requestDelete"
-          @drop="moveTo"
-        />
-        <form class="create new-page" @submit.prevent="create">
-          <label>
-            Nouvelle page
-            <input v-model="title" type="text" :maxlength="MAX_TITLE_LENGTH" placeholder="Titre" required />
-          </label>
-          <button type="submit" :disabled="!trimmed || busy">Créer</button>
+        <div class="pages-head">
+          <h2 id="pages-title" class="label">Pages</h2>
+          <button
+            type="button"
+            class="icon-button ghost add"
+            :aria-expanded="creating"
+            aria-label="Nouvelle page"
+            title="Nouvelle page à la racine"
+            :disabled="busy"
+            @click="toggleCreating"
+          >
+            <AppIcon name="plus" />
+          </button>
+        </div>
+        <form v-if="creating" class="new-page" @submit.prevent="create">
+          <input
+            ref="newTitle"
+            v-model="title"
+            type="text"
+            :maxlength="MAX_TITLE_LENGTH"
+            placeholder="Titre de la page"
+            aria-label="Titre de la nouvelle page"
+            required
+            @keydown.esc.prevent="cancelCreating"
+          />
+          <button type="submit" class="primary" :disabled="!trimmed || busy">Créer</button>
         </form>
-        <button ref="trashButton" type="button" class="trash-button" :disabled="busy" @click="openTrash">
+        <div class="tree-area" aria-labelledby="pages-title">
+          <SearchResults
+            v-if="searching"
+            :results="found?.results ?? null"
+            :query="found?.query ?? query"
+            :pages="notebook.pages"
+            @open="open"
+          />
+          <PageTree
+            v-else
+            ref="tree"
+            :pages="treePages"
+            :current-id="page?.id ?? null"
+            :expanded="expanded"
+            :busy="busy"
+            :page-href="pageHref"
+            @open="open"
+            @toggle="toggle"
+            @create="createPage"
+            @rename="rename"
+            @move="(pageId) => (moving = pageId)"
+            @delete="requestDelete"
+            @drop="moveTo"
+          />
+        </div>
+      </template>
+
+      <template #foot>
+        <button ref="trashButton" type="button" class="foot-button" :disabled="busy" @click="openTrash">
           <AppIcon name="trash" />
           Corbeille
         </button>
-      </nav>
+        <button type="button" class="foot-button" title="Modules de la campagne" :disabled="busy || !notebook" @click="openModules">
+          <AppIcon name="modules" />
+          Modules
+        </button>
+        <ThemeButton />
+      </template>
+    </CampaignColumn>
 
-      <main class="page">
+    <main class="desk">
+      <div v-if="error" class="error" role="alert">
+        <p>{{ error }}</p>
+        <button type="button" @click="error = null">Fermer</button>
+      </div>
+
+      <p v-if="notebook === null" class="loading">{{ error ? 'Carnet illisible.' : 'Lecture du Carnet…' }}</p>
+
+      <section v-else-if="!notebook.pages.length" class="sheet first" aria-labelledby="first-page-title">
+        <h2 id="first-page-title" class="page-title">Un Carnet vierge</h2>
+        <p class="hint">Sessions, personnages, lieux, fils de l’intrigue : tout ce que vous écrivez pendant la partie vit ici. Commencez par une page.</p>
+        <form class="new-page" @submit.prevent="create">
+          <input
+            ref="firstTitle"
+            v-model="title"
+            type="text"
+            :maxlength="MAX_TITLE_LENGTH"
+            placeholder="Session 1"
+            aria-label="Titre de la première page"
+            required
+          />
+          <button type="submit" class="primary" :disabled="!trimmed || busy">Créer la page</button>
+        </form>
+      </section>
+
+      <div v-else class="sheet">
         <PageTabs
           v-if="tabs.length"
           ref="tabBar"
@@ -827,8 +868,9 @@ function leave(target: 'home' | 'combat') {
           :busy="busy"
           @activate="open"
           @close="closeTab"
+          @reorder="reorderTabs"
         />
-        <article v-if="page" :key="page.id" aria-labelledby="page-title">
+        <article v-if="page" :key="page.id" class="leaf" aria-labelledby="page-title">
           <header class="page-head">
             <h2 id="page-title" class="page-title">
               <input
@@ -848,7 +890,7 @@ function leave(target: 'home' | 'combat') {
               <template v-if="unlocked">
                 <button
                   type="button"
-                  class="icon-button"
+                  class="icon-button ghost"
                   aria-label="Insérer une image"
                   title="Insérer une image PNG, JPEG ou WebP au curseur"
                   :disabled="uploading"
@@ -860,17 +902,18 @@ function leave(target: 'home' | 'combat') {
               </template>
               <button
                 type="button"
-                class="icon-button"
+                class="lock"
+                :class="{ writing: unlocked }"
                 aria-label="Page verrouillée"
                 :aria-pressed="!unlocked"
                 :title="unlocked ? 'Verrouiller la page' : 'Déverrouiller la page pour l’écrire'"
                 @click="unlocked = !unlocked"
               >
                 <AppIcon :name="unlocked ? 'unlock' : 'lock'" />
+                <span aria-hidden="true">{{ unlocked ? 'Écriture' : 'Lecture' }}</span>
               </button>
             </span>
           </header>
-          <hr class="tapered" />
           <PageEditor
             ref="editor"
             :content="page.content"
@@ -884,17 +927,17 @@ function leave(target: 'home' | 'combat') {
           />
           <CitingPages v-if="citing" :page-ids="citing" :pages="notebook.pages" @open="open" />
         </article>
-        <p v-else-if="!busy" class="hint">Aucune page ouverte. Choisir une page dans l'arbre.</p>
-      </main>
-      <aside v-if="activePanelModules.length" class="modules" aria-label="Modules du Carnet">
-        <section v-for="module in activePanelModules" :key="module.id" :aria-labelledby="`module-${module.id}`">
-          <h2 :id="`module-${module.id}`" class="panel-title">{{ module.title }}</h2>
-          <hr class="tapered" />
-          <component :is="module.panel" :context="moduleContext" />
-        </section>
-      </aside>
-      <MovePageDialog :pages="treePages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
-    </div>
+        <p v-else-if="!busy" class="hint closed">Aucune page ouverte. Choisir une page dans l'arbre.</p>
+      </div>
+    </main>
+
+    <aside v-if="notebook?.pages.length && activePanelModules.length" class="modules" aria-label="Modules du Carnet">
+      <FoldSection v-for="module in activePanelModules" :key="module.id" :title="module.title" :storage-key="`module.${module.id}`">
+        <component :is="module.panel" :context="moduleContext" />
+      </FoldSection>
+    </aside>
+
+    <MovePageDialog :pages="treePages" :page-id="moving" :busy="busy" @move="move" @close="closeMove" />
     <DeletePageDialog
       :page="notebook?.pages.find((p) => p.id === deleting) ?? null"
       :deletion="deletion"
@@ -925,158 +968,153 @@ function leave(target: 'home' | 'combat') {
 </template>
 
 <style scoped>
+/*
+ * Trois colonnes : la campagne sur toute la hauteur, le bureau où repose la feuille, les modules.
+ * Les deux colonnes latérales restent en vue et défilent seules ; seule la feuille fait défiler l'écran.
+ */
 .notebook {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-.combat-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-.loading,
-.hint {
-  margin: 0;
-  color: var(--ink-muted);
-}
-.loading {
-  padding: 2rem 16px;
-  text-align: center;
-}
-.empty {
-  flex: 1;
-  width: 100%;
-  max-width: 34rem;
-  box-sizing: border-box;
-  margin: 0 auto;
-  padding: 2rem 16px;
-}
-section,
-.pages {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  padding: 1.1rem 1.25rem 1.25rem;
-  background: var(--wood);
-  border: 2px solid var(--page);
-  border-radius: 6px;
-}
-section .tapered,
-.pages .tapered {
-  margin: -0.5rem 0 0;
-}
-.content {
-  flex: 1;
   display: grid;
-  grid-template-columns: 17rem minmax(0, 1fr);
-  gap: 1.25rem;
-  padding: 1.25rem 16px;
-  align-items: start;
+  grid-template-columns: 17.5rem minmax(0, 1fr);
 }
-/* Les panneaux des modules, contre la page (qui ne dépasse pas 46rem) ; la colonne n'existe que si un module en montre un. */
-.content.with-modules {
-  grid-template-columns: 17rem minmax(0, 46rem) 18rem;
+.notebook.with-modules {
+  grid-template-columns: 17.5rem minmax(0, 1fr) 21rem;
 }
-.modules {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  position: sticky;
-  top: 1.25rem;
-}
-/* L'arbre reste en vue quand la page défile, et défile lui-même au-delà de la hauteur de la fenêtre. */
-.pages {
-  position: sticky;
-  top: 1.25rem;
-  max-height: calc(100vh - 2.5rem);
-  box-sizing: border-box;
-}
-.pages .new-page {
-  flex: none;
-}
-.create {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
-}
-.new-page {
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--rule);
-}
-/* Au pied du panneau, discret : on y va rarement. */
-.trash-button {
-  flex: none;
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: none;
-  border-color: transparent;
-  color: var(--ink-muted);
-}
-.trash-button:hover:not(:disabled) {
-  color: var(--ink);
-}
-.trash-button :deep(.icon) {
-  width: 18px;
-  height: 18px;
-}
-label {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  color: var(--ink-muted);
-}
-input[type='text'],
-input[type='search'] {
-  width: 100%;
-  box-sizing: border-box;
-}
+
+/* — Colonne de la campagne : ce que le Carnet y range — */
 .search {
-  flex: none;
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 0.25rem;
+}
+.search input {
+  width: 100%;
+  padding-right: 2.2rem;
+}
+.search .clear {
+  position: absolute;
+  right: 0.15rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+}
+.search .clear :deep(.icon) {
+  width: 16px;
+  height: 16px;
 }
 /* Le bouton Effacer remplace celui du navigateur, absent de Firefox. */
 input[type='search']::-webkit-search-cancel-button {
   appearance: none;
 }
-.page {
-  min-width: 0;
-  max-width: 46rem;
-}
-.page-head {
+.pages-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  margin: 0.2rem 0 -0.5rem 0.15rem;
 }
-.page-tools {
-  flex: none;
+.label {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+.pages-head .add {
+  width: 2rem;
+  height: 2rem;
+}
+.new-page {
   display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  gap: 0.4rem;
+}
+.new-page input {
+  flex: 1;
+  min-width: 0;
+}
+.new-page button {
+  flex: none;
+}
+/* L'arbre et les résultats défilent seuls ; la zone « Racine du Carnet » d'un glisser déborde au-dessus, sur « Pages ». */
+.tree-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tree-area > :deep(*) {
+  flex: 1;
+  min-height: 0;
+}
+.tree-area > :deep(.results) {
+  overflow-y: auto;
+}
+/* — Le bureau et sa feuille — */
+.desk {
+  min-width: 0;
+  padding: 1.5rem clamp(1rem, 3vw, 2.5rem) 3rem;
+}
+.desk .error {
+  max-width: 54rem;
+  margin: 0 auto 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--danger);
+}
+.loading {
+  margin: 0;
+  padding: 3rem 0;
+  text-align: center;
+  color: var(--ink-muted);
+}
+.sheet {
+  max-width: 54rem;
+  min-height: calc(100vh - 4.5rem);
+  margin: 0 auto;
+  padding: 0 clamp(1.75rem, 7%, 4.5rem) 3rem;
+  background: var(--sheet);
+  border-radius: 3px 8px 8px 3px;
+}
+.hint {
+  margin: 0;
+  color: var(--ink-muted);
+}
+.hint.closed {
+  padding-top: 4rem;
+  text-align: center;
+  font-style: italic;
+}
+.leaf {
+  padding-top: 1.75rem;
+}
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--rule);
 }
 .page-title {
   margin: 0;
+  flex: 1;
   min-width: 0;
   font-family: var(--font-title);
   font-weight: 700;
-  font-size: 1.8rem;
+  font-size: 2.1rem;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
   color: var(--ink);
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 /* Déverrouillé, le titre devient un champ de même police, même taille, même place. */
 .page-title .title-field {
   width: 100%;
-  box-sizing: border-box;
-  margin: -0.15rem 0 -0.15rem -0.35rem;
-  padding: 0.1rem 0.3rem;
+  margin: -0.15rem 0 -0.15rem -0.4rem;
+  padding: 0.1rem 0.35rem;
   font: inherit;
+  letter-spacing: inherit;
   color: inherit;
   background: transparent;
   border: 1px solid transparent;
@@ -1087,18 +1125,100 @@ input[type='search']::-webkit-search-cancel-button {
   border-color: var(--control-border);
   background: var(--wood-sunken);
 }
-.page .tapered {
-  margin: 0.4rem 0 1rem;
+.page-tools {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
 }
+/* Le verrou dit l'état en mots : Lecture ou Écriture. */
+.lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.55rem;
+  border-color: var(--rule);
+  background: none;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+.lock.writing {
+  border-color: var(--control-border);
+  background: var(--wood-sunken);
+  color: var(--ink);
+  font-weight: 700;
+}
+.lock :deep(.icon) {
+  width: 18px;
+  height: 18px;
+}
+.first {
+  max-width: 38rem;
+  min-height: 0;
+  margin-top: 12vh;
+  padding: 2.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-radius: 8px;
+}
+.first .page-title {
+  flex: none;
+}
+.first .hint {
+  font-family: var(--font-text);
+  font-size: 1.15rem;
+  line-height: 1.55;
+}
+
+/* — Les modules — */
+.modules {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.5rem 1.25rem 1.5rem 0;
+}
+
+@media (max-width: 1180px) {
+  .notebook.with-modules {
+    grid-template-columns: 16rem minmax(0, 1fr) 19rem;
+  }
+}
+/* Sous 900px : une colonne ; plus rien n'est collant, l'arbre garde une hauteur raisonnable. */
 @media (max-width: 900px) {
-  .content,
-  .content.with-modules {
+  .notebook,
+  .notebook.with-modules {
     grid-template-columns: minmax(0, 1fr);
   }
-  .pages,
   .modules {
     position: static;
-    max-height: none;
+    height: auto;
+  }
+  .tree-area {
+    max-height: 45vh;
+  }
+  .modules {
+    overflow: visible;
+    padding: 0 16px 2rem;
+  }
+  .desk {
+    padding: 1rem 16px 2rem;
+  }
+  .sheet {
+    min-height: 0;
+    padding-inline: 1.25rem;
+  }
+  .first {
+    margin-top: 1rem;
+    padding: 1.5rem 1.25rem;
+  }
+  .page-title {
+    font-size: 1.7rem;
   }
 }
 </style>

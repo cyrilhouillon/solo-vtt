@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import FoldSection from '../../src/components/FoldSection.vue'
 import type { NotebookContext } from '../../src/modules/notebookModule'
 import {
   meaningApi,
@@ -174,7 +175,7 @@ async function ask() {
 <template>
   <div class="mythic">
     <div class="chaos" role="group" aria-labelledby="mythic-chaos-label">
-      <span id="mythic-chaos-label">Chaos</span>
+      <span id="mythic-chaos-label" class="chaos-label">Facteur de chaos</span>
       <button
         type="button"
         class="step"
@@ -195,84 +196,77 @@ async function ask() {
         +
       </button>
     </div>
-    <hr class="rule" />
-    <form class="scene" @submit.prevent="testScene">
-      <label>
-        Scène attendue
-        <input v-model="expectedScene" type="text" maxlength="500" placeholder="On entre au donjon" />
-      </label>
-      <button type="submit" class="ask" :disabled="busy || chaos === null">Tester la scène</button>
-      <div class="end" role="group" aria-labelledby="mythic-end-label">
-        <span id="mythic-end-label" class="label">Clore la scène</span>
-        <div class="end-buttons">
-          <button type="button" :disabled="busy || chaos === null" @click="endScene(true)">Contrôle gardé</button>
-          <button type="button" :disabled="busy || chaos === null" @click="endScene(false)">Contrôle perdu</button>
+
+    <FoldSection title="Question" storage-key="mythic.question" nested>
+      <form class="stack" @submit.prevent="ask">
+        <input v-model="question" type="text" maxlength="500" placeholder="Le garde est-il corrompu ?" aria-label="Question (facultative)" />
+        <fieldset class="odds" :disabled="!ready">
+          <legend>Probabilité</legend>
+          <label v-for="o in odds" :key="o.code" class="odd" :class="{ checked: chosen === o.code }">
+            <input v-model="chosen" type="radio" name="mythic-odds" :value="o.code" />
+            {{ o.label }}
+          </label>
+        </fieldset>
+        <button type="submit" class="primary wide" :disabled="busy || !ready">Demander à l’oracle</button>
+      </form>
+    </FoldSection>
+
+    <FoldSection title="Scène" storage-key="mythic.scene" :open="false" nested>
+      <form class="stack" @submit.prevent="testScene">
+        <input v-model="expectedScene" type="text" maxlength="500" placeholder="On entre au donjon" aria-label="Scène attendue (facultative)" />
+        <button type="submit" class="primary wide" :disabled="busy || chaos === null">Tester la scène</button>
+        <div class="end" role="group" aria-labelledby="mythic-end-label">
+          <span id="mythic-end-label" class="hint">Clore la scène</span>
+          <div class="pair">
+            <button type="button" :disabled="busy || chaos === null" @click="endScene(true)">Contrôle gardé</button>
+            <button type="button" :disabled="busy || chaos === null" @click="endScene(false)">Contrôle perdu</button>
+          </div>
         </div>
-      </div>
-    </form>
-    <hr class="rule" />
-    <form class="question" @submit.prevent="ask">
-      <label>
-        Question
-        <input v-model="question" type="text" maxlength="500" placeholder="Le garde est-il corrompu ?" />
-      </label>
-      <label>
-        Probabilité
-        <select v-model="chosen" :disabled="!ready">
-          <option v-for="o in odds" :key="o.code" :value="o.code">{{ o.label }}</option>
-        </select>
-      </label>
-      <button type="submit" class="ask" :disabled="busy || !ready">Demander</button>
-    </form>
-    <hr class="rule" />
-    <div class="meaning">
-      <template v-if="meaningTables?.imported">
-        <label>
-          Sens
-          <select v-model="chosenTable">
+      </form>
+    </FoldSection>
+
+    <FoldSection title="Sens" storage-key="mythic.meaning" :open="false" nested>
+      <div class="stack">
+        <template v-if="meaningTables?.imported">
+          <select v-model="chosenTable" aria-label="Table de sens">
             <option v-for="t in columns" :key="tableKey(t)" :value="tableKey(t)">{{ t.label }}</option>
             <optgroup v-if="elements.length" label="Éléments">
               <option v-for="t in elements" :key="tableKey(t)" :value="tableKey(t)">{{ t.label }}</option>
             </optgroup>
           </select>
-        </label>
-        <button type="button" class="ask" :disabled="busy" @click="drawMeaning">Tirer</button>
-        <button type="button" class="replace" :disabled="busy" @click="fileInput?.click()">Remplacer les tables</button>
-      </template>
-      <template v-else-if="meaningTables">
-        <span class="label">Sens</span>
-        <p class="muted">Tables de sens non importées : importer le fichier de vos tables.</p>
-        <button type="button" class="ask" :disabled="busy" @click="fileInput?.click()">Importer</button>
-      </template>
-      <input ref="fileInput" type="file" accept=".txt,text/plain" hidden @change="importTables" />
-    </div>
+          <button type="button" class="primary wide" :disabled="busy" @click="drawMeaning">Tirer deux mots</button>
+          <button type="button" class="replace" :disabled="busy" @click="fileInput?.click()">Remplacer les tables</button>
+        </template>
+        <template v-else-if="meaningTables">
+          <p class="hint">Tables de sens non importées : importer le fichier de vos tables.</p>
+          <button type="button" class="wide" :disabled="busy" @click="fileInput?.click()">Importer les tables</button>
+        </template>
+        <input ref="fileInput" type="file" accept=".txt,text/plain" hidden @change="importTables" />
+      </div>
+    </FoldSection>
+
     <p v-if="error" class="error-text" role="alert">{{ error }}</p>
-    <p v-else-if="last && 'answer' in last" class="last" aria-live="polite">
-      <strong>{{ last.answer.answerLabel }}</strong>
-      <span class="muted"> · d100 {{ last.answer.roll }} · {{ last.answer.odds.label }}, chaos {{ last.answer.chaos }}</span>
-      <template v-if="last.answer.randomEvent">
-        <template v-for="line in eventLines(last.answer.randomEvent)" :key="line"><br />{{ line }}</template>
+    <div v-else-if="last" class="last" aria-live="polite">
+      <template v-if="'answer' in last">
+        <strong class="verdict">{{ last.answer.answerLabel }}</strong>
+        <span class="facts">d100 {{ last.answer.roll }} · {{ last.answer.odds.label }} · chaos {{ last.answer.chaos }}</span>
+        <span v-for="line in last.answer.randomEvent ? eventLines(last.answer.randomEvent) : []" :key="line" class="event">{{ line }}</span>
       </template>
-    </p>
-    <p v-else-if="last && 'scene' in last" class="last" aria-live="polite">
-      <strong>{{ last.scene.outcomeLabel }}</strong>
-      <span class="muted"> · d10 {{ last.scene.roll }} · chaos {{ last.scene.chaos }}</span>
-      <template v-if="last.scene.adjustments.length">
-        <br />
-        {{ adjustmentsText(last.scene) }}
+      <template v-else-if="'scene' in last">
+        <strong class="verdict">{{ last.scene.outcomeLabel }}</strong>
+        <span class="facts">d10 {{ last.scene.roll }} · chaos {{ last.scene.chaos }}</span>
+        <span v-if="last.scene.adjustments.length" class="event">{{ adjustmentsText(last.scene) }}</span>
+        <span v-for="line in last.scene.randomEvent ? eventLines(last.scene.randomEvent) : []" :key="line" class="event">{{ line }}</span>
       </template>
-      <template v-if="last.scene.randomEvent">
-        <template v-for="line in eventLines(last.scene.randomEvent)" :key="line"><br />{{ line }}</template>
+      <template v-else-if="'sceneEnd' in last">
+        <strong class="verdict">Fin de scène</strong>
+        <span class="facts">{{ sceneEndText(last.sceneEnd) }}</span>
       </template>
-    </p>
-    <p v-else-if="last && 'sceneEnd' in last" class="last" aria-live="polite">
-      <strong>Fin de scène</strong>
-      <span class="muted"> · {{ sceneEndText(last.sceneEnd) }}</span>
-    </p>
-    <p v-else-if="last" class="last" aria-live="polite">
-      <strong>{{ last.meaning.first }} · {{ last.meaning.second }}</strong>
-      <span class="muted"> · {{ last.meaning.table }}, d100 {{ last.meaning.firstRoll }} / {{ last.meaning.secondRoll }}</span>
-    </p>
+      <template v-else>
+        <strong class="verdict">{{ last.meaning.first }} · {{ last.meaning.second }}</strong>
+        <span class="facts">{{ last.meaning.table }} · d100 {{ last.meaning.firstRoll }} / {{ last.meaning.secondRoll }}</span>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -280,75 +274,119 @@ async function ask() {
 .mythic {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
 }
 .chaos {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  padding: 0 0 0.9rem;
+}
+.chaos-label {
+  flex: 1;
   color: var(--ink-muted);
 }
-.chaos span {
-  flex: 1;
-}
 .step {
-  width: 2rem;
-  padding: 0.2rem 0;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
   font-weight: 700;
+  font-size: 1.1rem;
 }
 .chaos-value {
-  min-width: 1.5rem;
+  min-width: 2rem;
   text-align: center;
   font-family: var(--font-title);
   font-weight: 700;
-  font-size: 1.4rem;
+  font-size: 1.7rem;
+  line-height: 1;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-.rule {
-  margin: 0;
-  border: 0;
-  border-top: 1px solid var(--rule);
-}
-.scene,
-.question,
-.meaning {
+.stack {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.7rem;
 }
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  color: var(--ink-muted);
-}
-input,
+input[type='text'],
 select {
   width: 100%;
-  box-sizing: border-box;
-  font: inherit;
 }
-.ask {
-  align-self: flex-start;
-  font-weight: 700;
-  background: var(--wood-raised);
+/* La probabilité se coche d'un clic : les neuf degrés en vue, du moins au plus probable. */
+.odds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
-.label {
+.odds legend {
+  padding: 0;
+  margin-bottom: 0.35rem;
   color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+.odd {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.4rem;
+  padding: 0.25rem 0.3rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--wood-sunken);
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+}
+.odd:hover {
+  color: var(--ink);
+  border-color: var(--control-border);
+}
+.odd.checked {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  background: var(--wood-raised);
+  color: var(--ink);
+  font-weight: 700;
+}
+.odd input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.odd:has(input:focus-visible) {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+.odds:disabled .odd {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.wide {
+  width: 100%;
+  padding-block: 0.55rem;
 }
 .end {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
 }
-.end-buttons {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
 }
-.meaning p {
+.hint {
   margin: 0;
+  color: var(--ink-muted);
 }
 .replace {
   align-self: flex-start;
@@ -359,15 +397,39 @@ select {
   text-decoration: underline;
   font-size: 0.9rem;
 }
-.error-text {
-  margin: 0;
-  color: var(--danger);
-}
-.last {
-  margin: 0;
+.replace:hover:not(:disabled) {
+  background: none;
   color: var(--ink);
 }
-.muted {
+.error-text {
+  margin: 0.9rem 0 0;
+  color: var(--danger);
+}
+/* Le dernier tirage : le verdict en rubrique, puis les dés. */
+.last {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 4px;
+  background: var(--wood-sunken);
+  overflow-wrap: anywhere;
+}
+.verdict {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  color: var(--rubric);
+}
+.facts {
   color: var(--ink-muted);
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+}
+.event {
+  margin-top: 0.2rem;
+  font-size: 0.95rem;
 }
 </style>
