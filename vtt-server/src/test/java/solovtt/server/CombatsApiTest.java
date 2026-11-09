@@ -160,4 +160,21 @@ class CombatsApiTest {
         when().get(campagne() + "/combats/inconnu").then().statusCode(404);
         when().post(campagne() + "/combats/inconnu/resume").then().statusCode(404);
     }
+
+    @Test
+    void unCombatTermine_seRejoue_unEnCoursNon() {
+        lancer();
+        String id = combatId();
+        when().get(campagne() + "/combats/" + id + "/replay").then().statusCode(409);
+        when().post(campagne() + "/combat/end").then().statusCode(200);
+
+        when().get(campagne() + "/combats/" + id + "/replay").then().statusCode(200)
+                .body("id", equalTo(id))
+                .body("steps.size()", equalTo(3))
+                .body("steps[0].entries.size()", equalTo(0))
+                .body("steps[1].combat.round", equalTo(1))
+                .body("steps[2].combat", equalTo(null))
+                .body("steps[2].sheets.size()", equalTo(2));
+        when().get(campagne() + "/combats/inconnu/replay").then().statusCode(404);
+    }
 }

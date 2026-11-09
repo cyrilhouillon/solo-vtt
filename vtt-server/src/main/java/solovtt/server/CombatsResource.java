@@ -54,6 +54,25 @@ public class CombatsResource {
         session.resume(game);
     }
 
+    /** Le combat terminé, pas à pas : une action par pas, avec ce qu'on voit à chacun. */
+    @GET
+    @Path("/{combatId}/replay")
+    @APIResponse(responseCode = "200", description = "Les pas du combat, le pas 0 étant l'état au lancement",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ReplayDto.class)))
+    @APIResponse(responseCode = "404", description = "Aucun combat avec cet id")
+    @APIResponse(responseCode = "409", description = "Combat en cours (il se rejoue une fois terminé) ou illisible")
+    public Dtos.ReplayDto replay(@PathParam("combatId") String combatId) {
+        SavedGame game = game(combatId);
+        if (replayed(combatId, game).combatId().isPresent()) {
+            throw new ActionRefusedException("Ce combat est en cours : il se rejoue une fois terminé");
+        }
+        try {
+            return new Dtos.ReplayDto(combatId, CombatReplay.of(game, combatId));
+        } catch (RuntimeException e) {
+            throw new ActionRefusedException("Combat illisible, il ne se rejoue plus : " + combatId);
+        }
+    }
+
     private boolean isCurrent(String combatId) {
         return session.combatId().filter(combatId::equals).isPresent();
     }
