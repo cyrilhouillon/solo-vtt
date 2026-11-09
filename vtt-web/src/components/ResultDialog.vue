@@ -42,7 +42,8 @@ watch(
 </script>
 
 <template>
-  <dialog ref="dialog" class="result" aria-labelledby="result-title" @close="emit('close')">
+  <!-- L'événement `close` part en différé : arrivé après un nouveau résultat, déjà rouvert, il ne le ferme pas. -->
+  <dialog ref="dialog" class="result" aria-labelledby="result-title" @close="dialog?.open || emit('close')">
     <h2 id="result-title" class="title">Résultat</h2>
     <p class="hint">Aucune page ouverte pour l'écrire.</p>
     <hr class="tapered" />
