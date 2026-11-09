@@ -1,6 +1,6 @@
 ---
 objective: "Sans page ouverte, tout tirage d'un module du Carnet (Mythic, Oracle) s'affiche dans un dialogue et son contenu est copié dans le presse-papiers, au lieu d'être refusé."
-status: in-progress
+status: implemented
 ---
 
 # Plan: Oracle sans page ouverte
