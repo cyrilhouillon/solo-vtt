@@ -296,4 +296,90 @@ class MythicResourceTest {
 
         assertEquals(true, liste.empty());
     }
+
+    @Test
+    void uneSceneAuDessusDuChaos_estAttendue_etRevientNettoyee() {
+        var scene = oracle(6).testScene(STRAHD, new MythicDtos.SceneRequest("  On entre au donjon  "));
+
+        assertEquals(new MythicDtos.SceneDto("On entre au donjon", 5, 6, "EXPECTED", "Scène attendue", List.of(), List.of(),
+                null), scene);
+    }
+
+    @Test
+    void uneSceneImpaireSousLeChaos_estModifiee_avecSonAjustement() {
+        oracle().setChaos(STRAHD, new MythicDtos.ChaosDto(7));
+
+        var scene = oracle(5, 4).testScene(STRAHD, new MythicDtos.SceneRequest(null));
+
+        assertNull(scene.expected());
+        assertEquals(7, scene.chaos());
+        assertEquals("ALTERED", scene.outcome());
+        assertEquals(List.of(new MythicDtos.AdjustmentDto("INCREASE_AN_ACTIVITY", "Intensifier une activité")), scene.adjustments());
+        assertEquals(List.of(4), scene.adjustmentRolls());
+        assertNull(scene.randomEvent());
+        assertEquals(7, oracle().chaos(STRAHD).chaos());
+    }
+
+    @Test
+    void uneScenePaireSousLeChaos_estInterrompue_parUnEvenementQuiTireDansLesListes() {
+        listesEcrites();
+
+        var scene = oracle(2, 25, 5).testScene(STRAHD, null);
+
+        assertEquals("INTERRUPTED", scene.outcome());
+        assertEquals("Scène interrompue", scene.outcomeLabel());
+        assertEquals("NPC_ACTION", scene.randomEvent().focus());
+        assertEquals("Garde Ylo", scene.randomEvent().list().entryText());
+    }
+
+    @Test
+    void uneSceneInterrompue_PersonnagesPerdu_devientContexteActuel() {
+        donnees.fichiers.put(STRAHD + "/mythic", "{\"chaos\":5,\"charactersPageId\":\"pas-une-racine\"}");
+
+        var evenement = oracle(4, 25).testScene(STRAHD, null).randomEvent();
+
+        assertEquals("CURRENT_CONTEXT", evenement.effectiveFocus());
+    }
+
+    @Test
+    void uneSceneTropLongue_estRefusee_sansDe() {
+        assertThrows(IllegalArgumentException.class,
+                () -> oracle().testScene(STRAHD, new MythicDtos.SceneRequest("x".repeat(501))));
+    }
+
+    @Test
+    void laSceneDUneCampagneInconnue_est404() {
+        assertThrows(NotFoundException.class, () -> oracle(6).testScene("inconnue", null));
+    }
+
+    @Test
+    void finDeScene_controleGarde_baisseLeChaos_etGardeLesListes() {
+        var listes = oracle().lists(STRAHD);
+
+        assertEquals(new MythicDtos.SceneEndDto(true, 5, 4), oracle().endScene(STRAHD, new MythicDtos.SceneEndRequest(true)));
+        assertEquals(4, oracle().chaos(STRAHD).chaos());
+        assertEquals(listes, oracle().lists(STRAHD));
+        assertEquals(2, pages.racines.size());
+        assertEquals(5, oracle().chaos(PHANDELVER).chaos());
+    }
+
+    @Test
+    void finDeScene_controlePerdu_monteLeChaos_sansDepasser9() {
+        assertEquals(new MythicDtos.SceneEndDto(false, 5, 6), oracle().endScene(STRAHD, new MythicDtos.SceneEndRequest(false)));
+        oracle().setChaos(STRAHD, new MythicDtos.ChaosDto(9));
+        assertEquals(new MythicDtos.SceneEndDto(false, 9, 9), oracle().endScene(STRAHD, new MythicDtos.SceneEndRequest(false)));
+        assertEquals(9, oracle().chaos(STRAHD).chaos());
+    }
+
+    @Test
+    void finDeScene_sansControle_estRefusee_sansRienEcrire() {
+        assertThrows(IllegalArgumentException.class, () -> oracle().endScene(STRAHD, null));
+        assertThrows(IllegalArgumentException.class, () -> oracle().endScene(STRAHD, new MythicDtos.SceneEndRequest(null)));
+        assertEquals(Map.of(), donnees.fichiers);
+    }
+
+    @Test
+    void laFinDeSceneDUneCampagneInconnue_est404() {
+        assertThrows(NotFoundException.class, () -> oracle().endScene("inconnue", new MythicDtos.SceneEndRequest(true)));
+    }
 }

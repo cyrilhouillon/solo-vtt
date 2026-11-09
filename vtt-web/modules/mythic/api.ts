@@ -71,6 +71,34 @@ export interface FateAnswer {
   randomEvent: RandomEvent | null
 }
 
+/** Un ajustement de scène, d'une scène modifiée. */
+export interface SceneAdjustment {
+  code: string
+  label: string
+}
+
+/**
+ * Le test d'une scène attendue au chaos : son d10 et l'issue ; une scène modifiée porte ses ajustements et tous les d10
+ * de la table (le premier de 7 à 10 quand il y en a deux), une scène interrompue son événement aléatoire.
+ */
+export interface Scene {
+  expected: string | null
+  chaos: number
+  roll: number
+  outcome: 'EXPECTED' | 'ALTERED' | 'INTERRUPTED'
+  outcomeLabel: string
+  adjustments: SceneAdjustment[]
+  adjustmentRolls: number[]
+  randomEvent: RandomEvent | null
+}
+
+/** La fin d'une scène : le chaos avant et après, égaux à une borne. */
+export interface SceneEnd {
+  inControl: boolean
+  before: number
+  after: number
+}
+
 /** L'oracle Mythic d'une campagne, servi par le module Mythic du serveur. */
 export function mythicApi(campaignId: string) {
   const base = `/api/campaigns/${encodeURIComponent(campaignId)}/mythic`
@@ -81,6 +109,10 @@ export function mythicApi(campaignId: string) {
       (await request<{ chaos: number }>(`${base}/chaos`, { method: 'PUT', body: JSON.stringify({ chaos }) })).chaos,
     ask: (question: string, odds: string) =>
       request<FateAnswer>(`${base}/questions`, { method: 'POST', body: JSON.stringify({ question, odds }) }),
+    testScene: (expected: string) =>
+      request<Scene>(`${base}/scenes`, { method: 'POST', body: JSON.stringify({ expected }) }),
+    endScene: (inControl: boolean) =>
+      request<SceneEnd>(`${base}/scenes/end`, { method: 'POST', body: JSON.stringify({ inControl }) }),
     /** Assure les pages Fils et Personnages de la section Mythic du Carnet ; idempotent. */
     prepareLists: () =>
       request<{ threadsPageId: string; charactersPageId: string }>(`${base}/lists`, { method: 'POST' }),

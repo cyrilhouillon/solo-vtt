@@ -7,6 +7,8 @@ import mythic.engine.ListDraw;
 import mythic.engine.Meaning;
 import mythic.engine.Odds;
 import mythic.engine.RandomEvent;
+import mythic.engine.SceneAdjustment;
+import mythic.engine.SceneCheck;
 
 import java.util.List;
 import java.util.function.Function;
@@ -98,4 +100,34 @@ public final class MythicDtos {
                     fate.answer().name(), fate.answer().label(), event);
         }
     }
+
+    /** {@code expected} est facultative : la scène attendue revient telle quelle, pour être écrite avec son issue. */
+    public record SceneRequest(String expected) {}
+
+    /** Un ajustement de scène. */
+    public record AdjustmentDto(String code, String label) {
+        static AdjustmentDto of(SceneAdjustment adjustment) {
+            return new AdjustmentDto(adjustment.name(), adjustment.label());
+        }
+    }
+
+    /**
+     * Le test d'une scène attendue : le d10 et le chaos, l'issue ; pour une scène modifiée, ses ajustements et tous les d10
+     * de la table ({@code adjustmentRolls}, le premier de 7 à 10 quand il y en a deux) ; pour une scène interrompue, son
+     * événement aléatoire, nul sinon.
+     */
+    public record SceneDto(String expected, int chaos, int roll, String outcome, String outcomeLabel,
+                           List<AdjustmentDto> adjustments, List<Integer> adjustmentRolls, RandomEventDto randomEvent) {
+        static SceneDto of(String expected, SceneCheck check, Function<AdventureList.Kind, List<ListLines.Line>> lines) {
+            return new SceneDto(expected, check.chaos().value(), check.roll(), check.outcome().name(), check.outcome().label(),
+                    check.adjustments().stream().map(AdjustmentDto::of).toList(), check.adjustmentRolls(),
+                    check.event().map(e -> RandomEventDto.of(e, lines)).orElse(null));
+        }
+    }
+
+    /** {@code inControl} : le joueur a-t-il gardé le contrôle de la scène ? */
+    public record SceneEndRequest(Boolean inControl) {}
+
+    /** Le chaos avant et après la fin de scène ; égaux à une borne. */
+    public record SceneEndDto(boolean inControl, int before, int after) {}
 }

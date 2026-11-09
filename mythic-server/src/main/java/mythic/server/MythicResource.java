@@ -15,6 +15,7 @@ import mythic.engine.ChaosFactor;
 import mythic.engine.FateAnswer;
 import mythic.engine.FateQuestion;
 import mythic.engine.Odds;
+import mythic.engine.SceneCheck;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -33,13 +34,13 @@ import java.util.function.Function;
  * la table de destin, dont un événement aléatoire tire son sens dans les tables du joueur s'il les a importées. Le jet
  * ne touche ni la partie ni son journal ; le client écrit le résultat dans la page ouverte. Les listes de fils et de
  * personnages sont deux pages de la section Mythic du Carnet, dont les ids sont gardés avec le chaos ; un événement dont
- * le focus vise l'une d'elles y tire une ligne.
+ * le focus vise l'une d'elles y tire une ligne. Une scène attendue se teste au chaos, et sa fin l'ajuste.
  */
 @Path("/api/campaigns/{campaignId}/mythic")
 public class MythicResource {
 
     static final String MODULE_ID = "mythic";
-    static final int MAX_QUESTION_LENGTH = 500;
+    static final int MAX_TEXT_LENGTH = 500;
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -150,16 +151,72 @@ public class MythicResource {
         known(campaignId);
         State state = state(campaignId);
         Odds odds = odds(request == null ? null : request.odds());
-        String question = request.question() == null || request.question().isBlank() ? null : request.question().strip();
-        if (question != null && question.length() > MAX_QUESTION_LENGTH)
-            throw new IllegalArgumentException("Question trop longue (" + MAX_QUESTION_LENGTH + " caractères au plus)");
-        // Une liste n'est lue que si le focus d'un événement la vise ; ses lignes servent ensuite à rendre l'entrée.
-        Map<AdventureList.Kind, List<ListLines.Line>> lines = new EnumMap<>(AdventureList.Kind.class);
-        Function<AdventureList.Kind, AdventureList> lists = kind -> new AdventureList(kind,
-                lines.computeIfAbsent(kind, k -> lines(campaignId, pageId(state, k))).stream()
-                        .map(ListLines.Line::written).toList());
-        FateAnswer fate = FateQuestion.ask(odds, chaos(state), meanings.find(), lists, dice);
-        return MythicDtos.AnswerDto.of(question, fate, lines::get);
+        String question = text(request.question(), "Question");
+        Lists lists = new Lists(campaignId, state);
+        FateAnswer fate = FateQuestion.ask(odds, chaos(state), meanings.find(), lists.adventureLists, dice);
+        return MythicDtos.AnswerDto.of(question, fate, lists.lines::get);
+    }
+
+    /**
+     * Teste la scène attendue au chaos de la campagne : attendue, modifiée avec ses ajustements, ou interrompue par un
+     * événement aléatoire, qui tire dans les listes comme celui d'une question. Le chaos ne change pas.
+     */
+    @POST
+    @Path("/scenes")
+    @APIResponse(responseCode = "200", description = "L'issue de la scène, son d10 et ses ajustements ou son événement",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MythicDtos.SceneDto.class)))
+    @APIResponse(responseCode = "400", description = "Scène attendue trop longue")
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public MythicDtos.SceneDto testScene(@PathParam("campaignId") String campaignId, MythicDtos.SceneRequest request) {
+        known(campaignId);
+        State state = state(campaignId);
+        String expected = text(request == null ? null : request.expected(), "Scène attendue");
+        Lists lists = new Lists(campaignId, state);
+        SceneCheck check = SceneCheck.test(chaos(state), meanings.find(), lists.adventureLists, dice);
+        return MythicDtos.SceneDto.of(expected, check, lists.lines::get);
+    }
+
+    /** Clôt la scène : le chaos baisse de 1 si le joueur a gardé le contrôle, sinon monte de 1, entre 1 et 9. */
+    @POST
+    @Path("/scenes/end")
+    @APIResponse(responseCode = "200", description = "Le chaos avant et après la fin de scène",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MythicDtos.SceneEndDto.class)))
+    @APIResponse(responseCode = "400", description = "Contrôle de la scène absent")
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public synchronized MythicDtos.SceneEndDto endScene(@PathParam("campaignId") String campaignId,
+                                                        MythicDtos.SceneEndRequest request) {
+        known(campaignId);
+        if (request == null || request.inControl() == null)
+            throw new IllegalArgumentException("Contrôle de la scène absent : gardé ou perdu");
+        State state = state(campaignId);
+        ChaosFactor before = chaos(state);
+        ChaosFactor after = before.afterScene(request.inControl());
+        write(campaignId, new State(after.value(), state.threadsPageId(), state.charactersPageId()));
+        return new MythicDtos.SceneEndDto(request.inControl(), before.value(), after.value());
+    }
+
+    /** Un texte facultatif du joueur, nettoyé ; vide : {@code null}. */
+    private static String text(String value, String what) {
+        if (value == null || value.isBlank()) return null;
+        String text = value.strip();
+        if (text.length() > MAX_TEXT_LENGTH)
+            throw new IllegalArgumentException(what + " trop longue (" + MAX_TEXT_LENGTH + " caractères au plus)");
+        return text;
+    }
+
+    /**
+     * Les listes de la campagne, chacune lue seulement si le focus d'un événement la vise ; ses lignes servent ensuite à
+     * rendre l'entrée tirée.
+     */
+    private final class Lists {
+        final Map<AdventureList.Kind, List<ListLines.Line>> lines = new EnumMap<>(AdventureList.Kind.class);
+        final Function<AdventureList.Kind, AdventureList> adventureLists;
+
+        Lists(String campaignId, State state) {
+            adventureLists = kind -> new AdventureList(kind,
+                    lines.computeIfAbsent(kind, k -> lines(campaignId, pageId(state, k))).stream()
+                            .map(ListLines.Line::written).toList());
+        }
     }
 
     private static String pageId(State state, AdventureList.Kind kind) {

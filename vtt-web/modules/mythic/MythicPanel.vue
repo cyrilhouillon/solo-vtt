@@ -1,12 +1,30 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { NotebookContext } from '../../src/modules/notebookModule'
-import { meaningApi, mythicApi, type FateAnswer, type Meaning, type MeaningTable, type MeaningTables, type Odds } from './api'
-import { answerBlocks, focusText, listText, meaningBlocks } from './result'
+import {
+  meaningApi,
+  mythicApi,
+  type FateAnswer,
+  type Meaning,
+  type MeaningTable,
+  type MeaningTables,
+  type Odds,
+  type Scene,
+  type SceneEnd,
+} from './api'
+import {
+  adjustmentsText,
+  answerBlocks,
+  eventLines,
+  meaningBlocks,
+  sceneBlocks,
+  sceneEndBlocks,
+  sceneEndText,
+} from './result'
 
 /**
- * L'oracle Mythic dans le Carnet : le facteur de chaos de la campagne, une question oui/non, et deux mots tirés dans
- * les tables de sens du joueur ; chaque résultat s'écrit dans la page ouverte.
+ * L'oracle Mythic dans le Carnet : le facteur de chaos de la campagne, le test et la fin d'une scène, une question
+ * oui/non, et deux mots tirés dans les tables de sens du joueur ; chaque résultat s'écrit dans la page ouverte.
  */
 const props = defineProps<{ context: NotebookContext }>()
 const api = mythicApi(props.context.campaignId)
@@ -19,8 +37,11 @@ const chaos = ref<number | null>(null)
 const odds = ref<Odds[]>([])
 const chosen = ref('FIFTY_FIFTY')
 const question = ref('')
+const expectedScene = ref('')
 /** Le dernier résultat écrit dans la page, rappelé sous les champs. */
-const last = ref<{ answer: FateAnswer } | { meaning: Meaning } | null>(null)
+const last = ref<
+  { answer: FateAnswer } | { meaning: Meaning } | { scene: Scene } | { sceneEnd: SceneEnd } | null
+>(null)
 /** `null` tant que le serveur n'a pas répondu. */
 const meaningTables = ref<MeaningTables | null>(null)
 const chosenTable = ref('')
@@ -112,6 +133,57 @@ async function changeChaos(step: number) {
   }
 }
 
+/** Écrit les blocs dans la page ; rend vrai une fois écrits, sinon met la raison du refus en erreur. */
+function write(blocks: Parameters<NotebookContext['writeToOpenPage']>[0]): boolean {
+  const refusal = props.context.writeToOpenPage(blocks)
+  if (refusal) error.value = refusal
+  return !refusal
+}
+
+async function testScene() {
+  error.value = null
+  // Refusé avant le jet : sans page, l'issue n'aurait nulle part où s'écrire.
+  if (!props.context.hasOpenPage()) {
+    error.value = 'Aucune page ouverte : ouvrir une page pour y écrire la scène.'
+    return
+  }
+  busy.value = true
+  try {
+    const scene = await api.testScene(expectedScene.value.trim())
+    if (!write(sceneBlocks(scene))) return
+    last.value = { scene }
+    expectedScene.value = ''
+  } catch (e) {
+    error.value = `Scène non testée : ${reason(e)}`
+  } finally {
+    busy.value = false
+  }
+}
+
+async function endScene(inControl: boolean) {
+  error.value = null
+  // Refusé avant tout appel : sans page, le chaos changerait sans trace.
+  if (!props.context.hasOpenPage()) {
+    error.value = 'Aucune page ouverte : ouvrir une page pour y écrire la fin de scène.'
+    return
+  }
+  busy.value = true
+  try {
+    const end = await api.endScene(inControl)
+    chaos.value = end.after
+    // La page a pu se fermer pendant l'appel : la scène est close quand même, le refus le dit.
+    if (!write(sceneEndBlocks(end))) {
+      error.value = `Scène close (${sceneEndText(end)}), mais non écrite : ${error.value}`
+      return
+    }
+    last.value = { sceneEnd: end }
+  } catch (e) {
+    error.value = `Scène non close : ${reason(e)}`
+  } finally {
+    busy.value = false
+  }
+}
+
 async function ask() {
   error.value = null
   // Refusé avant le jet : sans page, la réponse n'aurait nulle part où s'écrire.
@@ -162,6 +234,21 @@ async function ask() {
       </button>
     </div>
     <hr class="rule" />
+    <form class="scene" @submit.prevent="testScene">
+      <label>
+        Scène attendue
+        <input v-model="expectedScene" type="text" maxlength="500" placeholder="On entre au donjon" />
+      </label>
+      <button type="submit" class="ask" :disabled="busy || chaos === null">Tester la scène</button>
+      <div class="end" role="group" aria-labelledby="mythic-end-label">
+        <span id="mythic-end-label" class="label">Clore la scène</span>
+        <div class="end-buttons">
+          <button type="button" :disabled="busy || chaos === null" @click="endScene(true)">Contrôle gardé</button>
+          <button type="button" :disabled="busy || chaos === null" @click="endScene(false)">Contrôle perdu</button>
+        </div>
+      </div>
+    </form>
+    <hr class="rule" />
     <form class="question" @submit.prevent="ask">
       <label>
         Question
@@ -202,16 +289,23 @@ async function ask() {
       <strong>{{ last.answer.answerLabel }}</strong>
       <span class="muted"> · d100 {{ last.answer.roll }} · {{ last.answer.odds.label }}, chaos {{ last.answer.chaos }}</span>
       <template v-if="last.answer.randomEvent">
-        <br />
-        Événement aléatoire : {{ focusText(last.answer.randomEvent) }}
-        <template v-if="last.answer.randomEvent.meaning">
-          — {{ last.answer.randomEvent.meaning.first }} · {{ last.answer.randomEvent.meaning.second }}
-        </template>
-        <template v-if="listText(last.answer.randomEvent.list)">
-          <br />
-          {{ listText(last.answer.randomEvent.list) }}
-        </template>
+        <template v-for="line in eventLines(last.answer.randomEvent)" :key="line"><br />{{ line }}</template>
       </template>
+    </p>
+    <p v-else-if="last && 'scene' in last" class="last" aria-live="polite">
+      <strong>{{ last.scene.outcomeLabel }}</strong>
+      <span class="muted"> · d10 {{ last.scene.roll }} · chaos {{ last.scene.chaos }}</span>
+      <template v-if="last.scene.adjustments.length">
+        <br />
+        {{ adjustmentsText(last.scene) }}
+      </template>
+      <template v-if="last.scene.randomEvent">
+        <template v-for="line in eventLines(last.scene.randomEvent)" :key="line"><br />{{ line }}</template>
+      </template>
+    </p>
+    <p v-else-if="last && 'sceneEnd' in last" class="last" aria-live="polite">
+      <strong>Fin de scène</strong>
+      <span class="muted"> · {{ sceneEndText(last.sceneEnd) }}</span>
     </p>
     <p v-else-if="last" class="last" aria-live="polite">
       <strong>{{ last.meaning.first }} · {{ last.meaning.second }}</strong>
@@ -254,6 +348,7 @@ async function ask() {
   border: 0;
   border-top: 1px solid var(--rule);
 }
+.scene,
 .question,
 .meaning {
   display: flex;
@@ -279,6 +374,16 @@ select {
 }
 .label {
   color: var(--ink-muted);
+}
+.end {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.end-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 .meaning p {
   margin: 0;
