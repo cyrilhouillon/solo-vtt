@@ -23,6 +23,7 @@ import { checkMove, type MoveLimit } from '../map/move'
 import { rangeVerdict, type RangeVerdict } from '../map/range'
 import type { Targeting } from '../map/SceneCanvas'
 import { theme } from '../theme'
+import { throwsOf, trayFromJournal as trayOf } from '../dice/tray'
 import {
   formatLength,
   type Attack,
@@ -40,8 +41,7 @@ import {
   type TokenView,
 } from '../types'
 
-/** `replayId` : le combat terminé à rejouer, en lecture seule ; absent pour la partie en cours. */
-const props = defineProps<{ campaign: CampaignView; replayId?: string }>()
+const props = defineProps<{ campaign: CampaignView }>()
 const router = useRouter()
 
 /** Les outils de la colonne : chacun ouvre son tiroir dans la colonne, qui se déplie. */
@@ -130,27 +130,9 @@ function toggleGrid() {
   })
 }
 
-/**
- * Ce que la piste montre : la dernière attaque tranchée du journal (son annonce, son issue, la réaction et les dégâts).
- * Un tour de combat ne l'efface pas ; la jauge de la cible n'est connue qu'au retour de l'attaque.
- */
+/** La dernière attaque tranchée du journal, pour la piste ; `target` pour une attaque qui vient d'être tranchée. */
 function trayFromJournal(target?: TrayResult['target']): TrayResult | null {
-  const outcome = [...journal.value].reverse().find((e) => e.highlight === 'OUTCOME' && e.roll)
-  if (!outcome?.roll) return null
-  const entries = journal.value.filter((e) => e.action === outcome.action)
-  const thrown = throwsOf(entries)
-  return {
-    action: outcome.action,
-    title: entries[0]?.text ?? '',
-    roll: outcome.roll,
-    damage: entries.flatMap((e) => (e.damage ? [e.damage] : [])),
-    reactions: entries.filter((e) => e.highlight === 'REACTION').map((e) => e.text),
-    attackDice: thrown.attack,
-    damageDice: thrown.damage,
-    // Seule une attaque qui vient d'être tranchée (elle a sa cible) fait rouler les dés ; relue du journal, elle est posée.
-    live: target !== undefined,
-    target,
-  }
+  return trayOf(journal.value, target)
 }
 
 /** Le catalogue s'ouvre tant que la carte est vide ; ensuite, c'est le joueur qui le replie. */
@@ -761,16 +743,6 @@ async function settleAction(result: ActionResult) {
 /** Les dés 3D d'un lancer ; la promesse se résout à leur arrêt, ou quand un lancer suivant les interrompt. */
 function rollDice(attack: RolledDice[], damage: RolledDice[]): Promise<void> {
   return mapView.value?.rollDice(attack, damage) ?? Promise.resolve()
-}
-
-/**
- * Les dés que des entrées du journal ont tirés, en deux lancers comme à la table : le jet d'attaque (avant l'issue, ou
- * tous tant que l'issue n'est pas tranchée), puis les dégâts (après l'issue).
- */
-function throwsOf(entries: JournalEntry[]): { attack: RolledDice[]; damage: RolledDice[] } {
-  const dice = (part: JournalEntry[]) => part.flatMap((e) => (e.dice ? [e.dice] : []))
-  const at = entries.findIndex((e) => e.highlight === 'OUTCOME')
-  return at < 0 ? { attack: dice(entries), damage: [] } : { attack: dice(entries.slice(0, at)), damage: dice(entries.slice(at + 1)) }
 }
 
 /**

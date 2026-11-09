@@ -19,6 +19,8 @@ const props = defineProps<{
   target: string | null
   ranges: Record<string, RangeVerdict>
   combat: Combat | null
+  /** En lecture seule (rejeu d'un combat) : aucune créature ne se retire. */
+  readonly?: boolean
 }>()
 
 /** Ce que le combat dit d'une créature : son initiative, si elle joue, si elle a joué ce round. */
@@ -213,7 +215,7 @@ function health(token: TokenView): number {
             <th scope="col" class="num">PV</th>
             <th scope="col" class="num">CA</th>
             <th scope="col" class="state-col">État</th>
-            <th scope="col"><span class="sr-only">Retirer</span></th>
+            <th v-if="!readonly" scope="col"><span class="sr-only">Retirer</span></th>
           </tr>
         </thead>
         <tbody>
@@ -259,7 +261,7 @@ function health(token: TokenView): number {
               <span v-if="ranges[token.id]" class="tag" :class="{ allowed: ranges[token.id].allowed }">{{ ranges[token.id].label }}</span>
               </span>
             </td>
-            <td class="act">
+            <td v-if="!readonly" class="act">
               <span
                 v-if="confirmRow === token.id"
                 role="group"
