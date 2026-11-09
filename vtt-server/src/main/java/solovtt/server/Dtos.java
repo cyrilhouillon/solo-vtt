@@ -118,6 +118,12 @@ final class Dtos {
         }
     }
 
+    /**
+     * Un combat : {@code ended} s'il est terminé (il se rejoue), {@code current} s'il est la partie de la carte en cours,
+     * et sa carte telle qu'il l'a laissée (finale s'il est terminé).
+     */
+    record CombatEntryDto(String id, boolean ended, boolean current, SceneDto scene) {}
+
     /** Une campagne, avec ses modules actifs. */
     record CampaignDto(String id, String name, List<String> modules) {
         static CampaignDto of(Campaign campaign, InstalledModules installed) {

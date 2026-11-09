@@ -99,4 +99,65 @@ class CombatsApiTest {
         assertEquals(id, trouve.getString("[0].id"));
         assertNotNull(trouve.getString("[0].combatId"));
     }
+
+    private static String combatId() {
+        return (String) entrees().getFirst().get("combatId");
+    }
+
+    @Test
+    void unCombatEnCours_seLitSurLaCarteEnCours() {
+        lancer();
+
+        when().get(campagne() + "/combats/" + combatId()).then().statusCode(200)
+                .body("ended", equalTo(false))
+                .body("current", equalTo(true))
+                .body("scene.tokens.size()", equalTo(2));
+    }
+
+    @Test
+    void apresLaFin_lEcranResteSurLaCarte_etLeCombatSeLitTermine() {
+        lancer();
+        dice.script(18, 5);
+        given().contentType(ContentType.JSON)
+                .body("{\"attackerId\":\"gobelin-1\",\"attackId\":\"melee:Cimeterre\",\"targetId\":\"guerriere-1\"}")
+                .post(campagne() + "/attacks").then().statusCode(200);
+        when().post(campagne() + "/combat/end").then().statusCode(200);
+        int pv = when().get(campagne() + "/scene").then().statusCode(200).extract().path("tokens[0].hitPoints");
+
+        when().get(campagne() + "/combat").then().statusCode(204);
+        given().contentType(ContentType.JSON).body("{\"x\":10,\"y\":10}")
+                .post(campagne() + "/scene/tokens/gobelin-1/move").then().statusCode(200);
+        when().get(campagne() + "/combats/" + combatId()).then().statusCode(200)
+                .body("ended", equalTo(true))
+                .body("current", equalTo(false))
+                .body("scene.tokens[0].hitPoints", equalTo(pv))
+                .body("scene.tokens[1].x", equalTo(3.0f));
+        when().post(campagne() + "/combats/" + combatId() + "/resume").then().statusCode(409);
+    }
+
+    @Test
+    void uneNouvelleCarte_laisseLeCombatEnCours_quiSeReprend() {
+        lancer();
+        String id = combatId();
+        nouvelleCarte();
+
+        when().get(campagne() + "/combats/" + id).then().statusCode(200)
+                .body("ended", equalTo(false))
+                .body("current", equalTo(false));
+        when().get(campagne() + "/combat").then().statusCode(204);
+
+        when().post(campagne() + "/combats/" + id + "/resume").then().statusCode(204);
+
+        when().get(campagne() + "/combats/" + id).then().statusCode(200).body("current", equalTo(true));
+        when().get(campagne() + "/combat").then().statusCode(200).body("round", equalTo(1));
+        when().get(campagne() + "/scene").then().statusCode(200).body("tokens.size()", equalTo(2));
+        when().post(campagne() + "/combats/" + id + "/resume").then().statusCode(204);
+    }
+
+    @Test
+    void unCombatInconnu_rend404() {
+        when().get(campagne() + "/combats/0f8fad5b-d9cb-469f-a165-70867728950e").then().statusCode(404);
+        when().get(campagne() + "/combats/inconnu").then().statusCode(404);
+        when().post(campagne() + "/combats/inconnu/resume").then().statusCode(404);
+    }
 }
