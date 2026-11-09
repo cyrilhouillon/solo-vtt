@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import FoldSection from '../../src/components/FoldSection.vue'
 import type { NotebookContext } from '../../src/modules/notebookModule'
 import { oracleApi, type D100, type Draw, type OracleList, type YesNo } from './api'
 import { d100Blocks, drawBlocks, drawText, yesNoBlocks, yesNoText } from './result'
@@ -74,46 +75,44 @@ function rollD100() {
 
 <template>
   <div class="oracle">
-    <form class="question" @submit.prevent="askYesNo">
-      <label>
-        Question
-        <input v-model="question" type="text" :maxlength="MAX_QUESTION_LENGTH" placeholder="Le pont tient-il ?" />
-      </label>
-      <div class="buttons">
-        <button type="submit" class="ask" :disabled="busy">Oui/non</button>
-        <button type="button" class="ask" :disabled="busy" @click="rollD100">d100</button>
-      </div>
-    </form>
-    <hr class="rule" />
-    <div class="lists">
-      <template v-if="lists?.length">
-        <label>
-          Liste
-          <select v-model="chosenList" :disabled="busy" @focus="readLists" @pointerdown="readLists">
+    <FoldSection title="Question" storage-key="oracle.question" nested class="first">
+      <form class="stack" @submit.prevent="askYesNo">
+        <input v-model="question" type="text" :maxlength="MAX_QUESTION_LENGTH" placeholder="Le pont tient-il ?" aria-label="Question (facultative)" />
+        <div class="pair">
+          <button type="submit" class="primary" :disabled="busy">Oui ou non</button>
+          <button type="button" :disabled="busy" @click="rollD100">Lancer un d100</button>
+        </div>
+      </form>
+    </FoldSection>
+    <FoldSection title="Listes" storage-key="oracle.lists" nested>
+      <div class="stack">
+        <template v-if="lists?.length">
+          <select v-model="chosenList" :disabled="busy" aria-label="Liste" @focus="readLists" @pointerdown="readLists">
             <option v-for="list in lists" :key="list.id" :value="list.id">{{ list.title }}</option>
           </select>
-        </label>
-        <button type="button" class="ask" :disabled="busy || !chosenList" @click="drawLine">Tirer</button>
+          <button type="button" class="primary wide" :disabled="busy || !chosenList" @click="drawLine">Tirer une ligne</button>
+        </template>
+        <template v-else-if="lists">
+          <p class="hint">Aucune liste : ajouter une sous-page à « Listes », une ligne par puce.</p>
+          <button type="button" class="wide" :disabled="busy" @click="readLists">Relire les listes</button>
+        </template>
+      </div>
+    </FoldSection>
+    <p v-if="error" class="error-text" role="alert">{{ error }}</p>
+    <div v-else-if="last" class="last" aria-live="polite">
+      <template v-if="'yesNo' in last">
+        <strong class="verdict">{{ yesNoText(last.yesNo) }}</strong>
+        <span v-if="last.yesNo.question" class="facts">{{ last.yesNo.question }}</span>
       </template>
-      <template v-else-if="lists">
-        <span class="label">Listes</span>
-        <p class="muted">Aucune liste : ajouter une sous-page à « Listes », une ligne par puce.</p>
-        <button type="button" class="refresh" :disabled="busy" @click="readLists">Relire les listes</button>
+      <template v-else-if="'draw' in last">
+        <strong class="verdict">{{ drawText(last.draw) }}</strong>
+        <span class="facts">d{{ last.draw.sides }} {{ last.draw.roll }} · ligne {{ last.draw.line }}</span>
+      </template>
+      <template v-else>
+        <strong class="verdict">d100 : {{ last.d100.roll }}</strong>
+        <span v-if="last.d100.question" class="facts">{{ last.d100.question }}</span>
       </template>
     </div>
-    <p v-if="error" class="error-text" role="alert">{{ error }}</p>
-    <p v-else-if="last && 'yesNo' in last" class="last" aria-live="polite">
-      <strong>{{ yesNoText(last.yesNo) }}</strong>
-      <span v-if="last.yesNo.question" class="muted"> · {{ last.yesNo.question }}</span>
-    </p>
-    <p v-else-if="last && 'draw' in last" class="last" aria-live="polite">
-      <strong>{{ drawText(last.draw) }}</strong>
-      <span class="muted"> · d{{ last.draw.sides }} {{ last.draw.roll }}, ligne {{ last.draw.line }}</span>
-    </p>
-    <p v-else-if="last" class="last" aria-live="polite">
-      <strong>d100 : {{ last.d100.roll }}</strong>
-      <span v-if="last.d100.question" class="muted"> · {{ last.d100.question }}</span>
-    </p>
   </div>
 </template>
 
@@ -121,67 +120,60 @@ function rollD100() {
 .oracle {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
 }
-.rule {
-  margin: 0;
-  border: 0;
-  border-top: 1px solid var(--rule);
+/* Sous le titre du module, la première sous-section n'a pas de filet au-dessus. */
+.first {
+  border-top: 0;
 }
-.lists {
+.stack {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.7rem;
 }
-.lists p {
-  margin: 0;
-}
-.label {
-  color: var(--ink-muted);
-}
-.refresh {
-  align-self: flex-start;
-}
+input[type='text'],
 select {
   width: 100%;
-  box-sizing: border-box;
-  font: inherit;
 }
-.question {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
 }
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.pair button,
+.wide {
+  padding-block: 0.55rem;
+}
+.wide {
+  width: 100%;
+}
+.hint {
+  margin: 0;
   color: var(--ink-muted);
 }
-input {
-  width: 100%;
-  box-sizing: border-box;
-  font: inherit;
-}
-.buttons {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.ask {
-  align-self: flex-start;
-  font-weight: 700;
-  background: var(--wood-raised);
-}
 .error-text {
-  margin: 0;
+  margin: 0.9rem 0 0;
   color: var(--danger);
 }
 .last {
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 4px;
+  background: var(--wood-sunken);
   overflow-wrap: anywhere;
 }
-.muted {
+.verdict {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  color: var(--rubric);
+}
+.facts {
   color: var(--ink-muted);
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
 }
 </style>

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { ApiError, campaignApi, imageUrl } from '../api'
 import AppIcon from './AppIcon.vue'
 import ThemeButton from './ThemeButton.vue'
+import CampaignColumn from './CampaignColumn.vue'
 import CatalogPanel from './CatalogPanel.vue'
 import CombatControl from './CombatControl.vue'
 import CreatureSheet from './CreatureSheet.vue'
@@ -41,6 +42,18 @@ import {
 
 const props = defineProps<{ campaign: CampaignView }>()
 const router = useRouter()
+
+/** Les outils de la colonne : chacun ouvre son tiroir dans la colonne, qui se déplie. */
+const TOOLS = [
+  { id: 'catalog', label: 'Catalogue', icon: 'catalog' },
+  { id: 'map', label: 'Nouvelle carte', icon: 'map' },
+  { id: 'maps', label: 'Cartes enregistrées', icon: 'saved' },
+] as const
+
+function navigate(target: 'home' | 'notebook' | 'combat') {
+  if (target === 'home') void router.push({ name: 'home' })
+  else if (target === 'notebook') void router.push({ name: 'notebook', params: { campaignId: props.campaign.id } })
+}
 /** Les appels au serveur, sur la partie de cette campagne. */
 const api = campaignApi(props.campaign.id)
 
@@ -1073,96 +1086,28 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="layout" :class="{ 'with-drawer': drawer }">
-    <header class="bar">
-      <button type="button" class="icon-button" aria-label="Accueil" title="Accueil : changer de campagne" @click="router.push({ name: 'home' })">
-        <AppIcon name="home" />
-      </button>
-      <button type="button" class="icon-button" aria-label="Carnet" title="Carnet de la campagne" @click="router.push({ name: 'notebook', params: { campaignId: campaign.id } })">
-        <AppIcon name="notebook" />
-      </button>
-      <h1 class="app-name">Solo VTT</h1>
-      <p class="campaign-name">{{ campaign.name }}</p>
-      <p v-if="scene" class="map-info">
-        <template v-if="scene.mapName">{{ scene.mapName }} · </template>Carte {{ formatLength(scene.width, scene.unitSymbol) }} × {{ formatLength(scene.height, scene.unitSymbol) }} ·
-        {{ scene.tokens.length }} {{ scene.tokens.length > 1 ? 'créatures' : 'créature' }}
-      </p>
-      <strong v-if="mode" class="mode">{{ mode }}</strong>
-      <span class="spacer" />
-      <CombatControl
-        v-if="scene"
-        ref="combatControl"
-        :combat="combat"
-        :creature-count="scene.tokens.filter((t) => !t.pending).length"
-        :blocked="combatBusy || aligning !== null"
-        @start="startCombat"
-        @end-turn="combatAction(api.endTurn)"
-        @end-combat="endCombat"
-      />
-      <button
-        v-if="scene"
-        type="button"
-        class="icon-button"
-        :aria-pressed="scene.gridVisible"
-        aria-label="Grille"
-        :title="scene.gridVisible ? 'Masquer la grille' : 'Afficher la grille'"
-        @click="toggleGrid"
-      >
-        <AppIcon name="grid" />
-      </button>
-      <ThemeButton />
-      <button
-        type="button"
-        class="icon-button shortcuts-button"
-        aria-label="Raccourcis"
-        aria-keyshortcuts="?"
-        title="Raccourcis (?)"
-        @click="shortcutsOpen = true"
-      >
-        <AppIcon name="keys" />
-      </button>
-    </header>
-    <ShortcutsDialog :open="shortcutsOpen" @close="shortcutsOpen = false" />
-
-    <nav class="rail" aria-label="Outils">
-      <button
-        type="button"
-        class="rail-button"
-        :class="{ open: drawer === 'catalog' }"
-        :aria-expanded="drawer === 'catalog'"
-        aria-controls="drawer"
-        aria-label="Catalogue"
-        title="Catalogue"
-        @click="toggleDrawer('catalog')"
-      >
-        <AppIcon name="catalog" />
-      </button>
-      <button
-        type="button"
-        class="rail-button"
-        :class="{ open: drawer === 'map' }"
-        :aria-expanded="drawer === 'map'"
-        aria-controls="drawer"
-        aria-label="Nouvelle carte"
-        title="Nouvelle carte"
-        @click="toggleDrawer('map')"
-      >
-        <AppIcon name="map" />
-      </button>
-      <button
-        type="button"
-        class="rail-button"
-        :class="{ open: drawer === 'maps' }"
-        :aria-expanded="drawer === 'maps'"
-        aria-controls="drawer"
-        aria-label="Cartes enregistrées"
-        title="Cartes enregistrées"
-        @click="toggleDrawer('maps')"
-      >
-        <AppIcon name="saved" />
-      </button>
-    </nav>
-
-    <aside v-if="drawer" id="drawer" class="drawer">
+    <!-- La colonne de la campagne, comme au Carnet ; repliée en rail tant qu'aucun outil n'est ouvert, pour la carte. -->
+    <CampaignColumn class="column" :campaign-name="campaign.name" current="combat" :compact="!drawer" @navigate="navigate">
+      <div class="tools" :class="{ open: drawer }" role="group" aria-label="Outils">
+        <button
+          v-for="tool in TOOLS"
+          :key="tool.id"
+          type="button"
+          class="tool-button"
+          :class="{ open: drawer === tool.id }"
+          :aria-expanded="drawer === tool.id"
+          aria-controls="drawer"
+          :aria-label="tool.label"
+          :title="tool.label"
+          @click="toggleDrawer(tool.id)"
+        >
+          <AppIcon :name="tool.icon" />
+        </button>
+        <button v-if="drawer" type="button" class="tool-button fold" aria-label="Replier la colonne" title="Replier la colonne" @click="drawer = null">
+          <AppIcon name="chevron-left" />
+        </button>
+      </div>
+      <div v-if="drawer" id="drawer" class="drawer">
       <CatalogPanel
         v-if="drawer === 'catalog'"
         ref="catalogPanel"
@@ -1198,7 +1143,52 @@ onBeforeUnmount(() => {
         @load="loadMap"
         @cancel="drawer = null"
       />
-    </aside>
+      </div>
+      <template #foot>
+        <button
+          type="button"
+          class="icon-button shortcuts-button"
+          aria-label="Raccourcis"
+          aria-keyshortcuts="?"
+          title="Raccourcis (?)"
+          @click="shortcutsOpen = true"
+        >
+          <AppIcon name="keys" />
+        </button>
+        <ThemeButton />
+      </template>
+    </CampaignColumn>
+    <ShortcutsDialog :open="shortcutsOpen" @close="shortcutsOpen = false" />
+
+    <header v-if="scene" class="bar">
+      <p class="map-info">
+        <template v-if="scene.mapName">{{ scene.mapName }} · </template>Carte {{ formatLength(scene.width, scene.unitSymbol) }} × {{ formatLength(scene.height, scene.unitSymbol) }} ·
+        {{ scene.tokens.length }} {{ scene.tokens.length > 1 ? 'créatures' : 'créature' }}
+      </p>
+      <strong v-if="mode" class="mode">{{ mode }}</strong>
+      <span class="spacer" />
+      <CombatControl
+        v-if="scene"
+        ref="combatControl"
+        :combat="combat"
+        :creature-count="scene.tokens.filter((t) => !t.pending).length"
+        :blocked="combatBusy || aligning !== null"
+        @start="startCombat"
+        @end-turn="combatAction(api.endTurn)"
+        @end-combat="endCombat"
+      />
+      <button
+        v-if="scene"
+        type="button"
+        class="icon-button"
+        :aria-pressed="scene.gridVisible"
+        aria-label="Grille"
+        :title="scene.gridVisible ? 'Masquer la grille' : 'Afficher la grille'"
+        @click="toggleGrid"
+      >
+        <AppIcon name="grid" />
+      </button>
+    </header>
 
     <main class="table">
       <div v-if="error && !scene" class="error" role="alert">
@@ -1327,20 +1317,24 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/*
+ * Comme au Carnet : la colonne de la campagne sur toute la hauteur, à gauche ; la barre de la carte au-dessus de la
+ * table et du panneau. Repliée en rail (3.5rem) tant qu'aucun outil n'est ouvert, la colonne laisse la place à la carte.
+ */
 .layout {
   height: 100vh;
   display: grid;
   grid-template-columns: 3.5rem 1fr 24rem;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
-    'bar bar bar'
-    'rail table side';
+    'column bar bar'
+    'column table side';
 }
 .layout.with-drawer {
-  grid-template-columns: 3.5rem 17rem 1fr 24rem;
-  grid-template-areas:
-    'bar bar bar bar'
-    'rail drawer table side';
+  grid-template-columns: 17.5rem 1fr 24rem;
+}
+.column {
+  grid-area: column;
 }
 .bar {
   grid-area: bar;
@@ -1394,17 +1388,23 @@ onBeforeUnmount(() => {
 .icon-button[aria-pressed='false'] {
   color: var(--ink-muted);
 }
-.rail {
-  grid-area: rail;
+/* Les outils : en rail l'un sous l'autre, dépliés en une rangée au-dessus de leur tiroir. */
+.tools {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding-top: 0.75rem;
-  background: var(--wood);
-  border-right: 1px solid var(--rule);
+  gap: 0.4rem;
 }
-.rail-button {
+.tools.open {
+  flex-direction: row;
+  gap: 0.25rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--rule);
+}
+.tools .fold {
+  margin-left: auto;
+}
+.tool-button {
   display: grid;
   place-items: center;
   width: 2.6rem;
@@ -1414,24 +1414,24 @@ onBeforeUnmount(() => {
   background: transparent;
   color: var(--ink-muted);
 }
-.rail-button:hover:not(:disabled) {
+.tool-button:hover:not(:disabled) {
   color: var(--ink);
   background: var(--wood-raised);
   border-color: transparent;
 }
 /* Tiroir ouvert : un état d'interface, pas un mode ; il reste en bois. */
-.rail-button.open,
-.rail-button.open:hover:not(:disabled) {
+.tool-button.open,
+.tool-button.open:hover:not(:disabled) {
   color: var(--ink);
   background: var(--wood-sunken);
   border-color: var(--rule);
 }
 .drawer {
-  grid-area: drawer;
-  padding: 1rem 1.1rem;
+  flex: 1;
+  min-height: 0;
+  margin: -0.3rem -0.9rem 0;
+  padding: 0.3rem 0.9rem 0.5rem;
   overflow-y: auto;
-  background: var(--wood);
-  border-right: 2px solid var(--page);
 }
 .table {
   grid-area: table;
@@ -1546,7 +1546,7 @@ onBeforeUnmount(() => {
 /* Tiroir ouvert sous 1280 px : le panneau latéral se replie en bande d'onglets verticaux. */
 @media (min-width: 901px) and (max-width: 1280px) {
   .layout.with-drawer {
-    grid-template-columns: 3.5rem 17rem 1fr 3rem;
+    grid-template-columns: 17.5rem 1fr 3rem;
   }
   .side.folded .tabs {
     flex-direction: column;
@@ -1569,23 +1569,19 @@ onBeforeUnmount(() => {
   .layout.with-drawer {
     height: auto;
     min-height: 100vh;
-    grid-template-columns: 3.5rem 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto auto;
     grid-template-areas:
-      'bar bar'
-      'rail drawer'
-      'table table'
-      'side side';
+      'column'
+      'bar'
+      'table'
+      'side';
   }
-  .rail {
-    flex-direction: column;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--rule);
-  }
-  .layout:not(.with-drawer) .rail {
-    grid-column: 1 / -1;
+  .tools:not(.open) {
     flex-direction: row;
-    padding: 0.4rem 0.75rem;
+  }
+  .drawer {
+    overflow: visible;
   }
   .side {
     border-left: 0;
