@@ -61,10 +61,18 @@
 - [pass] m4 — `find` refuse les ids hors format — `FileCampaignStoreTest.changerLesModules_reecritLaFiche_sansToucherLesDonnees` : `../<id>`, `<id>\\..\\<id>`, `<ID>` en majuscules, `null` → vide.
 - [pass] Suites — `mvn verify` exit 0 : 27 + 68 + 65 + 43 + 10 + 245 tests, 0 échec ; `npm run build` `✓ built in 873ms` ; `grep -rniE "mythic|['\"]oracle['\"]" vtt-server/src/main vtt-web/src` vide.
 
+## Revue 3 · remarques
+
+- Date: 2026-11-09
+- Validated on: b742b7c
+
+- [pass] Dialogue sans liste des modules installés — Chrome, 5174 → 8081, `/api/modules` simulé à 500, Carnet « Avec Mythic » : bandeau « Modules installés illisibles (panne) » ; dialogue Modules : « Modules installés illisibles : réessayer en rouvrant le Carnet. », Enregistrer désactivé. `npm run build` vert.
+- [pass] Bandeau non écrasé — l'échec de `/api/modules` n'écrit le bandeau que s'il est vide (`??=`) : un message déjà affiché (modules actifs, `prepare`) passe d'abord.
+
 ## Final
 
 - Date: 2026-11-09
-- Validated on: 7dd170a
+- Validated on: b742b7c (seul le client a changé depuis 7dd170a ; `mvn verify` y est vert)
 
 - [pass] `mvn verify` — exit 0 ; `vtt-engine` 27, `dnd-engine` 68, `mythic-engine` 65, `mythic-server` 43, `oracle-server` 10, `vtt-server` 245 tests, 0 échec, 0 erreur.
 - [pass] `npm run build` dans `vtt-web/` — vue-tsc puis Vite : `✓ built in 873ms`.
