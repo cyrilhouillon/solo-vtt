@@ -34,14 +34,19 @@ async function call(action: () => Promise<void>) {
   }
 }
 
-onMounted(() =>
-  call(async () => {
-    const [all, installed] = await Promise.all([api.campaigns(), api.installedModules()])
-    campaigns.value = all
-    offered.value = availableModules(installed)
-    chosenModules.value = offered.value.map((module) => module.id)
-  }),
-)
+onMounted(() => {
+  void call(async () => {
+    campaigns.value = await api.campaigns()
+  })
+  // Sans la liste des modules, l'accueil reste utilisable : la création laisse le serveur choisir les modules installés.
+  void api
+    .installedModules()
+    .then((installed) => {
+      offered.value = availableModules(installed)
+      chosenModules.value = offered.value.map((module) => module.id)
+    })
+    .catch(() => {})
+})
 
 function create() {
   if (!trimmed.value || busy.value) return

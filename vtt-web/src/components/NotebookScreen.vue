@@ -428,10 +428,13 @@ function saveModules(modules: string[]) {
 
 /** Lit les modules actifs ; un échec va au bandeau, et le Carnet s'ouvre sans module. */
 async function readModules() {
+  // Les modules installés ne servent qu'au dialogue Modules : leur échec ne retire rien au Carnet.
+  void api
+    .installedModules()
+    .then((installed) => (offeredModules.value = availableModules(installed)))
+    .catch((e) => (error.value = `Modules installés illisibles (${e instanceof Error ? e.message : String(e)})`))
   try {
-    const [active, installed] = await Promise.all([api.modules(), api.installedModules()])
-    activeModuleIds.value = active
-    offeredModules.value = availableModules(installed)
+    activeModuleIds.value = await api.modules()
   } catch (e) {
     error.value = `Modules illisibles (${e instanceof Error ? e.message : String(e)})`
   }

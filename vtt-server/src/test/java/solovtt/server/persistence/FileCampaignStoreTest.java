@@ -99,6 +99,11 @@ class FileCampaignStoreTest {
         assertEquals(Optional.of(List.of()), relu.find(strahd.id()).map(Campaign::modules));
         assertEquals(Optional.of("{\"chaos\":7}"), relu.readModuleData(strahd.id(), "mythic"));
         assertThrows(IllegalArgumentException.class, () -> store.setModules("inconnue", List.of()));
+        // Un id qui n'en est pas un ne lit aucune fiche hors du dossier de la campagne.
+        assertEquals(Optional.empty(), store.find("../" + strahd.id()));
+        assertEquals(Optional.empty(), store.find(strahd.id() + "\\..\\" + strahd.id()));
+        assertEquals(Optional.empty(), store.find(strahd.id().toUpperCase()));
+        assertEquals(Optional.empty(), store.find(null));
     }
 
     @Test

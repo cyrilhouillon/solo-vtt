@@ -50,8 +50,12 @@ public class InstalledModules {
         return ids.stream().filter(wanted::contains).toList();
     }
 
-    /** Les modules actifs d'une campagne : les siens, ou tous les modules installés si elle n'en a pas choisi. */
+    /**
+     * Les modules actifs d'une campagne : les siens encore installés (un module retiré de l'assemblage n'est plus actif
+     * nulle part, et l'enregistrement suivant l'efface de la fiche), ou tous les modules installés si elle n'en a pas
+     * choisi.
+     */
     public List<String> activeIn(Campaign campaign) {
-        return campaign.modules() == null ? ids : campaign.modules();
+        return campaign.modules() == null ? ids : campaign.modules().stream().filter(ids::contains).toList();
     }
 }
