@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 ---
 
 # Instruction: Cœur et Oracle : écrire ou afficher et copier
