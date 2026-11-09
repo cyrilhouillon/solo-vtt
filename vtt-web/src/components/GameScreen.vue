@@ -40,7 +40,8 @@ import {
   type TokenView,
 } from '../types'
 
-const props = defineProps<{ campaign: CampaignView }>()
+/** `replayId` : le combat terminé à rejouer, en lecture seule ; absent pour la partie en cours. */
+const props = defineProps<{ campaign: CampaignView; replayId?: string }>()
 const router = useRouter()
 
 /** Les outils de la colonne : chacun ouvre son tiroir dans la colonne, qui se déplie. */

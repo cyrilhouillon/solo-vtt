@@ -30,6 +30,12 @@ export const router = createRouter({
       component: GameScreen,
       props: (route) => ({ campaign: campaigns.get(campaignId(route)) }),
     },
+    {
+      path: '/campagnes/:campaignId/combats/:combatId/rejeu',
+      name: 'combatReplay',
+      component: GameScreen,
+      props: (route) => ({ campaign: campaigns.get(campaignId(route)), replayId: route.params.combatId as string }),
+    },
     // Une adresse inconnue ne casse rien : elle mène à l'accueil.
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
