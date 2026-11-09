@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: l'oracle générique répond oui/non et lance un d100
