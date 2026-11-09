@@ -37,7 +37,7 @@ class OracleResourceTest {
     }
 
     private static OracleResource oracle(int... des) {
-        return new OracleResource(new Donnees(), Dice.scripted(des));
+        return new OracleResource(new Donnees(), new PagesDeTest(), Dice.scripted(des));
     }
 
     @Test

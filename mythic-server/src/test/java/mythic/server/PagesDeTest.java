@@ -51,6 +51,17 @@ final class PagesDeTest implements NotebookPages {
         return Optional.ofNullable(pagesOrdinaires.getOrDefault(campaignId, Map.of()).get(pageId));
     }
 
+    /** Mythic ne lit que ses racines : aucune sous-page. */
+    @Override
+    public List<SectionPage> childPages(String campaignId, String moduleId, String pageId) {
+        return List.of();
+    }
+
+    @Override
+    public Optional<String> sectionPageContent(String campaignId, String moduleId, String pageId) {
+        return sectionRootContent(campaignId, moduleId, pageId);
+    }
+
     /** Remplace le contenu d'une racine, comme le joueur qui écrit dans la page. */
     void ecrire(String id, String content) {
         racines.replaceAll(r -> r.id().equals(id) ? new Racine(r.campaignId(), r.moduleId(), id, r.title(), content) : r);

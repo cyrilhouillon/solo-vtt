@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import type { NotebookContext } from '../../src/modules/notebookModule'
-import { oracleApi, type D100, type YesNo } from './api'
-import { d100Blocks, yesNoBlocks, yesNoText } from './result'
+import { oracleApi, type D100, type Draw, type OracleList, type YesNo } from './api'
+import { d100Blocks, drawBlocks, drawText, yesNoBlocks, yesNoText } from './result'
 
 /**
- * L'oracle générique dans le Carnet : une question oui/non à chances égales, ou un d100 ; chaque jet, tiré au serveur,
- * s'écrit dans la page ouverte.
+ * L'oracle générique dans le Carnet : une question oui/non à chances égales, un d100, ou une ligne tirée dans une liste
+ * du joueur ; chaque jet, tiré au serveur, s'écrit dans la page ouverte.
  */
 const props = defineProps<{ context: NotebookContext }>()
 const api = oracleApi(props.context.campaignId)
@@ -16,7 +16,10 @@ const MAX_QUESTION_LENGTH = 500
 
 const question = ref('')
 /** Le dernier jet écrit dans la page, rappelé sous les boutons. */
-const last = ref<{ yesNo: YesNo } | { d100: D100 } | null>(null)
+const last = ref<{ yesNo: YesNo } | { d100: D100 } | { draw: Draw } | null>(null)
+/** Les listes du joueur, relues à chaque ouverture du choix ; `null` tant qu'elles ne sont pas lues. */
+const lists = ref<OracleList[] | null>(null)
+const chosenList = ref('')
 const error = ref<string | null>(null)
 const busy = ref(false)
 
@@ -49,6 +52,24 @@ async function roll<T>(
   }
 }
 
+/** Relit les listes : le joueur en crée et en renomme dans l'arbre pendant que le panneau est ouvert. */
+async function readLists() {
+  try {
+    lists.value = await api.lists()
+    if (!lists.value.some((list) => list.id === chosenList.value)) chosenList.value = lists.value[0]?.id ?? ''
+  } catch (e) {
+    error.value = `Listes illisibles : ${reason(e)}`
+  }
+}
+
+onMounted(readLists)
+
+function drawLine() {
+  if (!chosenList.value) return
+  const listId = chosenList.value
+  void roll(() => api.draw(listId), drawBlocks, (draw) => (last.value = { draw }))
+}
+
 function askYesNo() {
   void roll(api.yesNo, yesNoBlocks, (yesNo) => (last.value = { yesNo }))
 }
@@ -70,10 +91,31 @@ function rollD100() {
         <button type="button" class="ask" :disabled="busy" @click="rollD100">d100</button>
       </div>
     </form>
+    <hr class="rule" />
+    <div class="lists">
+      <template v-if="lists?.length">
+        <label>
+          Liste
+          <select v-model="chosenList" :disabled="busy" @focus="readLists" @pointerdown="readLists">
+            <option v-for="list in lists" :key="list.id" :value="list.id">{{ list.title }}</option>
+          </select>
+        </label>
+        <button type="button" class="ask" :disabled="busy || !chosenList" @click="drawLine">Tirer</button>
+      </template>
+      <template v-else-if="lists">
+        <span class="label">Listes</span>
+        <p class="muted">Aucune liste : ajouter une sous-page à « Listes », une ligne par puce.</p>
+        <button type="button" class="refresh" :disabled="busy" @click="readLists">Relire les listes</button>
+      </template>
+    </div>
     <p v-if="error" class="error-text" role="alert">{{ error }}</p>
     <p v-else-if="last && 'yesNo' in last" class="last" aria-live="polite">
       <strong>{{ yesNoText(last.yesNo) }}</strong>
       <span v-if="last.yesNo.question" class="muted"> · {{ last.yesNo.question }}</span>
+    </p>
+    <p v-else-if="last && 'draw' in last" class="last" aria-live="polite">
+      <strong>{{ drawText(last.draw) }}</strong>
+      <span class="muted"> · d{{ last.draw.sides }} {{ last.draw.roll }}, ligne {{ last.draw.line }}</span>
     </p>
     <p v-else-if="last" class="last" aria-live="polite">
       <strong>d100 : {{ last.d100.roll }}</strong>
@@ -87,6 +129,30 @@ function rollD100() {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+.rule {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--rule);
+}
+.lists {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.lists p {
+  margin: 0;
+}
+.label {
+  color: var(--ink-muted);
+}
+.refresh {
+  align-self: flex-start;
+}
+select {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
 }
 .question {
   display: flex;
@@ -110,6 +176,7 @@ input {
   flex-wrap: wrap;
 }
 .ask {
+  align-self: flex-start;
   font-weight: 700;
   background: var(--wood-raised);
 }

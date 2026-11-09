@@ -3,6 +3,7 @@ package solovtt.server;
 import jakarta.enterprise.context.ApplicationScoped;
 import solovtt.module.NotebookPages;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,6 +43,33 @@ public class NotebookPagesAdapter implements NotebookPages {
     @Override
     public Optional<String> pageTitle(String campaignId, String pageId) {
         return notebook(campaignId).find(pageId).map(Page::title);
+    }
+
+    @Override
+    public List<SectionPage> childPages(String campaignId, String moduleId, String pageId) {
+        CampaignStore.checkModuleId(moduleId);
+        List<Page> pages = notebook(campaignId).list();
+        if (!inSection(pages, moduleId, pageId)) return List.of();
+        return pages.stream()
+                .filter(page -> pageId.equals(page.parentId()))
+                .sorted(Comparator.comparing(Page::title, String.CASE_INSENSITIVE_ORDER).thenComparing(Page::title))
+                .map(page -> new SectionPage(page.id(), page.title()))
+                .toList();
+    }
+
+    @Override
+    public Optional<String> sectionPageContent(String campaignId, String moduleId, String pageId) {
+        CampaignStore.checkModuleId(moduleId);
+        List<Page> pages = notebook(campaignId).list();
+        if (!inSection(pages, moduleId, pageId)) return Optional.empty();
+        return pages.stream().filter(page -> page.id().equals(pageId)).findFirst().map(Page::content);
+    }
+
+    /** Vrai si la page est vivante et sa racine une racine de la section du module. */
+    private static boolean inSection(List<Page> pages, String moduleId, String pageId) {
+        return pages.stream()
+                .filter(page -> moduleId.equals(page.section()))
+                .anyMatch(root -> PageTree.isWithin(pages, pageId, root.id()) && pages.stream().anyMatch(p -> p.id().equals(pageId)));
     }
 
     private NotebookStore notebook(String campaignId) {
