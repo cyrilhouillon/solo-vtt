@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -209,5 +210,45 @@ public class NotebookStoreTest {
 
         assertThrows(IllegalArgumentException.class, () -> store.createSectionRoot("../x", "Fils", null));
         assertThrows(IllegalArgumentException.class, () -> store.createSectionRoot("A", "Fils", null));
+    }
+
+    @Test
+    void enMemoire_lesEntreesDeCombat_suiventLesReglesDuPort() {
+        entreesDeCombat(NotebookStore.inMemory());
+    }
+
+    private static final String COMBAT = "0f8fad5b-d9cb-469f-a165-70867728950e";
+    private static final String COMBAT_2 = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+
+    /**
+     * Une entrée de combat va dans la section des combats, créée au premier ; elle se renomme, se déplace, se supprime et
+     * se restaure comme une page, mais n'a ni texte ni sous-page.
+     */
+    public static void entreesDeCombat(NotebookStore store) {
+        var premier = store.createCombatEntry(COMBAT, "Combat 1");
+        var second = store.createCombatEntry(COMBAT_2, "Combat 2");
+        var racine = store.find(premier.parentId()).orElseThrow();
+        assertEquals("Combats", racine.title());
+        assertEquals(NotebookStore.COMBATS_SECTION, racine.section());
+        assertEquals(racine.id(), second.parentId());
+        assertEquals(new Page(premier.id(), "Combat 1", racine.id(), null, null, COMBAT), premier);
+        assertNotEquals(COMBAT, premier.id());
+
+        store.rename(premier.id(), "Embuscade");
+        var session = store.create("Session 1", null);
+        store.move(premier.id(), session.id());
+        assertEquals(Optional.of(new Page(premier.id(), "Embuscade", session.id(), null, null, COMBAT)), store.find(premier.id()));
+        store.delete(premier.id());
+        assertEquals(Optional.empty(), store.find(premier.id()));
+        store.restore(premier.id());
+        assertEquals(COMBAT, store.find(premier.id()).orElseThrow().combatId());
+
+        var texte = assertThrows(IllegalArgumentException.class, () -> store.saveContent(second.id(), ARRIVEE));
+        assertEquals("Une entrée de combat n'a pas de texte", texte.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> store.create("Notes", second.id()));
+        assertThrows(IllegalArgumentException.class, () -> store.move(session.id(), second.id()));
+        assertNull(store.find(second.id()).orElseThrow().content());
+        assertEquals(1, store.list().stream().filter(p -> NotebookStore.COMBATS_SECTION.equals(p.section())).count());
+        assertThrows(IllegalArgumentException.class, () -> store.createCombatEntry("../x", "Combat 3"));
     }
 }

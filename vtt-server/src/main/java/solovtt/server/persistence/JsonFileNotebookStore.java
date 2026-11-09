@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import solovtt.server.CampaignStore;
+import solovtt.server.CombatStore;
 import solovtt.server.NotebookStore;
 import solovtt.server.Page;
 import solovtt.server.PageTree;
@@ -25,7 +26,7 @@ import java.util.stream.Stream;
 
 /**
  * Le Carnet d'une campagne, dans un dossier : une fiche par page ({@code <id>.json} : id, titre, parent, section d'une
- * racine de section, contenu en JSON imbriqué) et {@code carnet.json} pour les onglets : {@code openPageIds} dans l'ordre, {@code lastPageId} l'actif (un
+ * racine de section, combat d'une entrée de combat, contenu en JSON imbriqué) et {@code carnet.json} pour les onglets : {@code openPageIds} dans l'ordre, {@code lastPageId} l'actif (un
  * fichier d'avant les onglets, sans {@code openPageIds}, se lit en un seul onglet). Une page à la corbeille garde sa fiche,
  * marquée {@code deletedWith} (la page dont la suppression l'a emportée) et {@code deletedAt} (ISO-8601, le mapper n'ayant
  * pas de module {@code java.time}) ; une fiche sans ces champs est vivante. Chaque écriture passe par un fichier voisin et
@@ -40,7 +41,8 @@ public final class JsonFileNotebookStore implements NotebookStore {
     private record PageFile(String id, String title, String parentId,
                             @JsonInclude(JsonInclude.Include.NON_NULL) String section, JsonNode content,
                             @JsonInclude(JsonInclude.Include.NON_NULL) String deletedWith,
-                            @JsonInclude(JsonInclude.Include.NON_NULL) String deletedAt) {}
+                            @JsonInclude(JsonInclude.Include.NON_NULL) String deletedAt,
+                            @JsonInclude(JsonInclude.Include.NON_NULL) String combatId) {}
 
     private record NotebookFile(String lastPageId, List<String> openPageIds) {}
 
@@ -73,7 +75,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
 
     @Override
     public synchronized Page create(String title, String parentId) {
-        if (parentId != null) known(parentId);
+        if (parentId != null) NotebookStore.checkParent(known(parentId));
         var page = new Page(UUID.randomUUID().toString(), title, parentId, null);
         write(page);
         return page;
@@ -87,8 +89,18 @@ public final class JsonFileNotebookStore implements NotebookStore {
     }
 
     @Override
+    public synchronized Page createCombatEntry(String combatId, String title) {
+        Page root = NotebookStore.combatsRoot(list()).orElseGet(() -> createSectionRoot(COMBATS_SECTION, "Combats", null));
+        var page = new Page(UUID.randomUUID().toString(), title, root.id(), null, null, CombatStore.checkId(combatId));
+        write(page);
+        return page;
+    }
+
+    @Override
     public synchronized void saveContent(String id, String content) {
-        write(known(id).withContent(content));
+        Page page = known(id);
+        NotebookStore.checkContent(page);
+        write(page.withContent(content));
     }
 
     @Override
@@ -223,7 +235,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
             }
             String content = page.content() == null || page.content().isNull() ? null : mapper.writer()
                     .without(SerializationFeature.INDENT_OUTPUT).writeValueAsString(page.content());
-            Page read = new Page(page.id(), page.title(), page.parentId(), page.section(), content);
+            Page read = new Page(page.id(), page.title(), page.parentId(), page.section(), content, page.combatId());
             Trashed trashed = page.deletedWith() == null ? null
                     : new Trashed(read, page.deletedWith(), Instant.parse(page.deletedAt()));
             return Optional.of(new Stored(read, trashed));
@@ -242,7 +254,8 @@ public final class JsonFileNotebookStore implements NotebookStore {
         try {
             JsonNode content = page.content() == null ? null : mapper.readTree(page.content());
             writeAtomically(dir.resolve(page.id() + EXTENSION),
-                    new PageFile(page.id(), page.title(), page.parentId(), page.section(), content, deletedWith, deletedAt));
+                    new PageFile(page.id(), page.title(), page.parentId(), page.section(), content, deletedWith, deletedAt,
+                            page.combatId()));
         } catch (IOException e) {
             throw new UncheckedIOException("Contenu de page illisible : " + page.id(), e);
         }

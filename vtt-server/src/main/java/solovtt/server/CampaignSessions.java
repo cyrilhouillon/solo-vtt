@@ -32,6 +32,7 @@ public class CampaignSessions {
         SceneSession session = sessions.get(id);
         if (session != null) return session;
         if (campaigns.find(id).isEmpty()) throw new NotFoundException("Campagne inconnue : " + id);
-        return sessions.computeIfAbsent(id, key -> new SceneSession(dice, campaigns.games(key), campaigns.maps(key), campaigns.combats(key), combatId -> {}));
+        return sessions.computeIfAbsent(id, key -> new SceneSession(dice, campaigns.games(key), campaigns.maps(key), campaigns.combats(key),
+                combatId -> campaigns.notebook(key).createCombatEntry(combatId, "Combat " + campaigns.combats(key).ids().size())));
     }
 }
