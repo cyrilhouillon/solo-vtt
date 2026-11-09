@@ -1,6 +1,6 @@
 ---
 objective: "Les six preuves de succès de l'epic « jouer sa campagne avec Mythic GME depuis le Carnet » sont observées (import unique des tables, question écrite dans Session 6, événement qui tire un fil et deux mots, fin de scène puis scène modifiée, listes dans l'arbre après redémarrage, cœur sans Mythic), puis l'epic est close ou ses écarts deviennent des items du backlog."
-status: in-progress
+status: implemented
 ---
 
 # Plan: vérifier l'epic « jouer sa campagne avec Mythic GME depuis le Carnet » de bout en bout

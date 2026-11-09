@@ -1,6 +1,6 @@
 ---
 type: epic
-status: ready
+status: done
 goal: aidd_docs/tasks/2026_11/2026_11_01-solo-vtt-prd.md
 depends_on:
   - aidd_docs/backlog/epics/tenir-le-carnet-de-sa-campagne.md
