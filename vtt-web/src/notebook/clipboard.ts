@@ -14,7 +14,8 @@ export async function copyBlocks(blocks: JSONContent[], pages: readonly PageSumm
   const extensions = [StarterKit.configure({ link: false }), PageLink.configure({ pages: () => pages }), PageImage]
   try {
     const html = generateHTML(doc, extensions)
-    const text = generateText(doc, extensions, { blockSeparator: '\n' })
+    // Une citation est un bloc qui en contient d'autres : le séparateur la précéderait d'une ligne vide.
+    const text = generateText(doc, extensions, { blockSeparator: '\n' }).trim()
     if (typeof ClipboardItem === 'undefined') {
       await navigator.clipboard.writeText(text)
       return null
