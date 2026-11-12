@@ -1,5 +1,7 @@
 package dnd.engine.sheet;
 
+import dnd.engine.state.DamageType;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
@@ -28,7 +30,7 @@ class CharacterSheetTest {
                 Set.of(Ability.DEXTERITY, Ability.INTELLIGENCE),
                 Map.of(Skill.STEALTH, Proficiency.EXPERTISE, Skill.PERCEPTION, Proficiency.PROFICIENT),
                 14, 9, 9, "1d8", 7.5, 2,
-                List.of(new SheetAttack("Rapière", 4, "1d8+2", "perforant", "1,5 m")),
+                List.of(new SheetAttack("Rapière", 4, 1, 8, 2, DamageType.PIERCING, 1.5, null, null)),
                 "Attaque sournoise", "Armure de cuir", "Armes courantes", "Commun", List.of(new SpellSlots(1, 2, 1)));
     }
 
@@ -116,6 +118,6 @@ class CharacterSheetTest {
         assertThrows(IllegalArgumentException.class, () -> new CharacterSheet("", 1, "", "",
                 valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", "",
                 List.of(new SpellSlots(1, 2, 0), new SpellSlots(1, 3, 0))));
-        assertThrows(IllegalArgumentException.class, () -> new SheetAttack("  ", 4, "", "", ""));
+        assertThrows(IllegalArgumentException.class, () -> new SheetAttack("  ", 4, 1, 8, 2, DamageType.PIERCING, 1.5, null, null));
     }
 }

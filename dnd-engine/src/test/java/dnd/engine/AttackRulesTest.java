@@ -192,6 +192,20 @@ class AttackRulesTest {
     }
 
     @Test
+    void unMalusAuxDegats_peutFaireZero_maisNeSoignePas() {
+        var dague = new Weapon("Dague", 1, 4, DamageType.PIERCING, 5, -3, false);
+        var state = new GameState()
+                .add(Creature.builder("chetif", "Chétif").weapon(dague).build())
+                .add(Creature.builder("cible", "Cible").armorClass(10).hitPoints(30).currentHitPoints(20).build());
+        var e = engine(state, 15, 1);
+
+        attack(e, "chetif", "cible");
+
+        // 1 − 3 = −2 : 0 dégât, et la cible ne regagne aucun PV.
+        assertEquals(20, e.state().get("cible").hitPoints());
+    }
+
+    @Test
     void prioriteDansUnePhase_puisOrdreDEnregistrement() {
         List<String> order = new ArrayList<>();
         record Probe(String name, int priority, List<String> out) implements AttackRule {

@@ -26,12 +26,15 @@ public class CampaignResource {
     private final CampaignSessions sessions;
     private final ImageStore images;
     private final InstalledModules modules;
+    private final CampaignCatalog catalog;
 
-    public CampaignResource(CampaignStore campaigns, CampaignSessions sessions, ImageStore images, InstalledModules modules) {
+    public CampaignResource(CampaignStore campaigns, CampaignSessions sessions, ImageStore images, InstalledModules modules,
+                            CampaignCatalog catalog) {
         this.campaigns = campaigns;
         this.sessions = sessions;
         this.images = images;
         this.modules = modules;
+        this.catalog = catalog;
     }
 
     @GET
@@ -84,12 +87,19 @@ public class CampaignResource {
 
     @Path("/{campaignId}/scene")
     public SceneResource scene(@PathParam("campaignId") String campaignId) {
-        return new SceneResource(sessions.of(campaignId), images);
+        return new SceneResource(sessions.of(campaignId), images, catalog.of(campaignId));
+    }
+
+    /** Le catalogue ne touche pas la partie : il ne fait pas rejouer la session de la campagne. */
+    @Path("/{campaignId}/catalog")
+    public CatalogResource catalog(@PathParam("campaignId") String campaignId) {
+        known(campaignId);
+        return new CatalogResource(catalog, campaignId);
     }
 
     @Path("/{campaignId}/maps")
     public MapResource maps(@PathParam("campaignId") String campaignId) {
-        return new MapResource(sessions.of(campaignId));
+        return new MapResource(sessions.of(campaignId), catalog.of(campaignId));
     }
 
     @Path("/{campaignId}/creatures")

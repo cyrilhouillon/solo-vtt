@@ -144,7 +144,8 @@ public final class CoreAttackRules {
             int count = weapon.diceCount() * (ctx.critical() ? 2 : 1);
             List<Integer> values = rollMany(e, count, weapon.dieSides());
             e.emit(new DiceRolled(weapon.name(), weapon.dieSides(), values));
-            int damage = sum(values) + weapon.damageBonus();
+            // Un malus peut faire 0 dégât, jamais des dégâts négatifs (SRD 5.2.1 p. 16, « Damage Rolls »).
+            int damage = Math.max(0, sum(values) + weapon.damageBonus());
             e.emit(new RuleApplied("Dégâts", "%d (dés) %+d (modificateur) = %d"
                     .formatted(sum(values), weapon.damageBonus(), damage)));
             ctx.setDamage(damage);

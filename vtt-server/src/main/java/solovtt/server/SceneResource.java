@@ -1,5 +1,6 @@
 package solovtt.server;
 
+import dnd.engine.catalog.CatalogEntry;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -15,14 +16,20 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import solovtt.scene.Scene;
 
+import java.util.Optional;
+import java.util.function.Function;
+
 public class SceneResource {
 
     private final SceneSession session;
     private final ImageStore images;
+    /** Le catalogue de la campagne : ses personnages joueurs et les monstres. */
+    private final Function<String, Optional<CatalogEntry>> catalog;
 
-    public SceneResource(SceneSession session, ImageStore images) {
+    public SceneResource(SceneSession session, ImageStore images, Function<String, Optional<CatalogEntry>> catalog) {
         this.session = session;
         this.images = images;
+        this.catalog = catalog;
     }
 
     /** Crée une carte, vide ou sur une image déjà envoyée ; la précédente et ses créatures disparaissent. */
@@ -89,7 +96,7 @@ public class SceneResource {
     @ResponseStatus(201)
     @APIResponse(responseCode = "201", description = "Le jeton posé ; en combat, la créature tire son initiative et entre dans l'ordre",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.TokenDto.class)))
-    @APIResponse(responseCode = "400", description = "Créature du catalogue absente de la requête")
+    @APIResponse(responseCode = "400", description = "Créature du catalogue absente de la requête, ou fiche de personnage qui ne peut pas jouer")
     @APIResponse(responseCode = "404", description = "Entrée de catalogue inconnue")
     @APIResponse(responseCode = "409", description = "Aucune carte, ou une décision attend une réponse")
     public Dtos.TokenDto place(Dtos.PlaceTokenRequest request) {
@@ -97,7 +104,7 @@ public class SceneResource {
         if (request == null || request.catalogId() == null) {
             throw new IllegalArgumentException("Choisir une créature du catalogue");
         }
-        var entry = SceneSession.catalogEntry(request.catalogId())
+        var entry = catalog.apply(request.catalogId())
                 .orElseThrow(() -> new NotFoundException("Créature inconnue au catalogue : " + request.catalogId()));
         var token = session.place(entry, request.x(), request.y());
         return Dtos.TokenDto.of(token, entry, session.creature(token.entityId()).orElseThrow());

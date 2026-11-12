@@ -5,9 +5,13 @@ import GuidedCreation from './GuidedCreation.vue'
 import {
   ABILITIES,
   ABILITY_LABELS,
+  DAMAGE_TYPES,
+  DIE_SIDES,
   SKILLS,
   allSlots,
+  attackSummary,
   modifier,
+  newAttack,
   passivePerception,
   savingThrow,
   signed,
@@ -194,7 +198,7 @@ function toggleSave(ability: Ability, checked: boolean) {
 }
 
 function addAttack() {
-  values.value?.attacks.push({ name: '', bonus: 0, damage: '', damageType: '', range: '' })
+  values.value?.attacks.push(newAttack())
 }
 
 function removeAttack(index: number) {
@@ -298,22 +302,71 @@ function removeAttack(index: number) {
               <tr>
                 <th scope="col">Nom</th>
                 <th scope="col">Bonus</th>
-                <th scope="col">Dégâts</th>
+                <th scope="col">Dés</th>
+                <th scope="col">Bonus dég.</th>
                 <th scope="col">Type</th>
-                <th scope="col">Portée</th>
+                <th scope="col">Allonge (m)</th>
+                <th scope="col">Portée (m)</th>
                 <th scope="col"><span class="visually-hidden">Retirer</span></th>
               </tr>
             </thead>
-            <tbody>
-              <tr v-for="(attack, index) in values.attacks" :key="index">
+            <tbody v-for="(attack, index) in values.attacks" :key="index">
+              <tr>
                 <td><input v-model="attack.name" type="text" class="name" maxlength="80" :aria-label="`Nom de l'attaque ${index + 1}`" /></td>
                 <td><input v-model.number="attack.bonus" type="number" class="small" :aria-label="`Bonus de l'attaque ${index + 1}`" /></td>
-                <td><input v-model="attack.damage" type="text" maxlength="40" :aria-label="`Dégâts de l'attaque ${index + 1}`" /></td>
-                <td><input v-model="attack.damageType" type="text" maxlength="40" :aria-label="`Type de dégâts de l'attaque ${index + 1}`" /></td>
-                <td><input v-model="attack.range" type="text" maxlength="40" :aria-label="`Portée de l'attaque ${index + 1}`" /></td>
+                <td class="dice">
+                  <input
+                    v-model.number="attack.diceCount"
+                    type="number"
+                    class="tiny"
+                    min="0"
+                    max="20"
+                    :aria-label="`Nombre de dés de l'attaque ${index + 1}`"
+                  />d<select v-model.number="attack.dieSides" :aria-label="`Dé de dégâts de l'attaque ${index + 1}`">
+                    <option v-for="sides in DIE_SIDES" :key="sides" :value="sides">{{ sides }}</option>
+                  </select>
+                </td>
+                <td>
+                  <input v-model.number="attack.damageBonus" type="number" class="small" :aria-label="`Bonus de dégâts de l'attaque ${index + 1}`" />
+                </td>
+                <td>
+                  <select v-model="attack.damageType" :aria-label="`Type de dégâts de l'attaque ${index + 1}`">
+                    <option v-for="type in DAMAGE_TYPES" :key="type.id" :value="type.id">{{ type.label }}</option>
+                  </select>
+                </td>
+                <td>
+                  <input
+                    v-model.number="attack.reach"
+                    type="number"
+                    class="small"
+                    min="0"
+                    step="0.5"
+                    :aria-label="`Allonge de l'attaque ${index + 1}, vide si à distance`"
+                  />
+                </td>
+                <td class="range">
+                  <input
+                    v-model.number="attack.normalRange"
+                    type="number"
+                    class="small"
+                    min="0"
+                    step="0.5"
+                    :aria-label="`Portée normale de l'attaque ${index + 1}`"
+                  />/<input
+                    v-model.number="attack.longRange"
+                    type="number"
+                    class="small"
+                    min="0"
+                    step="0.5"
+                    :aria-label="`Portée longue de l'attaque ${index + 1}`"
+                  />
+                </td>
                 <td>
                   <button type="button" class="ghost" :aria-label="`Retirer l'attaque ${index + 1}`" @click="removeAttack(index)">×</button>
                 </td>
+              </tr>
+              <tr class="summary">
+                <td colspan="8">{{ attackSummary(attack) }}</td>
               </tr>
             </tbody>
           </table>
@@ -535,6 +588,18 @@ input.small {
 }
 .attacks input[type='text'] {
   min-width: 6rem;
+}
+.attacks input.tiny {
+  width: 3rem;
+}
+.attacks .dice,
+.attacks .range {
+  white-space: nowrap;
+}
+.attacks .summary td {
+  padding-bottom: 0.4rem;
+  font-size: 0.85em;
+  opacity: 0.75;
 }
 .attacks input.name {
   min-width: 9rem;

@@ -1,5 +1,7 @@
 package dnd.engine.sheet;
 
+import dnd.engine.state.CreatureProfile;
+
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -56,6 +58,9 @@ public record CharacterSheet(String className, int level, String species, String
         if (hitPoints < 0) throw new IllegalArgumentException("PV actuels négatifs : " + hitPoints);
         if (!(speed >= 0)) throw new IllegalArgumentException("Vitesse négative : " + speed);
         attacks = attacks == null ? List.of() : List.copyOf(attacks);
+        if (attacks.stream().map(SheetAttack::name).distinct().count() != attacks.size()) {
+            throw new IllegalArgumentException("Deux attaques portent le même nom");
+        }
         spellSlots = spellSlots == null ? List.of() : List.copyOf(spellSlots);
         if (spellSlots.stream().map(SpellSlots::level).distinct().count() != spellSlots.size()) {
             throw new IllegalArgumentException("Un seul jeu d'emplacements par niveau de sort");
@@ -93,6 +98,18 @@ public record CharacterSheet(String className, int level, String species, String
     /** Perception passive : 10 + le bonus de Perception. */
     public int passivePerception() {
         return 10 + skill(Skill.PERCEPTION);
+    }
+
+    /**
+     * La créature que joue cette fiche, telle qu'elle est maintenant : CA, PV maximum et actuels, vitesse, initiative et une
+     * arme par attaque.
+     *
+     * @throws IllegalArgumentException si la fiche ne peut pas jouer (PV maximum à 0, PV actuels au-dessus du maximum)
+     */
+    public CreatureProfile profile() {
+        if (hitPointMax == 0) throw new IllegalArgumentException("PV maximum à 0 : compléter la fiche avant de la poser");
+        return CreatureProfile.of(armorClass, hitPointMax, hitPoints, speed, initiative,
+                attacks.stream().map(SheetAttack::weapon).toList());
     }
 
     /** Un texte saisi, sans espaces aux bords ; {@code ""} s'il est absent. */

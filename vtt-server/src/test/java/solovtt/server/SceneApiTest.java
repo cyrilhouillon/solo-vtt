@@ -38,11 +38,12 @@ class SceneApiTest {
     }
 
     @Test
-    void leCatalogueListeLesCinqCreaturesSrd() {
-        given().get("/api/catalog").then().statusCode(200)
-                .body("$", hasSize(5))
+    void leCatalogueDeLaCampagne_listeSesPersonnagesPuisLesMonstres() {
+        given().get(campagne() + "/catalog").then().statusCode(200)
                 .body("id", hasItems("guerriere", "magicienne", "gobelin", "squelette", "loup"))
+                .body("find { it.id == 'guerriere' }.kind", equalTo("CHARACTER"))
                 .body("find { it.id == 'gobelin' }.kind", equalTo("MONSTER"));
+        given().get("/api/catalog").then().statusCode(404);
     }
 
     @Test

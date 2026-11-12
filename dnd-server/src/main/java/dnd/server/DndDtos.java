@@ -14,6 +14,7 @@ import dnd.engine.sheet.Skill;
 import dnd.engine.sheet.SpellSlots;
 import dnd.engine.sheet.SrdWeapon;
 import dnd.engine.sheet.StartingEquipment;
+import dnd.engine.state.DamageType;
 
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -34,8 +35,22 @@ public final class DndDtos {
     /** Le nom d'un nouveau personnage : le titre de sa page. */
     public record NewSheetRequest(String title) {}
 
-    /** Une attaque saisie. */
-    public record AttackDto(String name, int bonus, String damage, String damageType, String range) {}
+    /**
+     * Une attaque saisie : bonus d'attaque, dés et bonus de dégâts, type de dégâts, allonge et portée en mètres ({@code null}
+     * : sans).
+     */
+    public record AttackDto(String name, int bonus, int diceCount, int dieSides, int damageBonus, DamageType damageType,
+                            Double reach, Double normalRange, Double longRange) {
+
+        static AttackDto of(SheetAttack a) {
+            return new AttackDto(a.name(), a.bonus(), a.diceCount(), a.dieSides(), a.damageBonus(), a.damageType(),
+                    a.reach(), a.normalRange(), a.longRange());
+        }
+
+        SheetAttack toAttack() {
+            return new SheetAttack(name, bonus, diceCount, dieSides, damageBonus, damageType, reach, normalRange, longRange);
+        }
+    }
 
     /** Les emplacements d'un niveau de sort. */
     public record SpellSlotsDto(int level, int max, int expended) {}
@@ -56,7 +71,7 @@ public final class DndDtos {
             return new SheetValuesDto(sheet.className(), sheet.level(), sheet.species(), sheet.background(),
                     new EnumMap<>(sheet.abilities()), sheet.proficiencyBonus(), sheet.savingThrows(), sheet.skills(),
                     sheet.armorClass(), sheet.hitPointMax(), sheet.hitPoints(), sheet.hitDice(), sheet.speed(), sheet.initiative(),
-                    sheet.attacks().stream().map(a -> new AttackDto(a.name(), a.bonus(), a.damage(), a.damageType(), a.range())).toList(),
+                    sheet.attacks().stream().map(AttackDto::of).toList(),
                     sheet.features(), sheet.equipment(), sheet.proficiencies(), sheet.languages(),
                     sheet.spellSlots().stream().map(s -> new SpellSlotsDto(s.level(), s.max(), s.expended())).toList());
         }
@@ -70,8 +85,7 @@ public final class DndDtos {
             return new CharacterSheet(className, level, species, background, abilities, proficiencyBonus,
                     savingThrows, skills == null ? Map.of() : withoutNone(skills),
                     armorClass, hitPointMax, hitPoints, hitDice, speed, initiative,
-                    attacks == null ? List.of() : attacks.stream()
-                            .map(a -> new SheetAttack(a.name(), a.bonus(), a.damage(), a.damageType(), a.range())).toList(),
+                    attacks == null ? List.of() : attacks.stream().map(AttackDto::toAttack).toList(),
                     features, equipment, proficiencies, languages,
                     spellSlots == null ? List.of() : spellSlots.stream()
                             .map(s -> new SpellSlots(s.level(), s.max(), s.expended())).toList());

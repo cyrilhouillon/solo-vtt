@@ -1,5 +1,6 @@
 package solovtt.server;
 
+import dnd.engine.state.CreatureProfile;
 import solovtt.scene.DistanceUnit;
 
 import java.util.List;
@@ -32,7 +33,17 @@ public record SavedGame(List<SavedCommand> commands) {
         /** Le calage de la grille : dimensions de la carte mise à l'échelle, et décalage de la grille en fraction de case. */
         record AlignGrid(double width, double height, double offsetX, double offsetY, List<Integer> rolls) implements SavedCommand {}
 
-        record Place(String catalogId, double x, double y, List<Integer> rolls) implements SavedCommand {}
+        /**
+         * {@code name} et {@code profile} : la copie d'un personnage joueur prise à la pose, que la reprise et le rejeu
+         * recréent sans relire sa fiche ; {@code null} pour un monstre du SRD.
+         */
+        record Place(String catalogId, String name, CreatureProfile profile, double x, double y, List<Integer> rolls)
+                implements SavedCommand {
+            /** La pose d'un monstre du SRD. */
+            public Place(String catalogId, double x, double y, List<Integer> rolls) {
+                this(catalogId, null, null, x, y, rolls);
+            }
+        }
 
         record Remove(String tokenId, List<Integer> rolls) implements SavedCommand {}
 

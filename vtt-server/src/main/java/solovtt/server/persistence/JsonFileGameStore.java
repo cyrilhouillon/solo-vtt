@@ -1,9 +1,11 @@
 package solovtt.server.persistence;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import dnd.engine.state.Weapon;
 import solovtt.server.GameStore;
 import solovtt.server.SavedGame;
 import solovtt.server.SavedGame.SavedCommand;
@@ -28,7 +30,8 @@ public final class JsonFileGameStore implements GameStore {
     private final Path file;
     private final ObjectMapper mapper = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT)
-            .addMixIn(SavedCommand.class, SavedCommandFormat.class);
+            .addMixIn(SavedCommand.class, SavedCommandFormat.class)
+            .addMixIn(Weapon.class, WeaponFormat.class);
 
     public JsonFileGameStore(Path file) {
         this.file = file.toAbsolutePath();
@@ -87,4 +90,8 @@ public final class JsonFileGameStore implements GameStore {
             @JsonSubTypes.Type(value = SavedCommand.AlignGrid.class, name = "alignGrid"),
     })
     private interface SavedCommandFormat {}
+
+    /** Une arme d'un personnage posé : ses composantes seules, sans ce qu'elle en dérive. */
+    @JsonIgnoreProperties({"melee"})
+    private interface WeaponFormat {}
 }

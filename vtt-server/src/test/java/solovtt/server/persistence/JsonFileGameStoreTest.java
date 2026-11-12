@@ -1,5 +1,8 @@
 package solovtt.server.persistence;
 
+import dnd.engine.state.CreatureProfile;
+import dnd.engine.state.DamageType;
+import dnd.engine.state.Weapon;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import solovtt.scene.DistanceUnit;
@@ -11,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,6 +30,10 @@ class JsonFileGameStoreTest {
     private static final SavedGame PARTIE = new SavedGame(List.of(
             new SavedCommand.Create(30, 20, DistanceUnit.METRE, "a".repeat(64), "Crypte", List.of()),
             new SavedCommand.Place("gobelin", 12, 1.5, List.of()),
+            new SavedCommand.Place("page-aria", "Aria", new CreatureProfile(18, 12, 5, 9, 2,
+                    List.of(new Weapon("Javeline", 1, 6, DamageType.PIERCING, 5, 3, false).thrown(9, 36),
+                            Weapon.ranged("Arc court", 1, 6, DamageType.PIERCING, 4, 2, 24, 96)),
+                    Set.of("dueling"), Set.of("shield"), List.of(2)), 3, 4.5, List.of()),
             new SavedCommand.ShowGrid(false, List.of()),
             new SavedCommand.AlignGrid(33, 22, 0.25, 0.5, List.of()),
             new SavedCommand.Move("gobelin-1", 10.5, 3, List.of()),

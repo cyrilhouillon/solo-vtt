@@ -1,8 +1,6 @@
 package dnd.engine.catalog;
 
 import dnd.engine.catalog.CatalogEntry.Kind;
-import dnd.engine.rules.DuelingStyle;
-import dnd.engine.rules.ShieldReaction;
 import dnd.engine.state.Creature;
 import dnd.engine.state.DamageType;
 import dnd.engine.state.Weapon;
@@ -10,12 +8,13 @@ import dnd.engine.state.Weapon;
 import java.util.List;
 
 /**
- * Créatures prêtes à l'emploi, tirées du System Reference Document 5.2.1 de Wizards of the Coast,
+ * Les monstres prêts à l'emploi, tirés du System Reference Document 5.2.1 de Wizards of the Coast,
  * sous licence CC-BY-4.0 (https://creativecommons.org/licenses/by/4.0/legalcode).
  *
- * <p>Seul ce que le moteur sait jouer est repris : CA, PV, vitesse, initiative (modificateur des fiches ;
- * Dextérité pour les personnages), attaques (allonge, portée,
- * lancer), résistances et vulnérabilités. Les immunités (poison du Squelette) et les effets annexes
+ * Les personnages joueurs viennent des fiches de la campagne, pas d'ici.
+ *
+ * <p>Seul ce que le moteur sait jouer est repris : CA, PV, vitesse, initiative (modificateur des fiches), attaques
+ * (allonge, portée, lancer), résistances et vulnérabilités. Les immunités (poison du Squelette) et les effets annexes
  * (Gobelin : +1d4 avec avantage ; Loup : À terre, Tactique de meute) ne sont pas encore modélisés.
  * Longueurs converties à 1,5 m pour 5 ft : allonge 5 ft = 1,5 m, 20/60 ft = 6/18 m, 80/320 ft = 24/96 m.</p>
  *
@@ -24,21 +23,6 @@ import java.util.List;
 public final class SrdCatalog {
 
     private static final List<CatalogEntry> ENTRIES = List.of(
-            // Niveau 1 : For 17, Dex 14, Con 14 (« Standard Array by Class » du Guerrier) ; cotte de mailles + bouclier ;
-            // Épée longue (For +3, maîtrise +2).
-            new CatalogEntry("guerriere", "Guerrière", Kind.CHARACTER, (id, name) ->
-                    Creature.builder(id, name)
-                            .armorClass(18).hitPoints(12).speed(9).initiative(2)
-                            .weapon(new Weapon("Épée longue", 1, 8, DamageType.SLASHING, 5, 3, true))
-                            .feature(DuelingStyle.FEATURE)
-                            .build()),
-            // Niveau 1 : Int 17, Dex 14, Con 13 ; sans armure ; Dague (Dex +2, maîtrise +2).
-            new CatalogEntry("magicienne", "Magicienne", Kind.CHARACTER, (id, name) ->
-                    Creature.builder(id, name)
-                            .armorClass(12).hitPoints(7).speed(9).initiative(2)
-                            .weapon(new Weapon("Dague", 1, 4, DamageType.PIERCING, 4, 2, true).thrown(6, 18))
-                            .knows(ShieldReaction.SPELL).spellSlots(1, 2)
-                            .build()),
             new CatalogEntry("gobelin", "Gobelin guerrier", Kind.MONSTER, (id, name) ->
                     Creature.builder(id, name)
                             .armorClass(15).hitPoints(10).speed(9).initiative(2)

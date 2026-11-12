@@ -25,10 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SrdCatalogTest {
 
     @Test
-    void leCatalogueProposeDeuxPersonnagesEtTroisMonstres() {
+    void leCatalogueSrdNeProposeQueTroisMonstres_lesPersonnagesViennentDesFiches() {
         var kinds = SrdCatalog.entries().stream().map(CatalogEntry::kind).toList();
-        assertEquals(2, kinds.stream().filter(k -> k == CatalogEntry.Kind.CHARACTER).count());
-        assertEquals(3, kinds.stream().filter(k -> k == CatalogEntry.Kind.MONSTER).count());
+        assertEquals(List.of(CatalogEntry.Kind.MONSTER, CatalogEntry.Kind.MONSTER, CatalogEntry.Kind.MONSTER), kinds);
+        assertThrows(IllegalArgumentException.class, () -> SrdCatalog.create("guerriere", "g"));
+        assertThrows(IllegalArgumentException.class, () -> SrdCatalog.create("magicienne", "m"));
     }
 
     @Test
@@ -42,8 +43,6 @@ class SrdCatalogTest {
 
     @Test
     void chaqueCreaturePorteSonModificateurDInitiativeDuSrd() {
-        assertEquals(2, SrdCatalog.create("guerriere", "g").initiative());
-        assertEquals(2, SrdCatalog.create("magicienne", "m").initiative());
         assertEquals(2, SrdCatalog.create("gobelin", "go").initiative());
         assertEquals(3, SrdCatalog.create("squelette", "s").initiative());
         assertEquals(2, SrdCatalog.create("loup", "l").initiative());
@@ -68,15 +67,13 @@ class SrdCatalogTest {
 
     @Test
     void lesAttaquesSuiventLeSrd() {
-        assertEquals(List.of("Dague", "Dague (lancer)"), labels("magicienne"));
         assertEquals(List.of("Cimeterre", "Arc court"), labels("gobelin"));
         assertEquals(List.of("Épée courte", "Arc court"), labels("squelette"));
-        assertEquals(List.of("Épée longue"), labels("guerriere"));
         assertEquals(List.of("Morsure"), labels("loup"));
 
-        var dague = SrdCatalog.create("magicienne", "m").weapons().getFirst();
-        assertEquals(1.5, dague.reach());
-        assertEquals(new Weapon.Range(6, 18), dague.range());
+        var cimeterre = SrdCatalog.create("gobelin", "g").weapons().getFirst();
+        assertEquals(1.5, cimeterre.reach());
+        assertNull(cimeterre.range());
         var arc = SrdCatalog.create("squelette", "s").weapons().get(1);
         assertNull(arc.reach());
         assertEquals(new Weapon.Range(24, 96), arc.range());

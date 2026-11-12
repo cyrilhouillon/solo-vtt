@@ -142,25 +142,20 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
         return armorClass;
     }
 
-    /** Maîtrise + Force, Dextérité à distance, la meilleure en Finesse ; + 2 en Archerie avec une arme à distance. */
-    private static SheetAttack attack(SrdWeapon weapon, int str, int dex, FightingStyle style) {
+    /**
+     * Maîtrise + Force, Dextérité à distance, la meilleure en Finesse ; + 2 en Archerie avec une arme à distance. Allonge
+     * 1,5 m (3 m pour Allonge) au corps à corps, aucune à distance ; portée pour Lancer et Munitions.
+     */
+    static SheetAttack attack(SrdWeapon weapon, int str, int dex, FightingStyle style) {
         boolean ranged = weapon.category().ranged();
         int ability = weapon.has(SrdWeapon.Property.FINESSE) ? Math.max(str, dex) : ranged ? dex : str;
         int bonus = PROFICIENCY_BONUS + ability + (ranged && style == FightingStyle.ARCHERY ? ARCHERY_BONUS : 0);
-        String damage = weapon.damage() + (ability == 0 ? "" : ability > 0 ? "+" + ability : String.valueOf(ability));
-        return new SheetAttack(weapon.label(), bonus, damage, weapon.damageType().label(), range(weapon));
-    }
-
-    /** « 1,5 m » au contact, « 1,5 m ; lancer 9/36 m » pour une arme de lancer, « 45/180 m » à distance. */
-    private static String range(SrdWeapon weapon) {
-        String distance = meters(weapon.normalRange()) + "/" + meters(weapon.longRange()) + " m";
-        if (weapon.category().ranged()) return distance;
-        String reach = meters(weapon.has(SrdWeapon.Property.REACH) ? REACH_WEAPON : MELEE_REACH) + " m";
-        return weapon.has(SrdWeapon.Property.THROWN) ? reach + " ; lancer " + distance : reach;
-    }
-
-    private static String meters(double value) {
-        return value == Math.rint(value) ? String.valueOf((long) value) : String.valueOf(value).replace('.', ',');
+        Double reach = ranged ? null : weapon.has(SrdWeapon.Property.REACH) ? REACH_WEAPON : MELEE_REACH;
+        boolean hasRange = weapon.normalRange() > 0;
+        // Des dégâts fixes, sans dé (sarbacane), ne prennent pas le modificateur (SRD 5.2.1 p. 16, « Damage Rolls »).
+        int damageBonus = weapon.diceCount() == 0 ? weapon.flatDamage() : ability;
+        return new SheetAttack(weapon.label(), bonus, weapon.diceCount(), weapon.dieSides(), damageBonus,
+                weapon.damageType(), reach, hasRange ? weapon.normalRange() : null, hasRange ? weapon.longRange() : null);
     }
 
     private static String features(Build build) {

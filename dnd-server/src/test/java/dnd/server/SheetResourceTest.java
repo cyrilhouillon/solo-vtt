@@ -9,6 +9,7 @@ import dnd.engine.sheet.Proficiency;
 import dnd.engine.sheet.Skill;
 import dnd.engine.sheet.SrdWeapon;
 import dnd.engine.sheet.StartingEquipment;
+import dnd.engine.state.DamageType;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.NotFoundException;
 import org.junit.jupiter.api.Test;
@@ -169,7 +170,7 @@ class SheetResourceTest {
         abilities.put(Ability.WISDOM, 12);
         return new DndDtos.SheetValuesDto("Roublard", 1, "Halfelin", "Criminel", abilities, 2, Set.of(Ability.DEXTERITY),
                 Map.of(Skill.STEALTH, Proficiency.EXPERTISE, Skill.PERCEPTION, Proficiency.PROFICIENT, Skill.ARCANA, Proficiency.NONE),
-                14, 9, 9, "1d8", 7.5, 2, List.of(new DndDtos.AttackDto("Rapière", 4, "1d8+2", "perforant", "1,5 m")),
+                14, 9, 9, "1d8", 7.5, 2, List.of(new DndDtos.AttackDto("Rapière", 4, 1, 8, 2, DamageType.PIERCING, 1.5, null, null)),
                 "Attaque sournoise", "Armure de cuir", "Armes courantes", "Commun", List.of());
     }
 
@@ -473,7 +474,7 @@ class SheetResourceTest {
                 "abilities":{"STRENGTH":8,"DEXTERITY":14,"CONSTITUTION":12,"INTELLIGENCE":13,"WISDOM":12,"CHARISMA":10},
                 "proficiencyBonus":2,"savingThrows":["DEXTERITY"],"skills":{"STEALTH":"EXPERTISE"},
                 "armorClass":14,"hitPointMax":9,"hitPoints":9,"hitDice":"1d8","speed":7.5,"initiative":2,
-                "attacks":[{"name":"Rapière","bonus":4,"damage":"1d8+2","damageType":"perforant","range":"1,5 m"}],
+                "attacks":[{"name":"Rapière","bonus":4,"diceCount":1,"dieSides":8,"damageBonus":2,"damageType":"PIERCING","reach":1.5}],
                 "features":"Attaque sournoise","equipment":"Armure de cuir","proficiencies":"Armes courantes",
                 "languages":"Commun","spellSlots":[]}}]}}
                 """.formatted(joueurs, aria));
@@ -546,5 +547,38 @@ class SheetResourceTest {
 
         assertEquals(16, equipementB.values().abilities().get(Ability.DEXTERITY));
         assertEquals(16, equipementB.values().armorClass(), "cuir clouté 12 + Dex 3 + Défense 1");
+    }
+
+    @Test
+    void uneAttaqueSansAllongeNiPortee_estRefuseeEn400_avecSaRaison() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+        var v = roublarde(14);
+        var sansPortee = new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.background(), v.abilities(),
+                v.proficiencyBonus(), v.savingThrows(), v.skills(), v.armorClass(), v.hitPointMax(), v.hitPoints(), v.hitDice(),
+                v.speed(), v.initiative(), List.of(new DndDtos.AttackDto("Coup", 2, 1, 4, 0, DamageType.BLUDGEONING, null, null, null)),
+                v.features(), v.equipment(), v.proficiencies(), v.languages(), v.spellSlots());
+
+        var refus = assertThrows(IllegalArgumentException.class, () -> dnd().edit(STRAHD, aria, sansPortee));
+        assertEquals("Coup : une allonge ou une portée", refus.getMessage());
+    }
+
+    @Test
+    void uneFicheDAvantLesAttaquesStructurees_estIllisibleEn409() {
+        String joueurs = dnd().ensureSections(STRAHD).playersPageId();
+        String aria = pages.createEntry(STRAHD, "dnd", joueurs, "Aria").id();
+        String fichier = """
+                {"playersPageId":"%s","sheets":{"%s":[{"type":"created"},{"type":"edited","values":{
+                "className":"Roublard","level":1,"species":"","background":"",
+                "abilities":{"STRENGTH":8,"DEXTERITY":14,"CONSTITUTION":12,"INTELLIGENCE":13,"WISDOM":12,"CHARISMA":10},
+                "proficiencyBonus":2,"savingThrows":[],"skills":{},
+                "armorClass":14,"hitPointMax":9,"hitPoints":9,"hitDice":"1d8","speed":7.5,"initiative":2,
+                "attacks":[{"name":"Rapière","bonus":4,"damage":"1d8+2","damageType":"perforant","range":"1,5 m"}],
+                "features":"","equipment":"","proficiencies":"","languages":"","spellSlots":[]}}]}}
+                """.formatted(joueurs, aria);
+        donnees.fichiers.put(STRAHD + "/dnd", fichier);
+
+        var refus = assertThrows(ClientErrorException.class, () -> dnd().read(STRAHD, aria));
+        assertEquals(409, refus.getResponse().getStatus());
+        assertEquals(fichier, donnees.fichiers.get(STRAHD + "/dnd"));
     }
 }

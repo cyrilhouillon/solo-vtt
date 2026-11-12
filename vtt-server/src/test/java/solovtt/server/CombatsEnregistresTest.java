@@ -35,7 +35,7 @@ class CombatsEnregistresTest {
     }
 
     private static CatalogEntry entree(String id) {
-        return SceneSession.catalogEntry(id).orElseThrow();
+        return TestCharacters.entry(id);
     }
 
     private static void carte(SceneSession session) {
@@ -97,7 +97,7 @@ class CombatsEnregistresTest {
 
         session.create(10, 10, DistanceUnit.FOOT, null);
         session.place(entree("loup"), 2, 2);
-        session.load(new SavedMap("Crypte", 30, 20, DistanceUnit.METRE, null, true, 0, 0, List.of()));
+        session.load(new SavedMap("Crypte", 30, 20, DistanceUnit.METRE, null, true, 0, 0, List.of()), TestCharacters.catalog());
 
         assertEquals(enCours, combat(id));
         assertTrue(session.combatId().isEmpty());
@@ -191,7 +191,7 @@ class CombatsEnregistresTest {
     void unePartieDAvant_sansIdDeCombat_seReprendSansCombatGarde() {
         var avant = new InMemoryGameStore(new SavedGame(List.of(
                 new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, null, List.of()),
-                new SavedCommand.Place("guerriere", 1.5, 1.5, List.of()),
+                new SavedCommand.Place("guerriere", "Guerrière", TestCharacters.GUERRIERE, 1.5, 1.5, List.of()),
                 new SavedCommand.Place("gobelin", 3, 1.5, List.of()),
                 new SavedCommand.StartCombat(List.of(20, 15)))));
 

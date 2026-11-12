@@ -24,7 +24,7 @@ class CombatReplayTest {
     private final List<String> lances = new ArrayList<>();
 
     private static CatalogEntry entree(String id) {
-        return SceneSession.catalogEntry(id).orElseThrow();
+        return TestCharacters.entry(id);
     }
 
     /** Un combat terminé : lancement, déplacement de la Guerrière, repositionnement libre de la Magicienne, fin de tour, attaque et réponse, fin. */

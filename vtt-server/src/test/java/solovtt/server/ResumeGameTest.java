@@ -48,7 +48,7 @@ class ResumeGameTest {
     }
 
     private static dnd.engine.catalog.CatalogEntry entree(String id) {
-        return SceneSession.catalogEntry(id).orElseThrow();
+        return TestCharacters.entry(id);
     }
 
     @Test
@@ -131,6 +131,18 @@ class ResumeGameTest {
 
         assertTrue(session.scene().isEmpty());
         assertEquals(0, store.saves);
+    }
+
+    @Test
+    void unePartieDAvantQuiPoseUnPretire_sansSaCopie_estMiseDeCote() {
+        var avant = new InMemoryGameStore(new SavedGame(List.of(
+                new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, null, List.of()),
+                new SavedCommand.Place("guerriere", 1.5, 1.5, List.of()))));
+
+        SceneSession session = new SceneSession(Dice.scripted(), avant);
+
+        assertTrue(session.scene().isEmpty());
+        assertEquals(1, avant.setAsides);
     }
 
     @Test
@@ -298,7 +310,7 @@ class ResumeGameTest {
         session.place(entree("gobelin"), 3, 1.5);
         session.startCombat();
 
-        session.load(CRYPTE);
+        session.load(CRYPTE, TestCharacters.catalog());
 
         assertEquals("Crypte", session.mapName());
         assertEquals("a".repeat(64), session.imageId());
@@ -325,7 +337,7 @@ class ResumeGameTest {
                 List.of(new SavedMap.SavedToken("loup", 3.3, 4.95)));
         var session = new SceneSession(Dice.scripted(), store);
 
-        session.load(calee);
+        session.load(calee, TestCharacters.catalog());
 
         assertEquals(calee, session.snapshot("Crypte calée"));
         SceneSession apres = new SceneSession(Dice.scripted(), store);
@@ -336,7 +348,7 @@ class ResumeGameTest {
     void uneCarteSansDecalage_seChargeSansCommandeDeCalage() {
         var session = new SceneSession(Dice.scripted(), store);
 
-        session.load(CRYPTE);
+        session.load(CRYPTE, TestCharacters.catalog());
 
         assertTrue(store.game().commands().stream().noneMatch(SavedCommand.AlignGrid.class::isInstance));
     }
@@ -345,7 +357,7 @@ class ResumeGameTest {
     void chargerPendantUneDecision_laJette() {
         SceneSession session = partieJusquABouclier();
 
-        session.load(CRYPTE);
+        session.load(CRYPTE, TestCharacters.catalog());
 
         assertTrue(session.pendingDecision().isEmpty());
         assertEquals(3, session.scene().orElseThrow().tokens().size());
@@ -354,7 +366,7 @@ class ResumeGameTest {
     @Test
     void uneNouvelleCarteApresUnChargement_n_aPlusDeNom() {
         var session = new SceneSession(Dice.scripted(), store);
-        session.load(CRYPTE);
+        session.load(CRYPTE, TestCharacters.catalog());
 
         session.create(10, 10, DistanceUnit.FOOT, null);
 
@@ -370,7 +382,7 @@ class ResumeGameTest {
         var perimee = new SavedMap("Marais", 30, 20, DistanceUnit.METRE, null, true, 0, 0, List.of(
                 new SavedMap.SavedToken("gobelin", 12, 1.5), new SavedMap.SavedToken("hydre", 5, 5)));
 
-        var refus = assertThrows(ActionRefusedException.class, () -> session.load(perimee));
+        var refus = assertThrows(ActionRefusedException.class, () -> session.load(perimee, TestCharacters.catalog()));
 
         assertTrue(refus.getMessage().contains("hydre"), refus.getMessage());
         assertEquals(10, session.scene().orElseThrow().width());
