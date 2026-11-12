@@ -10,7 +10,8 @@ export function dndApi(campaignId: string) {
     /** Crée un personnage sous ce nom, avec une fiche vide. */
     create: (title: string) => request<Sheet>(`${base}/sheets`, { method: 'POST', body: JSON.stringify({ title }) }),
     read: (pageId: string) => request<Sheet>(`${base}/sheets/${encodeURIComponent(pageId)}`),
-    save: (pageId: string, values: SheetValues) =>
-      request<Sheet>(`${base}/sheets/${encodeURIComponent(pageId)}`, { method: 'PUT', body: JSON.stringify(values) }),
+    /** Remplace les valeurs saisies ; `keepalive` laisse partir l'envoi quand l'onglet se ferme (corps de 64 Kio au plus). */
+    save: (pageId: string, values: SheetValues, keepalive = false) =>
+      request<Sheet>(`${base}/sheets/${encodeURIComponent(pageId)}`, { method: 'PUT', body: JSON.stringify(values), keepalive }),
   }
 }

@@ -37,7 +37,8 @@ export interface NotebookModule {
   /**
    * La vue d'une entrée du module (page sans texte ni sous-page, `entryOf` : l'id du module), montrée à la place de
    * l'éditeur, sous le titre de la page, avec les props `campaignId` et `pageId` ; elle émet `error` (un message) pour le
-   * bandeau du Carnet.
+   * bandeau du Carnet. Si elle enregistre une saisie, elle expose `saved(): Promise<boolean>` (`defineExpose`), que le
+   * Carnet attend avant de la quitter, comme l'enregistrement d'une page : `false`, il reste sur place.
    */
   entryView?: Component
 }

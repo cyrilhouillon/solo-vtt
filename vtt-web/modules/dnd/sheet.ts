@@ -115,7 +115,10 @@ export function signed(value: number): string {
   return value < 0 ? `−${-value}` : `+${value}`
 }
 
-/** Les valeurs telles qu'elles partent au serveur : nombres assurés, compétences non maîtrisées et emplacements vides omis. */
+/**
+ * Les valeurs telles qu'elles partent au serveur : nombres assurés ; compétences non maîtrisées, emplacements vides et
+ * attaques pas encore nommées (que le serveur refuserait) omis.
+ */
 export function toRequest(values: SheetValues): SheetValues {
   const abilities = Object.fromEntries(ABILITIES.map((a) => [a, numberOf(values.abilities[a])])) as Record<Ability, number>
   const skills = Object.fromEntries(Object.entries(values.skills).filter(([, p]) => p && p !== 'NONE')) as SheetValues['skills']
@@ -130,7 +133,7 @@ export function toRequest(values: SheetValues): SheetValues {
     hitPoints: numberOf(values.hitPoints),
     speed: numberOf(values.speed),
     initiative: numberOf(values.initiative),
-    attacks: values.attacks.map((a) => ({ ...a, bonus: numberOf(a.bonus) })),
+    attacks: values.attacks.filter((a) => a.name.trim()).map((a) => ({ ...a, bonus: numberOf(a.bonus) })),
     spellSlots: values.spellSlots
       .map((s) => ({ level: s.level, max: numberOf(s.max), expended: numberOf(s.expended) }))
       .filter((s) => s.max > 0 || s.expended > 0),

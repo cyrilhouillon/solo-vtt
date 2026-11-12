@@ -61,25 +61,60 @@ watch(
   { deep: true },
 )
 
-/** Envoie la saisie à l'écran, après l'envoi en cours. */
+/** Les valeurs à l'écran, telles qu'elles partent au serveur. */
+const request = () => toRequest(JSON.parse(JSON.stringify(values.value)) as SheetValues)
+
+/** Envoie la saisie à l'écran, après l'envoi en cours ; refusée, elle reste en attente et repart au changement suivant. */
 function save(): Promise<void> {
+  clearTimeout(timer)
   saving = saving.then(async () => {
     if (!pending || !values.value) return
     pending = false
-    const sent = toRequest(JSON.parse(JSON.stringify(values.value)) as SheetValues)
     status.value = 'saving'
     try {
-      await api.save(props.pageId, sent)
+      await api.save(props.pageId, request())
       status.value = pending ? 'saving' : 'saved'
     } catch (e) {
+      pending = true
       status.value = reason(e)
     }
   })
   return saving
 }
 
+/** Vrai quand plus rien n'attend : le Carnet l'attend avant de quitter la fiche, et reste sur place sinon. */
+async function saved(): Promise<boolean> {
+  await save()
+  return !pending
+}
+
+defineExpose({ saved })
+
+/** Plafond d'un envoi `keepalive` (64 Kio pour tous les envois en cours), avec une marge, comme pour une page. */
+const KEEPALIVE_LIMIT = 60_000
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'hidden') void save()
+}
+
+/** L'onglet se ferme : la saisie en attente part en `keepalive`, si elle tient sous le plafond. */
+function onPageHide() {
+  if (!pending || !values.value) return
+  const body = request()
+  if (JSON.stringify(body).length > KEEPALIVE_LIMIT) return
+  void api.save(props.pageId, body, true).catch(() => {})
+  pending = false
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('pagehide', onPageHide)
+})
+
 onBeforeUnmount(() => {
-  clearTimeout(timer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('pagehide', onPageHide)
+  // Le Carnet a déjà attendu `saved` ; reste le démontage qu'il ne garde pas (module désactivé).
   void save()
 })
 

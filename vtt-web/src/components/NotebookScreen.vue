@@ -62,6 +62,8 @@ const pageTitle = ref('')
 const citing = ref<string[] | null>(null)
 /** L'éditeur de la page ouverte, qui insère les images. */
 const editor = ref<InstanceType<typeof PageEditor> | null>(null)
+/** La vue de l'entrée de module ouverte ; elle peut exposer `saved`, que le Carnet attend comme l'enregistrement d'une page. */
+const entryView = ref<{ saved?: () => Promise<boolean> } | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
 /** Vrai pendant l'envoi d'une image : le bouton Image attend. */
 const uploading = ref(false)
@@ -192,10 +194,11 @@ function flush(): Promise<void> {
   return saving
 }
 
-/** Vrai quand plus rien n'attend : on peut quitter la page sans perdre la frappe. */
+/** Vrai quand plus rien n'attend, page ou entrée de module : on peut la quitter sans perdre la frappe. */
 async function saved(): Promise<boolean> {
   await flush()
-  return pending === null
+  const entrySaved = (await entryView.value?.saved?.()) ?? true
+  return pending === null && entrySaved
 }
 
 function onVisibilityChange() {
@@ -904,6 +907,7 @@ function leave(target: 'home' | 'notebook' | 'combat') {
           <component
             :is="entryModule.entryView"
             v-if="entryModule"
+            ref="entryView"
             :campaign-id="campaign.id"
             :page-id="page.id"
             @error="(message: string) => (error = message)"
