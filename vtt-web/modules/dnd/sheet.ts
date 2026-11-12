@@ -41,12 +41,65 @@ export type Skill = (typeof SKILLS)[number]['id']
 /** Aucune, maîtrise (+ bonus de maîtrise) ou expertise (deux fois). */
 export type Proficiency = 'NONE' | 'PROFICIENT' | 'EXPERTISE'
 
+/** Les 13 types de dégâts du SRD 5.2.1, tels que le serveur les nomme, et leur libellé après « dégâts ». */
+export const DAMAGE_TYPES = [
+  { id: 'ACID', label: 'd’acide' },
+  { id: 'BLUDGEONING', label: 'contondants' },
+  { id: 'COLD', label: 'de froid' },
+  { id: 'FIRE', label: 'de feu' },
+  { id: 'FORCE', label: 'de force' },
+  { id: 'LIGHTNING', label: 'de foudre' },
+  { id: 'NECROTIC', label: 'nécrotiques' },
+  { id: 'PIERCING', label: 'perforants' },
+  { id: 'POISON', label: 'de poison' },
+  { id: 'PSYCHIC', label: 'psychiques' },
+  { id: 'RADIANT', label: 'radiants' },
+  { id: 'SLASHING', label: 'tranchants' },
+  { id: 'THUNDER', label: 'de tonnerre' },
+] as const
+export type DamageType = (typeof DAMAGE_TYPES)[number]['id']
+
+/** Les dés de dégâts qu'accepte le serveur. */
+export const DIE_SIDES = [4, 6, 8, 10, 12, 20] as const
+
+/**
+ * Une attaque de la fiche : bonus d'attaque, dés et bonus de dégâts (0 dé : dégâts fixes), type, allonge et portée en
+ * mètres (`null` : sans ; une attaque qui a les deux se lance).
+ */
 export interface SheetAttack {
   name: string
   bonus: number
-  damage: string
-  damageType: string
-  range: string
+  diceCount: number
+  dieSides: number
+  damageBonus: number
+  damageType: DamageType
+  reach: number | null
+  normalRange: number | null
+  longRange: number | null
+}
+
+/** Une attaque neuve : 1d6 contondants, au contact. */
+export function newAttack(): SheetAttack {
+  return { name: '', bonus: 0, diceCount: 1, dieSides: 6, damageBonus: 0, damageType: 'BLUDGEONING', reach: 1.5, normalRange: null, longRange: null }
+}
+
+/** « 1d8+3 tranchants · 1,5 m ; lancer 6/18 m », tiré des champs. */
+export function attackSummary(attack: SheetAttack): string {
+  const count = numberOf(attack.diceCount)
+  const bonus = numberOf(attack.damageBonus)
+  const extra = bonus === 0 ? '' : bonus > 0 ? `+${bonus}` : String(bonus)
+  const damage = count === 0 ? String(bonus) : `${count}d${attack.dieSides}${extra}`
+  const type = DAMAGE_TYPES.find((t) => t.id === attack.damageType)?.label ?? ''
+  const reach = optionalNumber(attack.reach)
+  const normal = optionalNumber(attack.normalRange)
+  const long = optionalNumber(attack.longRange)
+  const range = normal === null || long === null ? null : `${metres(normal)}/${metres(long)} m`
+  const where = reach === null ? (range ?? '') : range === null ? `${metres(reach)} m` : `${metres(reach)} m ; lancer ${range}`
+  return [`${damage} ${type}`.trim(), where].filter(Boolean).join(' · ')
+}
+
+function metres(value: number): string {
+  return String(value).replace('.', ',')
 }
 
 export interface SpellSlots {
@@ -157,6 +210,11 @@ export function numberOf(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
+/** Une valeur numérique facultative : un champ vidé vaut `null` (« sans »). */
+export function optionalNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
 /** Le modificateur d'une valeur : (valeur − 10) / 2, arrondi à l'inférieur. */
 export function modifier(score: number): number {
   return Math.floor((numberOf(score) - 10) / 2)
@@ -200,7 +258,17 @@ export function toRequest(values: SheetValues): SheetValues {
     hitPoints: numberOf(values.hitPoints),
     speed: numberOf(values.speed),
     initiative: numberOf(values.initiative),
-    attacks: values.attacks.filter((a) => a.name.trim()).map((a) => ({ ...a, bonus: numberOf(a.bonus) })),
+    attacks: values.attacks
+      .filter((a) => a.name.trim())
+      .map((a) => ({
+        ...a,
+        bonus: numberOf(a.bonus),
+        diceCount: numberOf(a.diceCount),
+        damageBonus: numberOf(a.damageBonus),
+        reach: optionalNumber(a.reach),
+        normalRange: optionalNumber(a.normalRange),
+        longRange: optionalNumber(a.longRange),
+      })),
     spellSlots: values.spellSlots
       .map((s) => ({ level: s.level, max: numberOf(s.max), expended: numberOf(s.expended) }))
       .filter((s) => s.max > 0 || s.expended > 0),
