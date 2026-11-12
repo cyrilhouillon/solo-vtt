@@ -79,10 +79,77 @@ export interface SheetValues {
   spellSlots: SpellSlots[]
 }
 
-/** Une fiche lue au serveur : la page qui la montre et ses valeurs (les dérivés, recalculés ici, sont ignorés). */
+/** Les méthodes de valeurs de caractéristique : valeurs standard, achat de points, dés. */
+export type AbilityMethod = 'STANDARD_ARRAY' | 'POINT_BUY' | 'ROLLED'
+
+/** Les choix de la création guidée, par leurs ids ; `masteries` par id d'arme. */
+export interface Build {
+  characterClass: string
+  method: AbilityMethod
+  scores: Record<Ability, number>
+  skills: Skill[]
+  fightingStyle: string
+  equipment: string
+  masteries: string[]
+}
+
+/** Un jet de caractéristique : ses quatre d6 dans l'ordre du tirage, et la somme des trois plus hauts. */
+export interface AbilityRoll {
+  dice: number[]
+  total: number
+}
+
+export interface Choice {
+  id: string
+  label: string
+}
+
+export interface DescribedChoice extends Choice {
+  text: string
+}
+
+export interface WeaponChoice extends Choice {
+  mastery: string
+}
+
+/** Les options d'une classe pour la création guidée, telles que le serveur les sert ; `pointBuyCosts` par valeur. */
+export interface ClassOptions {
+  id: string
+  label: string
+  skillChoices: { id: Skill; label: string }[]
+  skillCount: number
+  fightingStyles: DescribedChoice[]
+  equipments: DescribedChoice[]
+  weapons: WeaponChoice[]
+  masteryCount: number
+  suggestedScores: Record<Ability, number>
+  standardScores: number[]
+  pointBuyCosts: Record<string, number>
+  pointBuyBudget: number
+  /** La construction d'où part la classe quand le joueur la choisit. */
+  defaultBuild: Build
+}
+
+/**
+ * Une fiche lue au serveur : la page qui la montre, ses valeurs (les dérivés, recalculés ici, sont ignorés), sa
+ * construction guidée et ses jets de caractéristique, `null` s'il n'y en a pas.
+ */
 export interface Sheet {
   pageId: string
   values: SheetValues
+  build: Build | null
+  rolls: AbilityRoll[] | null
+}
+
+/** Les points dépensés à l'achat de points, `null` si une valeur n'a pas de coût (hors de 8 à 15). */
+export function pointBuyCost(scores: Record<Ability, number>, costs: Record<string, number>): number | null {
+  let total = 0
+  for (const ability of ABILITIES) {
+    const cost = costs[String(scores[ability])]
+    if (cost === undefined) return null
+    total += cost
+  }
+  return total
 }
 
 /** Une valeur numérique saisie : un champ vidé vaut 0, que le serveur refusera s'il est hors bornes. */

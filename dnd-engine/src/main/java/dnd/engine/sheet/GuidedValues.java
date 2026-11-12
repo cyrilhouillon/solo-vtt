@@ -1,0 +1,178 @@
+package dnd.engine.sheet;
+
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * Ce qu'une construction guidée écrit sur la fiche, champ par champ (SRD 5.2.1, niveau 1). Espèce, historique, vitesse,
+ * langues et emplacements de sort n'en dérivent pas : ils restent au joueur.
+ *
+ * <p>{@link #rebuild} ne réécrit que les champs dont la valeur dérivée a changé depuis la construction précédente : une
+ * retouche du joueur survit tant que le choix dont elle dépend ne change pas.</p>
+ */
+public record GuidedValues(String className, int level, int proficiencyBonus, Map<Ability, Integer> abilities,
+                           Set<Ability> savingThrows, Map<Skill, Proficiency> skills,
+                           int armorClass, int hitPointMax, int hitPoints, String hitDice, int initiative,
+                           List<SheetAttack> attacks, String features, String equipment, String proficiencies) {
+
+    /** Aucune construction précédente : {@link #rebuild} réécrit tous les champs dérivés. */
+    public static final GuidedValues NONE = new GuidedValues("", 0, 0, Map.of(), Set.of(), Map.of(),
+            0, 0, 0, "", 0, List.of(), "", "", "");
+
+    private static final int LEVEL = 1;
+    private static final int PROFICIENCY_BONUS = 2;
+    private static final int DEFENSE_BONUS = 1;
+    private static final int ARCHERY_BONUS = 2;
+    private static final double MELEE_REACH = 1.5;
+    private static final double REACH_WEAPON = 3;
+
+    public GuidedValues {
+        abilities = Map.copyOf(abilities);
+        savingThrows = Set.copyOf(savingThrows);
+        skills = Map.copyOf(skills);
+        attacks = List.copyOf(attacks);
+    }
+
+    /** Les valeurs qu'une construction donne à une fiche qui porte ses valeurs de caractéristique telles quelles. */
+    public static GuidedValues of(Build build) {
+        return of(build, build.scores());
+    }
+
+    /**
+     * Les valeurs qu'une construction donne à la fiche ; la construction est supposée valide. CA, attaques, initiative et
+     * PV suivent les caractéristiques de la fiche ({@code abilities}), retouches comprises (hausses de l'historique…).
+     *
+     * @param abilities les valeurs de caractéristique de la fiche, une fois la construction appliquée
+     */
+    public static GuidedValues of(Build build, Map<Ability, Integer> abilities) {
+        CharacterClass characterClass = build.characterClass();
+        int str = modifier(abilities.get(Ability.STRENGTH));
+        int dex = modifier(abilities.get(Ability.DEXTERITY));
+        int con = modifier(abilities.get(Ability.CONSTITUTION));
+
+        Map<Skill, Proficiency> skills = new EnumMap<>(Skill.class);
+        for (Skill skill : Skill.values()) {
+            skills.put(skill, build.skills().contains(skill) ? Proficiency.PROFICIENT : Proficiency.NONE);
+        }
+        int hitPoints = characterClass.hitDie() + con;
+        List<SheetAttack> attacks = build.equipment().weapons().stream()
+                .map(weapon -> attack(weapon, str, dex, build.fightingStyle()))
+                .toList();
+
+        return new GuidedValues(characterClass.label(), LEVEL, PROFICIENCY_BONUS, build.scores(),
+                EnumSet.copyOf(characterClass.savingThrows()), skills,
+                armorClass(build.equipment(), dex, build.fightingStyle()), hitPoints, hitPoints,
+                "1d" + characterClass.hitDie(), dex, attacks,
+                features(build), build.equipment().text(), characterClass.proficiencies());
+    }
+
+    /**
+     * La fiche, où chaque champ dont la valeur dérivée diffère de {@code before} prend celle de cette construction ; les
+     * autres gardent ce que la fiche porte.
+     *
+     * @param before les valeurs de la construction précédente, {@link #NONE} ou {@code null} pour tout écrire
+     */
+    public CharacterSheet rebuild(CharacterSheet sheet, GuidedValues before) {
+        GuidedValues previous = before == null || before == NONE ? null : before;
+
+        Map<Ability, Integer> abilities = new EnumMap<>(sheet.abilities());
+        Set<Ability> saves = sheet.savingThrows().isEmpty() ? EnumSet.noneOf(Ability.class) : EnumSet.copyOf(sheet.savingThrows());
+        for (Ability ability : Ability.values()) {
+            if (changed(previous, v -> v.abilities.get(ability))) abilities.put(ability, this.abilities.get(ability));
+            if (changed(previous, v -> v.savingThrows.contains(ability))) {
+                if (savingThrows.contains(ability)) saves.add(ability);
+                else saves.remove(ability);
+            }
+        }
+        Map<Skill, Proficiency> skills = new EnumMap<>(Skill.class);
+        skills.putAll(sheet.skills());
+        for (Skill skill : Skill.values()) {
+            if (changed(previous, v -> v.skills.get(skill))) {
+                Proficiency proficiency = this.skills.get(skill);
+                if (proficiency == Proficiency.NONE) skills.remove(skill);
+                else skills.put(skill, proficiency);
+            }
+        }
+
+        return new CharacterSheet(
+                pick(previous, GuidedValues::className, sheet.className()),
+                pick(previous, GuidedValues::level, sheet.level()),
+                sheet.species(), sheet.background(), abilities,
+                pick(previous, GuidedValues::proficiencyBonus, sheet.proficiencyBonus()),
+                saves, skills,
+                pick(previous, GuidedValues::armorClass, sheet.armorClass()),
+                pick(previous, GuidedValues::hitPointMax, sheet.hitPointMax()),
+                pick(previous, GuidedValues::hitPoints, sheet.hitPoints()),
+                pick(previous, GuidedValues::hitDice, sheet.hitDice()),
+                sheet.speed(),
+                pick(previous, GuidedValues::initiative, sheet.initiative()),
+                pick(previous, GuidedValues::attacks, sheet.attacks()),
+                pick(previous, GuidedValues::features, sheet.features()),
+                pick(previous, GuidedValues::equipment, sheet.equipment()),
+                pick(previous, GuidedValues::proficiencies, sheet.proficiencies()),
+                sheet.languages(), sheet.spellSlots());
+    }
+
+    /** La valeur dérivée d'un champ s'il a changé depuis {@code previous}, sinon celle de la fiche. */
+    private <T> T pick(GuidedValues previous, Function<GuidedValues, T> field, T onSheet) {
+        return changed(previous, field) ? field.apply(this) : onSheet;
+    }
+
+    private boolean changed(GuidedValues previous, Function<GuidedValues, ?> field) {
+        return previous == null || !Objects.equals(field.apply(previous), field.apply(this));
+    }
+
+    private static int modifier(int score) {
+        return Math.floorDiv(score - 10, 2);
+    }
+
+    /** Armure (Dextérité selon sa catégorie), bouclier, et Défense si une armure est portée. */
+    private static int armorClass(StartingEquipment equipment, int dex, FightingStyle style) {
+        SrdArmor armor = equipment.armor();
+        int armorClass = armor == null ? 10 + dex : armor.armorClass(dex);
+        if (equipment.shield()) armorClass += SrdArmor.SHIELD.armorClass();
+        if (armor != null && style == FightingStyle.DEFENSE) armorClass += DEFENSE_BONUS;
+        return armorClass;
+    }
+
+    /** Maîtrise + Force, Dextérité à distance, la meilleure en Finesse ; + 2 en Archerie avec une arme à distance. */
+    private static SheetAttack attack(SrdWeapon weapon, int str, int dex, FightingStyle style) {
+        boolean ranged = weapon.category().ranged();
+        int ability = weapon.has(SrdWeapon.Property.FINESSE) ? Math.max(str, dex) : ranged ? dex : str;
+        int bonus = PROFICIENCY_BONUS + ability + (ranged && style == FightingStyle.ARCHERY ? ARCHERY_BONUS : 0);
+        String damage = weapon.damage() + (ability == 0 ? "" : ability > 0 ? "+" + ability : String.valueOf(ability));
+        return new SheetAttack(weapon.label(), bonus, damage, weapon.damageType().label(), range(weapon));
+    }
+
+    /** « 1,5 m » au contact, « 1,5 m ; lancer 9/36 m » pour une arme de lancer, « 45/180 m » à distance. */
+    private static String range(SrdWeapon weapon) {
+        String distance = meters(weapon.normalRange()) + "/" + meters(weapon.longRange()) + " m";
+        if (weapon.category().ranged()) return distance;
+        String reach = meters(weapon.has(SrdWeapon.Property.REACH) ? REACH_WEAPON : MELEE_REACH) + " m";
+        return weapon.has(SrdWeapon.Property.THROWN) ? reach + " ; lancer " + distance : reach;
+    }
+
+    private static String meters(double value) {
+        return value == Math.rint(value) ? String.valueOf((long) value) : String.valueOf(value).replace('.', ',');
+    }
+
+    private static String features(Build build) {
+        String masteries = build.masteries().stream()
+                .map(weapon -> "%s (%s)".formatted(weapon.label(), weapon.mastery()))
+                .collect(Collectors.joining(", "));
+        List<String> lines = new ArrayList<>();
+        lines.add("Bottes d’arme : " + masteries);
+        switch (build.characterClass()) {
+            case FIGHTER -> lines.add("Second souffle (2 utilisations) : action Bonus, 1d10 + %d PV".formatted(LEVEL));
+        }
+        lines.add("Style de combat : %s — %s".formatted(build.fightingStyle().label(), build.fightingStyle().text()));
+        return String.join("\n", lines);
+    }
+}

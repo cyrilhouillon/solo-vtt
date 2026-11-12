@@ -4,12 +4,17 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dnd.engine.sheet.Ability;
+import dnd.engine.sheet.AbilityRoll;
+import dnd.engine.sheet.Build;
+import dnd.engine.sheet.CharacterSheet;
 import dnd.engine.sheet.SheetEvent;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.core.Response;
 import solovtt.module.ModuleData;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,34 +63,64 @@ final class SheetStore {
         }
     }
 
-    /** Un événement tel qu'il est écrit : {@code created}, ou {@code edited} avec les valeurs saisies. */
+    /**
+     * Un événement tel qu'il est écrit : {@code created} ; {@code edited} avec les valeurs saisies ; {@code built} avec la
+     * construction et les valeurs qui en sont sorties ; {@code rolled} avec les six jets, quatre d6 chacun.
+     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record EventFile(String type, DndDtos.SheetValuesDto values) {
+    record EventFile(String type, DndDtos.SheetValuesDto values, DndDtos.BuildDto build, List<List<Integer>> rolls) {
         static final String CREATED = "created";
         static final String EDITED = "edited";
+        static final String BUILT = "built";
+        static final String ROLLED = "rolled";
 
         static EventFile of(SheetEvent event) {
             return switch (event) {
-                case SheetEvent.SheetCreated created -> new EventFile(CREATED, null);
-                case SheetEvent.SheetEdited edited -> new EventFile(EDITED, DndDtos.SheetValuesDto.of(edited.values()));
+                case SheetEvent.SheetCreated created -> new EventFile(CREATED, null, null, null);
+                case SheetEvent.SheetEdited edited -> new EventFile(EDITED, DndDtos.SheetValuesDto.of(edited.values()), null, null);
+                case SheetEvent.SheetBuilt built ->
+                        new EventFile(BUILT, DndDtos.SheetValuesDto.of(built.values()), DndDtos.BuildDto.of(built.build()), null);
+                case SheetEvent.AbilitiesRolled rolled ->
+                        new EventFile(ROLLED, null, null, rolled.rolls().stream().map(AbilityRoll::dice).toList());
             };
         }
 
         /**
          * L'événement écrit.
          *
-         * @throws IllegalStateException si son type est inconnu, ou si une saisie n'a pas de valeurs
-         * @throws IllegalArgumentException si une valeur saisie est hors bornes
+         * @throws IllegalStateException si son type est inconnu, ou s'il lui manque ce qu'il porte
+         * @throws IllegalArgumentException si une valeur écrite est hors bornes
          */
         SheetEvent event() {
             return switch (type) {
                 case CREATED -> new SheetEvent.SheetCreated();
-                case EDITED -> {
-                    if (values == null) throw new IllegalStateException("Saisie de fiche sans valeurs");
-                    yield new SheetEvent.SheetEdited(values.toSheet());
+                case EDITED -> new SheetEvent.SheetEdited(sheetValues());
+                case BUILT -> {
+                    yield new SheetEvent.SheetBuilt(storedBuild(), sheetValues());
+                }
+                case ROLLED -> {
+                    if (rolls == null) throw new IllegalStateException("Jets de caractéristique sans dés");
+                    yield new SheetEvent.AbilitiesRolled(rolls.stream().map(AbilityRoll::new).toList());
                 }
                 case null, default -> throw new IllegalStateException("Événement de fiche inconnu : " + type);
             };
+        }
+
+        /** La construction écrite, entière : une construction tronquée (fichier édité à la main) ne se relit pas. */
+        private Build storedBuild() {
+            if (build == null) throw new IllegalStateException("Construction de fiche sans choix");
+            Build stored = build.toBuild();
+            boolean complete = stored.characterClass() != null && stored.method() != null
+                    && stored.fightingStyle() != null && stored.equipment() != null
+                    && stored.scores().keySet().containsAll(EnumSet.allOf(Ability.class))
+                    && !stored.masteries().contains(null);
+            if (!complete) throw new IllegalStateException("Construction de fiche incomplète");
+            return stored;
+        }
+
+        private CharacterSheet sheetValues() {
+            if (values == null) throw new IllegalStateException("Événement de fiche sans valeurs");
+            return values.toSheet();
         }
     }
 

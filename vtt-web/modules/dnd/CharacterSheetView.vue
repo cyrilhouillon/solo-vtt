@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { dndApi } from './api'
+import GuidedCreation from './GuidedCreation.vue'
 import {
   ABILITIES,
   ABILITY_LABELS,
@@ -13,7 +14,10 @@ import {
   skillBonus,
   toRequest,
   type Ability,
+  type AbilityRoll,
+  type Build,
   type Proficiency,
+  type Sheet,
   type SheetValues,
   type Skill,
 } from './sheet'
@@ -22,7 +26,8 @@ import {
  * La fiche d'un personnage joueur, montrée à la place du texte de sa page. Toute valeur se saisit sur place ; les dérivés
  * (modificateurs, sauvegardes, compétences, Perception passive) suivent la frappe. La fiche s'enregistre seule, une
  * seconde après la dernière frappe, un envoi à la fois ; un refus du serveur s'affiche sur la fiche, la saisie reste à
- * l'écran et repart au changement suivant.
+ * l'écran et repart au changement suivant. Un choix de la création guidée remplace les valeurs par celles du serveur,
+ * après l'envoi de la saisie en attente.
  */
 const props = defineProps<{ campaignId: string; pageId: string }>()
 const emit = defineEmits<{ error: [message: string] }>()
@@ -31,6 +36,11 @@ const SAVE_DELAY_MS = 1000
 const api = dndApi(props.campaignId)
 
 const values = ref<SheetValues | null>(null)
+const build = ref<Build | null>(null)
+const rolls = ref<AbilityRoll[] | null>(null)
+/** Vrai pendant l'envoi d'un choix guidé ; `guidedError`, la raison de son dernier refus. */
+const choosing = ref(false)
+const guidedError = ref<string | null>(null)
 /** La raison du dernier refus du serveur, `null` si la fiche est enregistrée ; `'saving'` pendant l'envoi. */
 const status = ref<string | 'saving' | 'saved' | null>(null)
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -42,18 +52,24 @@ const reason = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 onMounted(async () => {
   try {
-    const sheet = await api.read(props.pageId)
-    values.value = { ...sheet.values, spellSlots: allSlots(sheet.values.spellSlots) }
+    show(await api.read(props.pageId))
   } catch (e) {
     emit('error', `Fiche illisible : ${reason(e)}`)
   }
 })
 
+/** Montre la fiche du serveur : un nouvel objet de valeurs, que le `watch` ne prend pas pour une frappe. */
+function show(sheet: Sheet) {
+  values.value = { ...sheet.values, spellSlots: allSlots(sheet.values.spellSlots) }
+  build.value = sheet.build
+  rolls.value = sheet.rolls
+}
+
 watch(
   values,
-  (_, before) => {
-    // La première lecture n'est pas une frappe.
-    if (!before) return
+  (now, before) => {
+    // Une frappe modifie l'objet à l'écran ; la lecture et la réponse à un choix le remplacent.
+    if (now !== before) return
     pending = true
     clearTimeout(timer)
     timer = setTimeout(() => void save(), SAVE_DELAY_MS)
@@ -89,6 +105,50 @@ async function saved(): Promise<boolean> {
 }
 
 defineExpose({ saved })
+
+/**
+ * Envoie un choix guidé : la saisie en attente part d'abord ; puis l'appel passe dans la file des envois, si bien
+ * qu'aucun enregistrement ne le croise. Sa réponse remplace la fiche à l'écran, figée pendant l'envoi.
+ * Refusé, la fiche reste telle quelle et la raison s'affiche dans la section.
+ */
+async function choose(call: () => Promise<void>) {
+  choosing.value = true
+  guidedError.value = null
+  try {
+    if (!(await saved())) {
+      guidedError.value = 'La saisie en attente n’est pas enregistrée'
+      return
+    }
+    const task = saving.then(call)
+    saving = task.catch(() => {})
+    await task
+  } catch (e) {
+    guidedError.value = reason(e)
+  } finally {
+    choosing.value = false
+  }
+}
+
+/** La fiche du serveur, que rien n'attend plus d'envoyer. */
+function applied(sheet: Sheet) {
+  clearTimeout(timer)
+  pending = false
+  status.value = 'saved'
+  show(sheet)
+}
+
+function onBuild(next: Build) {
+  void choose(async () => applied(await api.build(props.pageId, next)))
+}
+
+/** Lance les dés, puis applique la construction tirée des jets ; des jets lancés restent montrés même si elle est refusée. */
+function onRoll(next: (rolls: AbilityRoll[]) => Build) {
+  void choose(async () => {
+    const rolled = await api.rollAbilities(props.pageId)
+    applied(rolled)
+    if (rolled.rolls) applied(await api.build(props.pageId, next(rolled.rolls)))
+  })
+}
 
 /** Plafond d'un envoi `keepalive` (64 Kio pour tous les envois en cours), avec une marge, comme pour une page. */
 const KEEPALIVE_LIMIT = 60_000
@@ -150,6 +210,18 @@ function removeAttack(index: number) {
       <template v-else-if="status">Non enregistrée : {{ status }}</template>
     </p>
 
+    <GuidedCreation
+      :campaign-id="campaignId"
+      :build="build"
+      :rolls="rolls"
+      :busy="choosing"
+      :error="guidedError"
+      @build="onBuild"
+      @roll="onRoll"
+    />
+
+    <!-- Figée pendant un choix guidé : sa réponse remplace la fiche, une frappe faite entre-temps serait perdue. -->
+    <fieldset class="sheet-fields" :disabled="choosing">
     <section class="identity" aria-label="Identité">
       <label>Classe <input v-model="values.className" type="text" maxlength="80" /></label>
       <label class="narrow">Niveau <input v-model.number="values.level" type="number" min="1" max="20" /></label>
@@ -283,11 +355,21 @@ function removeAttack(index: number) {
         </section>
       </div>
     </div>
+    </fieldset>
   </div>
   <p v-else class="loading">Lecture de la fiche…</p>
 </template>
 
 <style scoped>
+.sheet-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 .character-sheet {
   display: flex;
   flex-direction: column;

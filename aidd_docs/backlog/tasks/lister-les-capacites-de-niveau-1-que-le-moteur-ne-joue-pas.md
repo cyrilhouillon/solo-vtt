@@ -24,3 +24,14 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1 
 
 - La liste couvre tout ce qu'affichent les fiches de niveau 1 des 12 classes, des 9 espèces et des 4 historiques.
 - Chaque élément non joué de la liste renvoie à une story du backlog.
+
+## Liste
+
+| Capacité | Source | Jouée | Story |
+| --- | --- | --- | --- |
+| Second souffle | Guerrier, niveau 1 | non | [utiliser Second souffle en combat](../stories/utiliser-second-souffle-en-combat.md) |
+| Bottes d'arme (8 bottes) | Guerrier, niveau 1 | non | [appliquer les Bottes d'arme en combat](../stories/appliquer-les-bottes-d-arme-en-combat.md) |
+| Style de combat : Archerie | Guerrier, niveau 1 | non (le +2 est écrit sur la fiche) | [jouer les styles de combat du Guerrier](../stories/jouer-les-styles-de-combat-du-guerrier.md) |
+| Style de combat : Armes à deux mains | Guerrier, niveau 1 | non | [jouer les styles de combat du Guerrier](../stories/jouer-les-styles-de-combat-du-guerrier.md) |
+| Style de combat : Combat à deux armes | Guerrier, niveau 1 | non | [jouer les styles de combat du Guerrier](../stories/jouer-les-styles-de-combat-du-guerrier.md) |
+| Style de combat : Défense | Guerrier, niveau 1 | portée par la fiche (+1 CA en armure) | — |

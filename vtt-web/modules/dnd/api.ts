@@ -1,5 +1,5 @@
 import { request } from '../../src/api'
-import type { Sheet, SheetValues } from './sheet'
+import type { Build, ClassOptions, Sheet, SheetValues } from './sheet'
 
 /** Les fiches des personnages joueurs d'une campagne. */
 export function dndApi(campaignId: string) {
@@ -13,5 +13,13 @@ export function dndApi(campaignId: string) {
     /** Remplace les valeurs saisies ; `keepalive` laisse partir l'envoi quand l'onglet se ferme (corps de 64 Kio au plus). */
     save: (pageId: string, values: SheetValues, keepalive = false) =>
       request<Sheet>(`${base}/sheets/${encodeURIComponent(pageId)}`, { method: 'PUT', body: JSON.stringify(values), keepalive }),
+    /** Les classes de la création guidée et leurs options. */
+    classes: () => request<ClassOptions[]>(`${base}/classes`),
+    /** Applique une construction guidée ; la réponse porte les valeurs qui en dérivent. */
+    build: (pageId: string, build: Build) =>
+      request<Sheet>(`${base}/sheets/${encodeURIComponent(pageId)}/build`, { method: 'PUT', body: JSON.stringify(build) }),
+    /** Lance les six jets de caractéristique de la fiche, une seule fois. */
+    rollAbilities: (pageId: string) =>
+      request<Sheet>(`${base}/sheets/${encodeURIComponent(pageId)}/ability-rolls`, { method: 'POST' }),
   }
 }
