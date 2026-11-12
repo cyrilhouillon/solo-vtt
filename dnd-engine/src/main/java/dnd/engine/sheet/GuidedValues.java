@@ -146,13 +146,15 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
      * Maîtrise + Force, Dextérité à distance, la meilleure en Finesse ; + 2 en Archerie avec une arme à distance. Allonge
      * 1,5 m (3 m pour Allonge) au corps à corps, aucune à distance ; portée pour Lancer et Munitions.
      */
-    private static SheetAttack attack(SrdWeapon weapon, int str, int dex, FightingStyle style) {
+    static SheetAttack attack(SrdWeapon weapon, int str, int dex, FightingStyle style) {
         boolean ranged = weapon.category().ranged();
         int ability = weapon.has(SrdWeapon.Property.FINESSE) ? Math.max(str, dex) : ranged ? dex : str;
         int bonus = PROFICIENCY_BONUS + ability + (ranged && style == FightingStyle.ARCHERY ? ARCHERY_BONUS : 0);
         Double reach = ranged ? null : weapon.has(SrdWeapon.Property.REACH) ? REACH_WEAPON : MELEE_REACH;
         boolean hasRange = weapon.normalRange() > 0;
-        return new SheetAttack(weapon.label(), bonus, weapon.diceCount(), weapon.dieSides(), weapon.flatDamage() + ability,
+        // Des dégâts fixes, sans dé (sarbacane), ne prennent pas le modificateur (SRD 5.2.1 p. 16, « Damage Rolls »).
+        int damageBonus = weapon.diceCount() == 0 ? weapon.flatDamage() : ability;
+        return new SheetAttack(weapon.label(), bonus, weapon.diceCount(), weapon.dieSides(), damageBonus,
                 weapon.damageType(), reach, hasRange ? weapon.normalRange() : null, hasRange ? weapon.longRange() : null);
     }
 

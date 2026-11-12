@@ -85,6 +85,16 @@ class CharacterProfileTest {
     }
 
     @Test
+    void laSarbacaneGuidee_neDonnePasSonModificateurAuxDegatsFixes() {
+        SheetAttack sarbacane = GuidedValues.attack(SrdWeapon.BLOWGUN, 0, 3, FightingStyle.ARCHERY);
+
+        assertEquals(0, sarbacane.diceCount());
+        assertEquals(1, sarbacane.damageBonus());
+        // Le modificateur compte au jet d'attaque : maîtrise 2 + Dex 3 + Archerie 2.
+        assertEquals(7, sarbacane.bonus());
+    }
+
+    @Test
     void lesTreizeTypesDeDegatsDuSrd() {
         assertEquals(13, DamageType.values().length);
     }

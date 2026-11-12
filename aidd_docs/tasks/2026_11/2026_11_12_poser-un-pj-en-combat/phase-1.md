@@ -40,7 +40,7 @@ dnd-engine/src/test/java/dnd/engine/sheet/
 | Edge case    | Deux attaques du même nom | Refus « deux attaques portent le même nom » | system |
 | Edge case    | PV maximum à 0 (fiche vierge) puis `profile()` | Refus avec la raison (« PV maximum à 0 ») | system |
 | Edge case    | PV actuels 5 sur 12 | Créature à 5 PV, maximum 12 | system |
-| Edge case    | Sarbacane guidée | 0 dé, dégâts fixes 1 + modificateur | system |
+| Edge case    | Sarbacane guidée | 0 dé, dégâts fixes 1, sans modificateur (SRD p. 16) | system |
 
 ## Tasks to do
 
