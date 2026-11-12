@@ -185,7 +185,8 @@ function removeAttack(index: number) {
           </div>
 
           <h4>Attaques</h4>
-          <table v-if="values.attacks.length" class="attacks">
+          <div v-if="values.attacks.length" class="attacks">
+          <table>
             <thead>
               <tr>
                 <th scope="col">Nom</th>
@@ -198,7 +199,7 @@ function removeAttack(index: number) {
             </thead>
             <tbody>
               <tr v-for="(attack, index) in values.attacks" :key="index">
-                <td><input v-model="attack.name" type="text" maxlength="80" :aria-label="`Nom de l'attaque ${index + 1}`" /></td>
+                <td><input v-model="attack.name" type="text" class="name" maxlength="80" :aria-label="`Nom de l'attaque ${index + 1}`" /></td>
                 <td><input v-model.number="attack.bonus" type="number" class="small" :aria-label="`Bonus de l'attaque ${index + 1}`" /></td>
                 <td><input v-model="attack.damage" type="text" maxlength="40" :aria-label="`Dégâts de l'attaque ${index + 1}`" /></td>
                 <td><input v-model="attack.damageType" type="text" maxlength="40" :aria-label="`Type de dégâts de l'attaque ${index + 1}`" /></td>
@@ -209,6 +210,7 @@ function removeAttack(index: number) {
               </tr>
             </tbody>
           </table>
+          </div>
           <button type="button" @click="addAttack">Ajouter une attaque</button>
 
           <h4>Emplacements de sort</h4>
@@ -411,12 +413,18 @@ td,
 th {
   padding: 0.15rem 0.25rem 0.15rem 0;
 }
-.small {
+input.small {
   width: 4rem;
 }
+input.name {
+  min-width: 8rem;
+}
 .attacks {
-  display: block;
   overflow-x: auto;
+  margin-bottom: 0.5rem;
+}
+.attacks table {
+  margin: 0;
 }
 .slots {
   max-width: 20rem;
