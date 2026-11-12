@@ -1,6 +1,6 @@
 ---
 objective: "Dans une campagne où le module D&D est actif, le joueur crée une fiche de personnage en saisie libre, rangée dans la section « Personnages joueurs » du Carnet, qu'il modifie et retrouve comme une page, même après un redémarrage."
-status: pending
+status: implemented
 ---
 
 # Plan: créer un personnage en saisie libre et le retrouver dans « Personnages joueurs »

@@ -31,3 +31,18 @@
 
 - [pass] Task 1 — Dans une campagne à D&D actif, la section « Personnages joueurs » apparaît, et « Nouveau personnage » crée une fiche ouverte en onglet ; aucun `modules/dnd` dans `vtt-web/src` — accueil 5174 : « Personnages joueurs » coché par défaut ; campagne « Validation fiche » créée : arbre avec la section et sa racine, panneau « Personnages joueurs » ; nom « Aria » + Entrée : entrée « Aria » sous la racine, onglet « Aria » actif, adresse `/carnet/<id de la fiche>`, fiche vide (niveau 1, valeurs 10, maîtrise 2) ; `grep -rln "dnd.server|modules/dnd" vtt-server/src vtt-web/src` : aucun résultat.
 - [pass] Task 2 — Chaque rubrique se saisit et se garde après rechargement et redémarrage ; les dérivés suivent la saisie ; un refus s'affiche sans perte de saisie ; la fiche se lie, se cherche et se renomme comme une page ; désactiver puis réactiver D&D la rend intacte — Dex 14 : modificateur +2, Acrobaties +2 à l'écran ; Discrétion en expertise : +6 ; CA 15, attaque « Rapière » +4 1d8+2, Capacités « Attaque sournoise » : « Enregistrée », `GET …/dnd/sheets/{id}` rend ces valeurs et Discrétion 6 ; Dex 31 : « Non enregistrée : Dextérité entre 1 et 30 : 31 », 31 reste à l'écran, serveur à 14 ; Dex 16 : « Enregistrée » ; rechargement : Dex 16, Rapière, Attaque sournoise, Discrétion +7 ; arrêt et relance de 8081 puis rechargement : mêmes valeurs ; « aria » dans Chercher : 1 page, Aria ; `[[Aria` + Entrée dans « Session 1 » : lien, Ctrl+clic ouvre la fiche, « Pages qui renvoient ici : Session 1 » ; Renommer « Aria la Rouge » depuis l'arbre : titre, onglet et ligne suivent ; D&D désactivé : section et panneau disparus ; réactivé : section, fiche (Dex 16, Rapière) et une seule racine « Personnages joueurs ». Défaut vu et corrigé pendant la validation : champs des attaques trop étroits (b53c3bc, deb0bfb), revus à l'écran après correction.
+
+## Phase 5 · Mémoire du projet
+
+- Date: 2026-11-12
+- Validated on: 57ebd16
+
+- [pass] Task 1 — Chaque fichier de mémoire cite les noms réels du code livré ; aucune description d'avant n'est contredite — noms cités cherchés dans `dnd-server`, `dnd-engine`, `vtt-server/src`, `vtt-module-api`, `vtt-web/src`, `vtt-web/modules` : `SheetResource`, `SheetStore`, `DndModule`, `DndDtos`, `CharacterSheet`, `SheetHistory`, `SheetEvent`, `createEntry`, `isEntry`, `newEntry`, `entryView`, `openPage`, `entryOf`, `CharacterSheetView`, `DndPanel` tous trouvés ; les trois passages sur `combatId` d'`architecture.md` restent vrais (`combatId` inchangé, entrée de module décrite à part).
+
+## Final
+
+- Date: 2026-11-12
+- Validated on: 57ebd16
+
+- [pass] `mvn -q verify` — exit 0 ; surefire : run 500, fail 0, err 0.
+- [pass] `npm run build` dans `vtt-web/` — `vue-tsc` puis Vite : ✓ built.
