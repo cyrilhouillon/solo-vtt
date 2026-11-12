@@ -35,3 +35,29 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1 
 | Style de combat : Armes à deux mains | Guerrier, niveau 1 | non | [jouer les styles de combat du Guerrier](../stories/jouer-les-styles-de-combat-du-guerrier.md) |
 | Style de combat : Combat à deux armes | Guerrier, niveau 1 | non | [jouer les styles de combat du Guerrier](../stories/jouer-les-styles-de-combat-du-guerrier.md) |
 | Style de combat : Défense | Guerrier, niveau 1 | portée par la fiche (+1 CA en armure) | — |
+| Vision dans le noir (18 m, 36 m) | Drakéide, Elfe, Gnome, Nain, Orc, Tieffelin ; Drow | hors moteur : pas d'éclairage ni de vision | — |
+| Résistance aux dégâts (ascendance draconique) | Drakéide | non (écrite sur la fiche) | [appliquer les résistances d'espèce en combat](../stories/appliquer-les-resistances-d-espece-en-combat.md) |
+| Souffle | Drakéide | non | [utiliser le Souffle du Drakéide en combat](../stories/utiliser-le-souffle-du-drakeide-en-combat.md) |
+| Connaissance de la pierre | Nain | hors combat | — |
+| Résistance naine : Résistance au poison | Nain | non | [appliquer les résistances d'espèce en combat](../stories/appliquer-les-resistances-d-espece-en-combat.md) |
+| Résistance naine : Avantage contre Empoisonné | Nain | non (pas de sauvegarde au moteur) | [avoir l'Avantage aux sauvegardes d'espèce](../stories/avoir-l-avantage-aux-sauvegardes-d-espece.md) |
+| Ténacité naine | Nain | portée par la fiche (+1 PV max) | — |
+| Ascendance féerique | Elfe | non (pas de sauvegarde au moteur) | [avoir l'Avantage aux sauvegardes d'espèce](../stories/avoir-l-avantage-aux-sauvegardes-d-espece.md) |
+| Sens aiguisés | Elfe | portée par la fiche (compétence maîtrisée) | — |
+| Transe | Elfe | hors combat (repos non modélisés) | — |
+| Lignage elfique : Elfe sylvestre (vitesse 10,50 m) | Elfe | portée par la fiche (vitesse) | — |
+| Lignages elfiques et gnomes, héritages fiélons, Présence d’outre-monde : sorts mineurs et sorts d’espèce | Elfe, Gnome, Tieffelin | non (aucun sort joué) | [créer en guidé les autres lanceurs de sorts](../stories/creer-en-guide-les-autres-lanceurs-de-sorts.md) |
+| Ruse gnome | Gnome | non (pas de sauvegarde au moteur) | [avoir l'Avantage aux sauvegardes d'espèce](../stories/avoir-l-avantage-aux-sauvegardes-d-espece.md) |
+| Gnome des roches : appareils mécaniques | Gnome | hors combat | — |
+| Ascendance gigante (6 bénéfices) | Goliath | non | [utiliser l'ascendance gigante du Goliath en combat](../stories/utiliser-l-ascendance-gigante-du-goliath-en-combat.md) |
+| Forte carrure | Goliath | hors combat (charge ; Agrippé non modélisé) | — |
+| Agilité halfeline | Halfelin | non : le client refuse déjà deux jetons à moins d’une case, sans règle de taille | — |
+| Brave | Halfelin | non (pas de sauvegarde au moteur) | [avoir l'Avantage aux sauvegardes d'espèce](../stories/avoir-l-avantage-aux-sauvegardes-d-espece.md) |
+| Chance | Halfelin | non | [relancer un 1 avec la Chance du Halfelin](../stories/relancer-un-1-avec-la-chance-du-halfelin.md) |
+| Discrétion naturelle | Halfelin | hors combat (Furtivité non modélisée) | — |
+| Compétent | Humain | portée par la fiche (compétence maîtrisée) | — |
+| Ingénieux (Inspiration héroïque) | Humain | hors combat (repos non modélisés) | — |
+| Polyvalent (don d’origine) | Humain | écrit « au choix » sur la fiche | [choisir un historique en création guidée](../stories/choisir-un-historique-en-creation-guidee.md) |
+| Acharnement, Poussée d’adrénaline | Orc | non | [jouer Acharnement et Poussée d'adrénaline de l'Orc](../stories/jouer-acharnement-et-poussee-d-adrenaline-de-l-orc.md) |
+| Héritage fiélon : Résistance | Tieffelin | non (écrite sur la fiche) | [appliquer les résistances d'espèce en combat](../stories/appliquer-les-resistances-d-espece-en-combat.md) |
+| Vol draconique, Forme de géant | Drakéide, Goliath | hors champ : niveau 5 | — |
