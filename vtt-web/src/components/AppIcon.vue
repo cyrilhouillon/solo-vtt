@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** Icônes dessinées pour Solo VTT : trait de 1,75, même grille de 24. Décoratives : le bouton porte le nom. */
-export type IconName = 'home' | 'catalog' | 'map' | 'saved' | 'grid' | 'sun' | 'moon' | 'keys' | 'notebook' | 'combat' | 'lock' | 'unlock' | 'more' | 'chevron-right' | 'chevron-down' | 'image' | 'trash' | 'remove' | 'plus' | 'modules' | 'chevron-left'
+export type IconName = 'home' | 'catalog' | 'map' | 'saved' | 'grid' | 'sun' | 'moon' | 'keys' | 'notebook' | 'combat' | 'lock' | 'unlock' | 'more' | 'chevron-right' | 'chevron-down' | 'image' | 'trash' | 'remove' | 'plus' | 'modules' | 'chevron-left' | 'first' | 'previous' | 'play' | 'pause' | 'next' | 'last'
 defineProps<{ name: IconName }>()
 </script>
 
@@ -97,6 +97,24 @@ defineProps<{ name: IconName }>()
       <rect x="13" y="4" width="7" height="7" rx="1.5" />
       <rect x="4" y="13" width="7" height="7" rx="1.5" />
       <path d="M16.5 13.5v6M13.5 16.5h6" />
+    </template>
+    <template v-else-if="name === 'first'">
+      <path d="M6.5 5.5v13M18 6l-8 6 8 6z" />
+    </template>
+    <template v-else-if="name === 'previous'">
+      <path d="M15 6l-6 6 6 6" />
+    </template>
+    <template v-else-if="name === 'play'">
+      <path d="M8 5.5v13l10.5-6.5z" />
+    </template>
+    <template v-else-if="name === 'pause'">
+      <path d="M8.5 5.5v13M15.5 5.5v13" />
+    </template>
+    <template v-else-if="name === 'next'">
+      <path d="M9 6l6 6-6 6" />
+    </template>
+    <template v-else-if="name === 'last'">
+      <path d="M17.5 5.5v13M6 6l8 6-8 6z" />
     </template>
     <template v-else>
       <path d="M6 6l12 12M18 6L6 18" />

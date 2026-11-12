@@ -3,6 +3,7 @@ import { api } from './api'
 import GameScreen from './components/GameScreen.vue'
 import HomeScreen from './components/HomeScreen.vue'
 import NotebookScreen from './components/NotebookScreen.vue'
+import ReplayScreen from './components/ReplayScreen.vue'
 import type { CampaignView } from './types'
 
 /** Les campagnes déjà lues, par id : une campagne n'est jamais supprimée, son nom suffit à l'écran. */
@@ -29,6 +30,12 @@ export const router = createRouter({
       name: 'combat',
       component: GameScreen,
       props: (route) => ({ campaign: campaigns.get(campaignId(route)) }),
+    },
+    {
+      path: '/campagnes/:campaignId/combats/:combatId/rejeu',
+      name: 'combatReplay',
+      component: ReplayScreen,
+      props: (route) => ({ campaign: campaigns.get(campaignId(route)), combatId: route.params.combatId as string }),
     },
     // Une adresse inconnue ne casse rien : elle mène à l'accueil.
     { path: '/:pathMatch(.*)*', redirect: '/' },

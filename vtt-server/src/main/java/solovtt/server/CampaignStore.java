@@ -8,7 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Où vivent les campagnes. Chacune garde sa partie ({@link GameStore}), ses cartes enregistrées ({@link MapStore}) et
+ * Où vivent les campagnes. Chacune garde sa partie ({@link GameStore}), ses cartes enregistrées ({@link MapStore}), ses combats ({@link CombatStore}) et
  * son Carnet ({@link NotebookStore}) ;
  * les images de fond restent communes ({@link ImageStore}).
  */
@@ -55,6 +55,13 @@ public interface CampaignStore {
     MapStore maps(String id);
 
     /**
+     * Les combats de la campagne.
+     *
+     * @throws IllegalArgumentException si aucune campagne n'a cet id
+     */
+    CombatStore combats(String id);
+
+    /**
      * Le Carnet de la campagne.
      *
      * @throws IllegalArgumentException si aucune campagne n'a cet id
@@ -85,7 +92,7 @@ public interface CampaignStore {
 
     /** Garde les campagnes, leurs parties, leurs cartes et leurs Carnets en mémoire, le temps du processus. */
     static CampaignStore inMemory() {
-        record Content(Campaign campaign, GameStore games, MapStore maps, NotebookStore notebook, Map<String, String> modules) {}
+        record Content(Campaign campaign, GameStore games, MapStore maps, CombatStore combats, NotebookStore notebook, Map<String, String> modules) {}
         Map<String, Content> campaigns = new ConcurrentHashMap<>();
         return new CampaignStore() {
             @Override
@@ -96,7 +103,7 @@ public interface CampaignStore {
             @Override
             public Campaign create(String name, List<String> modules) {
                 var campaign = new Campaign(UUID.randomUUID().toString(), name, modules);
-                campaigns.put(campaign.id(), new Content(campaign, GameStore.inMemory(), MapStore.inMemory(), NotebookStore.inMemory(), new ConcurrentHashMap<>()));
+                campaigns.put(campaign.id(), new Content(campaign, GameStore.inMemory(), MapStore.inMemory(), CombatStore.inMemory(), NotebookStore.inMemory(), new ConcurrentHashMap<>()));
                 return campaign;
             }
 
@@ -104,7 +111,7 @@ public interface CampaignStore {
             public Campaign setModules(String id, List<String> modules) {
                 Content content = content(id);
                 var campaign = new Campaign(id, content.campaign().name(), modules);
-                campaigns.put(id, new Content(campaign, content.games(), content.maps(), content.notebook(), content.modules()));
+                campaigns.put(id, new Content(campaign, content.games(), content.maps(), content.combats(), content.notebook(), content.modules()));
                 return campaign;
             }
 
@@ -116,6 +123,11 @@ public interface CampaignStore {
             @Override
             public MapStore maps(String id) {
                 return content(id).maps();
+            }
+
+            @Override
+            public CombatStore combats(String id) {
+                return content(id).combats();
             }
 
             @Override

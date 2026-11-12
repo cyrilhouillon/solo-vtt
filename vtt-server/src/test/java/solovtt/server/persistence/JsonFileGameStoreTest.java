@@ -29,7 +29,7 @@ class JsonFileGameStoreTest {
             new SavedCommand.ShowGrid(false, List.of()),
             new SavedCommand.AlignGrid(33, 22, 0.25, 0.5, List.of()),
             new SavedCommand.Move("gobelin-1", 10.5, 3, List.of()),
-            new SavedCommand.StartCombat(List.of(14, 3)),
+            new SavedCommand.StartCombat("0f8fad5b-d9cb-469f-a165-70867728950e", List.of(14, 3)),
             new SavedCommand.EndTurn(List.of()),
             new SavedCommand.Attack("gobelin-1", "melee:Cimeterre", "magicienne-1", List.of(10)),
             new SavedCommand.Answer("d1", "Bouclier", List.of(4)),

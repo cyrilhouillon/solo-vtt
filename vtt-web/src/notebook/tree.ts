@@ -60,9 +60,12 @@ export function splitSections(nodes: readonly PageNode[]): { ordinary: PageNode[
   return { ordinary, sections }
 }
 
+/** La section du Carnet que tient le cœur pour les entrées de combat, toujours visible, titrée « Combats ». */
+export const COMBATS_SECTION = 'combats'
+
 /**
- * Les pages que montrent l'arbre et le dialogue Déplacer : sans celles des sections dont le module n'est pas actif. Une
- * page est dans une section si sa racine en est une.
+ * Les pages que montrent l'arbre et le dialogue Déplacer : sans celles des sections dont le module n'est pas actif (la
+ * section des combats est du cœur, toujours là). Une page est dans une section si sa racine en est une.
  */
 export function visiblePages(pages: readonly PageSummary[], activeModules: readonly string[]): PageSummary[] {
   const byId = new Map(pages.map((p) => [p.id, p]))
@@ -77,7 +80,7 @@ export function visiblePages(pages: readonly PageSummary[], activeModules: reado
   }
   return pages.filter((page) => {
     const section = rootOf(page).section
-    return section === null || activeModules.includes(section)
+    return section === null || section === COMBATS_SECTION || activeModules.includes(section)
   })
 }
 
@@ -116,5 +119,7 @@ export function branch(pages: readonly PageSummary[], id: string): Set<string> {
 export function canMove(pages: readonly PageSummary[], id: string, parentId: string | null): boolean {
   const page = pages.find((p) => p.id === id)
   if (!page || page.section !== null || page.parentId === parentId) return false
+  // Une entrée de combat n'a pas de sous-page.
+  if (parentId !== null && pages.find((p) => p.id === parentId)?.combatId) return false
   return parentId === null || !branch(pages, id).has(parentId)
 }

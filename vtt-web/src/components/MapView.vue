@@ -208,6 +208,11 @@ async function rollDice(attack: RolledDice[], damage: RolledDice[]): Promise<voi
   }
 }
 
+/** Efface les dés 3D, roulants ou posés, sans charger le lanceur : leurs promesses se résolvent tout de suite. */
+function cancelDice() {
+  void roller?.then((r) => r?.cancel())
+}
+
 /** Glisser depuis le catalogue : fantôme sous le pointeur, position visée au relâcher, puis effacement. */
 function dragOver(kind: CreatureKind, clientX: number, clientY: number) {
   canvas?.dragOver(kind, clientX, clientY)
@@ -230,7 +235,7 @@ function fit() {
   canvas?.fit()
 }
 
-defineExpose({ focus, showImpact, rollDice, dragOver, dropTarget, endDrag, zoomIn, zoomOut, fit })
+defineExpose({ focus, showImpact, rollDice, cancelDice, dragOver, dropTarget, endDrag, zoomIn, zoomOut, fit })
 
 onBeforeUnmount(() => {
   observer?.disconnect()

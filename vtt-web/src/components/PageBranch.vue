@@ -103,7 +103,10 @@ const isEditing = (kind: 'rename' | 'child', pageId: string) =>
           <AppIcon name="more" />
         </button>
         <ul v-if="tree.menuId.value === node.page.id" class="menu" :style="menuStyle()">
-          <li><button type="button" @click="tree.startEdit('child', node.page.id)">Nouvelle sous-page</button></li>
+          <!-- Une entrée de combat n'a pas de sous-page. -->
+          <li v-if="!node.page.combatId">
+            <button type="button" @click="tree.startEdit('child', node.page.id)">Nouvelle sous-page</button>
+          </li>
           <li><button type="button" @click="tree.startEdit('rename', node.page.id)">Renommer</button></li>
           <!-- Une racine de section appartient à son module : elle ne se déplace ni ne se supprime. -->
           <template v-if="node.page.section === null">

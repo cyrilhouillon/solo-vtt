@@ -196,6 +196,15 @@ class JsonFileNotebookStoreTest {
     }
 
     @Test
+    void lesEntreesDeCombat_suiventLesReglesDuPort_etSeRelisent() {
+        Path carnet = dir.resolve("carnet");
+        NotebookStoreTest.entreesDeCombat(new JsonFileNotebookStore(carnet));
+
+        var relu = new JsonFileNotebookStore(carnet);
+        assertEquals(2, relu.list().stream().filter(Page::isCombatEntry).count());
+    }
+
+    @Test
     void laCorbeille_seRelitParUnNouvelAdaptateur() {
         Path carnet = dir.resolve("carnet");
         var store = new JsonFileNotebookStore(carnet);

@@ -123,4 +123,10 @@ public class CampaignResource {
     public CombatResource combat(@PathParam("campaignId") String campaignId) {
         return new CombatResource(sessions.of(campaignId));
     }
+
+    @Path("/{campaignId}/combats")
+    public CombatsResource combats(@PathParam("campaignId") String campaignId) {
+        SceneSession session = sessions.of(campaignId);
+        return new CombatsResource(campaigns.combats(campaignId), session);
+    }
 }

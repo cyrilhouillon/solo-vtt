@@ -16,6 +16,7 @@ import CampaignModulesDialog from './CampaignModulesDialog.vue'
 import FoldSection from './FoldSection.vue'
 import CampaignColumn from './CampaignColumn.vue'
 import ResultDialog from './ResultDialog.vue'
+import CombatEntryView from './CombatEntryView.vue'
 import { copyBlocks } from '../notebook/clipboard'
 import { ancestors, branch, visiblePages } from '../notebook/tree'
 import { MAX_TITLE_LENGTH } from '../notebook/context'
@@ -742,6 +743,12 @@ function keepFiles(e: DragEvent) {
   e.preventDefault()
 }
 
+/** Ouvre un combat sur l'écran de combat : rejoué s'il est terminé, en direct sinon (déjà repris par l'entrée). */
+function openCombat(combatId: string, ended: boolean) {
+  const campaignId = props.campaign.id
+  void router.push(ended ? { name: 'combatReplay', params: { campaignId, combatId } } : { name: 'combat', params: { campaignId } })
+}
+
 /** La garde de sortie attend la frappe : si elle n'a pas pu partir, on reste à l'écran, avec l'erreur. */
 function leave(target: 'home' | 'notebook' | 'combat') {
   if (target === 'notebook') return
@@ -870,7 +877,20 @@ function leave(target: 'home' | 'notebook' | 'combat') {
           @close="closeTab"
           @reorder="reorderTabs"
         />
-        <article v-if="page" :key="page.id" class="leaf" aria-labelledby="page-title">
+        <!-- Une entrée de combat n'a pas de texte : sa carte en petit, qui ouvre le combat. -->
+        <article v-if="page?.combatId" :key="page.id" class="leaf" aria-labelledby="page-title">
+          <header class="page-head">
+            <h2 id="page-title" class="page-title">{{ page.title }}</h2>
+          </header>
+          <CombatEntryView
+            :campaign-id="campaign.id"
+            :combat-id="page.combatId"
+            @open="openCombat"
+            @error="(message) => (error = message)"
+          />
+          <CitingPages v-if="citing" :page-ids="citing" :pages="notebook.pages" @open="open" />
+        </article>
+        <article v-else-if="page" :key="page.id" class="leaf" aria-labelledby="page-title">
           <header class="page-head">
             <h2 id="page-title" class="page-title">
               <input

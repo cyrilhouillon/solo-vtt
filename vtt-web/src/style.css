@@ -273,3 +273,111 @@ input[type='number'] {
 .error button {
   flex: none;
 }
+
+/*
+ * La table de jeu, commune au combat et à son rejeu : la colonne de la campagne à gauche, sur toute la hauteur, la barre
+ * au-dessus de la carte bordée de bois et du panneau à onglets, à droite. Sous 900 px, tout s'empile.
+ */
+.game-table {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 3.5rem 1fr 24rem;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'column bar bar'
+    'column table side';
+}
+.game-table > .column {
+  grid-area: column;
+}
+.game-table > .bar {
+  grid-area: bar;
+}
+.game-table > .table {
+  grid-area: table;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--felt);
+}
+.game-table .map-frame {
+  flex: 1;
+  min-height: 0;
+  border: 6px solid var(--wood);
+  border-top: 0;
+  border-bottom: 0;
+}
+.game-table > .side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--wood);
+  border-left: 2px solid var(--page);
+}
+.game-table > .side > .tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.6rem 0.9rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.game-table > .side > .tabs > .tab {
+  padding: 0.4rem 0.9rem 0.35rem;
+  border: 0;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  box-shadow: inset 0 -3px 0 transparent;
+}
+.game-table > .side > .tabs > .tab:hover:not(:disabled) {
+  background: var(--wood-raised);
+  color: var(--ink);
+}
+.game-table > .side > .tabs > .tab[aria-selected='true'] {
+  color: var(--ink);
+  box-shadow: inset 0 -3px 0 var(--ink);
+}
+.game-table > .side > .tab-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.1rem 1.5rem;
+}
+.game-table > .side > .tab-panel:focus-visible {
+  outline-offset: -2px;
+}
+@media (max-width: 1100px) {
+  .game-table {
+    grid-template-columns: 3.5rem 1fr 20rem;
+  }
+}
+@media (max-width: 900px) {
+  .game-table {
+    height: auto;
+    min-height: 100vh;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+      'column'
+      'bar'
+      'table'
+      'side';
+  }
+  .game-table > .side {
+    border-left: 0;
+    min-height: 24rem;
+  }
+  /* La carte prend sa propre forme : pas de bande de feutre vide au-dessus ni en dessous. */
+  .game-table .map-frame {
+    flex: none;
+    aspect-ratio: var(--map-ratio, 3 / 2);
+    min-height: 14rem;
+    max-height: 70svh;
+  }
+}

@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -80,6 +82,12 @@ public class SceneSession {
     private final GameStore store;
     /** Les cartes enregistrées de la campagne. */
     private final MapStore maps;
+    /** Les combats de la campagne : chacun garde la partie de sa carte jusqu'à sa fin. */
+    private final CombatStore combats;
+    /** Appelé avec l'id d'un combat qui vient d'être lancé (hors rejeu), pour lui donner son entrée du Carnet. */
+    private final Consumer<String> combatStarted;
+    /** Le combat en cours sur la carte, gardé à chaque commande ; {@code null} hors combat ou pour un combat d'avant les combats enregistrés. */
+    private String combatId;
     /** D'où viennent les dés : ceux du jeu, ou ceux de la commande rejouée. */
     private Dice source;
     /** Les dés tirés pendant l'appel en cours, gardés avec sa commande. */
@@ -152,13 +160,58 @@ public class SceneSession {
         this(dice, store, MapStore.inMemory());
     }
 
-    /** Une session qui reprend la partie gardée par {@code store}, puis l'y sauve après chaque commande réussie. */
+    /** Une session qui reprend la partie gardée par {@code store} ; ses combats vivent en mémoire. */
     public SceneSession(Dice dice, GameStore store, MapStore maps) {
+        this(dice, store, maps, CombatStore.inMemory(), combatId -> {});
+    }
+
+    /**
+     * Une session qui reprend la partie gardée par {@code store}, puis l'y sauve après chaque commande réussie ; un combat
+     * en cours est aussi gardé dans {@code combats} à chaque commande, et {@code combatStarted} reçoit l'id de chaque combat lancé.
+     */
+    public SceneSession(Dice dice, GameStore store, MapStore maps, CombatStore combats, Consumer<String> combatStarted) {
         this.dice = dice;
         this.source = dice;
         this.store = store;
         this.maps = maps;
+        this.combats = combats;
+        this.combatStarted = combatStarted;
         restore();
+    }
+
+    /**
+     * Une session en lecture, rejouée depuis cette partie : rien n'est gardé, aucun combat n'est annoncé.
+     *
+     * @throws RuntimeException si la partie ne se rejoue pas à l'identique (règles changées, partie incohérente)
+     */
+    public static SceneSession replayed(SavedGame game) {
+        var session = new SceneSession(sides -> {
+            throw new IllegalStateException("Aucun dé hors du rejeu (d" + sides + ")");
+        }, GameStore.none(), MapStore.inMemory(), CombatStore.inMemory(), combatId -> {});
+        session.replay(game);
+        return session;
+    }
+
+    /** Le combat en cours sur la carte, vide hors combat. */
+    public synchronized Optional<String> combatId() {
+        return Optional.ofNullable(combatId);
+    }
+
+    /**
+     * Remplace la partie en cours par cette partie, rejouée, puis la garde : un combat en cours se reprend là où il en était.
+     * La partie est d'abord rejouée à part : si elle ne se rejoue pas, ou si son combat est terminé, la partie en cours ne
+     * change pas.
+     *
+     * @throws ActionRefusedException si son combat est terminé
+     * @throws RuntimeException       si la partie ne se rejoue pas à l'identique
+     */
+    public synchronized void resume(SavedGame game) {
+        if (replayed(game).combatId().isEmpty()) {
+            throw new ActionRefusedException("Ce combat est terminé : il se rejoue, il ne se reprend pas");
+        }
+        reset();
+        replay(game);
+        store.save(new SavedGame(commands));
     }
 
     /** Les cartes enregistrées de la campagne. */
@@ -173,6 +226,8 @@ public class SceneSession {
 
     /** Crée une carte qui vient de la carte enregistrée {@code mapName} ({@code null} pour une nouvelle carte). */
     private Scene create(double width, double height, DistanceUnit unit, String imageId, String mapName) {
+        // D'abord : le combat en cours garde sa partie, que la nouvelle carte n'écrase pas.
+        combatId = null;
         rolls.clear();
         commands.clear();
         Scene created = new Scene(width, height, unit);
@@ -219,11 +274,31 @@ public class SceneSession {
         return recorded(() -> run(resolution, targetId), r -> new SavedGame.SavedCommand.Attack(attackerId, attackId, targetId, r));
     }
 
-    /** Lance le combat : chaque créature tire son initiative. */
+    /**
+     * Lance le combat : chaque créature tire son initiative ; le combat est gardé à part, jusqu'à sa fin. Un échec de
+     * {@code combatStarted} (l'entrée du Carnet) est journalisé sans défaire le lancement, déjà gardé.
+     */
     public synchronized ActionOutcome startCombat() {
+        String id = UUID.randomUUID().toString();
+        ActionOutcome outcome = startCombat(id);
+        try {
+            combatStarted.accept(id);
+        } catch (RuntimeException e) {
+            LOG.log(System.Logger.Level.WARNING, "Combat " + id + " lancé sans entrée du Carnet", e);
+        }
+        return outcome;
+    }
+
+    /** Lance le combat {@code id} ({@code null} : un combat d'avant les combats enregistrés, gardé dans la seule partie). */
+    private ActionOutcome startCombat(String id) {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        return recorded(() -> run(refusable(() -> StartCombat.of(state)), null), SavedGame.SavedCommand.StartCombat::new);
+        return recorded(() -> {
+            ActionOutcome outcome = run(refusable(() -> StartCombat.of(state)), null);
+            // Seulement s'il est lancé : un lancement refusé ne touche pas le combat en cours.
+            combatId = id;
+            return outcome;
+        }, r -> new SavedGame.SavedCommand.StartCombat(id, r));
     }
 
     /** Termine le tour de la créature active et ouvre le suivant. */
@@ -237,7 +312,10 @@ public class SceneSession {
     public synchronized ActionOutcome endCombat() {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        return recorded(() -> run(refusable(() -> EndCombat.of(state)), null), SavedGame.SavedCommand.EndCombat::new);
+        ActionOutcome outcome = recorded(() -> run(refusable(() -> EndCombat.of(state)), null), SavedGame.SavedCommand.EndCombat::new);
+        // Le combat est gardé avec sa fin, puis figé : la carte continue sans lui.
+        combatId = null;
+        return outcome;
     }
 
     /**
@@ -492,7 +570,10 @@ public class SceneSession {
     private void record(Function<List<Integer>, SavedGame.SavedCommand> command) {
         commands.add(command.apply(List.copyOf(rolls)));
         rolls.clear();
-        if (!replaying) store.save(new SavedGame(commands));
+        if (replaying) return;
+        SavedGame game = new SavedGame(commands);
+        store.save(game);
+        if (combatId != null) combats.game(combatId).save(game);
     }
 
     /** Rejoue la partie gardée ; si elle ne se rejoue pas à l'identique, repart sans carte et la met de côté. */
@@ -507,14 +588,22 @@ public class SceneSession {
     }
 
     private void replay(SavedGame game) {
+        for (SavedGame.SavedCommand command : game.commands()) replayNext(command);
+    }
+
+    /**
+     * Rejoue une commande de plus, avec ses dés, sans rien garder : le rejeu pas à pas d'un combat ({@link CombatReplay})
+     * observe la session entre deux commandes.
+     *
+     * @throws RuntimeException si la commande ne se rejoue pas à l'identique
+     */
+    synchronized void replayNext(SavedGame.SavedCommand command) {
         replaying = true;
         try {
-            for (SavedGame.SavedCommand command : game.commands()) {
-                ReplayDice replayDice = new ReplayDice(command.rolls());
-                source = replayDice;
-                replay(command);
-                if (!replayDice.used()) throw new IllegalStateException("Dés non consommés au rejeu de " + command);
-            }
+            ReplayDice replayDice = new ReplayDice(command.rolls());
+            source = replayDice;
+            replay(command);
+            if (!replayDice.used()) throw new IllegalStateException("Dés non consommés au rejeu de " + command);
         } finally {
             replaying = false;
             source = dice;
@@ -531,7 +620,7 @@ public class SceneSession {
             case SavedGame.SavedCommand.Remove c -> remove(c.tokenId());
             case SavedGame.SavedCommand.Move c -> move(c.tokenId(), c.x(), c.y());
             case SavedGame.SavedCommand.Attack c -> attack(c.attackerId(), c.attackId(), c.targetId());
-            case SavedGame.SavedCommand.StartCombat c -> startCombat();
+            case SavedGame.SavedCommand.StartCombat c -> startCombat(c.combatId());
             case SavedGame.SavedCommand.EndTurn c -> endTurn();
             case SavedGame.SavedCommand.EndCombat c -> endCombat();
             case SavedGame.SavedCommand.Answer c -> answer(c.decisionId(), c.option())
@@ -541,6 +630,7 @@ public class SceneSession {
 
     /** Sans carte, comme au premier lancement. */
     private void reset() {
+        combatId = null;
         scene = null;
         imageId = null;
         mapName = null;

@@ -71,25 +71,29 @@ final class Dtos {
 
     /**
      * Une page, telle que l'arbre du Carnet la montre ; {@code parentId} : {@code null} à la racine ; {@code section} :
-     * l'id du module dont elle est une racine de section, {@code null} sinon.
+     * l'id de la section dont elle est une racine, {@code null} sinon ; {@code combatId} : le combat dont elle est
+     * l'entrée, {@code null} pour une page.
      */
-    record PageSummaryDto(String id, String title, String parentId, String section) {
+    record PageSummaryDto(String id, String title, String parentId, String section, String combatId) {
         static PageSummaryDto of(Page page) {
-            return new PageSummaryDto(page.id(), page.title(), page.parentId(), page.section());
+            return new PageSummaryDto(page.id(), page.title(), page.parentId(), page.section(), page.combatId());
         }
     }
 
-    /** {@code parentId} : {@code null} à la racine ; {@code content} : le document de l'éditeur, {@code null} si neuve. */
-    record PageDto(String id, String title, String parentId, String section, JsonNode content) {}
+    /**
+     * {@code parentId} : {@code null} à la racine ; {@code content} : le document de l'éditeur, {@code null} si neuve ;
+     * {@code combatId} : le combat dont elle est l'entrée, {@code null} pour une page.
+     */
+    record PageDto(String id, String title, String parentId, String section, JsonNode content, String combatId) {}
 
     /** Un morceau d'extrait ; {@code match} : un mot de la recherche, à surligner. */
     record FragmentDto(String text, boolean match) {}
 
     /** Une page trouvée ; {@code excerpt} : l'extrait en morceaux, vide pour une page sans texte. */
-    record SearchResultDto(String id, String title, String parentId, String section, List<FragmentDto> excerpt) {
+    record SearchResultDto(String id, String title, String parentId, String section, String combatId, List<FragmentDto> excerpt) {
         static SearchResultDto of(NotebookStore.SearchHit hit) {
             Page page = hit.page();
-            return new SearchResultDto(page.id(), page.title(), page.parentId(), page.section(),
+            return new SearchResultDto(page.id(), page.title(), page.parentId(), page.section(), page.combatId(),
                     hit.excerpt().stream().map(f -> new FragmentDto(f.text(), f.match())).toList());
         }
     }
@@ -113,6 +117,24 @@ final class Dtos {
                     entry.subpageCount());
         }
     }
+
+    /**
+     * Un combat : {@code ended} s'il est terminé (il se rejoue), {@code current} s'il est la partie de la carte en cours,
+     * et sa carte telle qu'il l'a laissée (finale s'il est terminé).
+     */
+    record CombatEntryDto(String id, boolean ended, boolean current, SceneDto scene) {}
+
+    /**
+     * Un pas du rejeu d'un combat : une action entière (lancement, déplacement de la créature active, attaque avec sa
+     * réaction, fin de tour, créature posée ou retirée, fin du combat). {@code entries} : ce qu'elle a ajouté au journal ;
+     * la cible d'une attaque et ses PV après coup ({@code null} sans cible) ; puis l'état après le pas : la carte, le
+     * combat ({@code null} hors combat) et la feuille de chaque créature. Le pas 0 est le départ, l'état juste avant le lancement, sans entrée.
+     */
+    record ReplayStepDto(List<JournalEntryDto> entries, String targetId, Integer targetHitPoints, Integer targetMaxHitPoints,
+                         SceneDto scene, CombatDto combat, List<CreatureSheetDto> sheets) {}
+
+    /** Le rejeu d'un combat terminé, pas à pas. */
+    record ReplayDto(String id, List<ReplayStepDto> steps) {}
 
     /** Une campagne, avec ses modules actifs. */
     record CampaignDto(String id, String name, List<String> modules) {

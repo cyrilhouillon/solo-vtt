@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, toRef } from 'vue'
 import PageBranch from './PageBranch.vue'
 import { treeContext, type MenuPlace, type TreeDrag, type TreeEdit } from '../notebook/context'
-import { buildTree, canMove, splitSections } from '../notebook/tree'
+import { COMBATS_SECTION, buildTree, canMove, splitSections } from '../notebook/tree'
 import { notebookModules } from '../modules/registry'
 import type { PageSummary } from '../types'
 
@@ -39,7 +39,10 @@ const groups = computed(() => {
     ordinary,
     sections: sections.map((section) => ({
       ...section,
-      title: notebookModules.find((module) => module.id === section.id)?.title ?? section.id,
+      title:
+        section.id === COMBATS_SECTION
+          ? 'Combats'
+          : (notebookModules.find((module) => module.id === section.id)?.title ?? section.id),
     })),
   }
 })

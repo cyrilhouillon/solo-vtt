@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import solovtt.server.Campaign;
 import solovtt.server.CampaignStore;
+import solovtt.server.CombatStore;
 import solovtt.server.GameStore;
 import solovtt.server.MapStore;
 import solovtt.server.NotebookStore;
@@ -23,7 +24,7 @@ import java.util.stream.Stream;
 
 /**
  * Une campagne par dossier {@code <racine>/<id>/} : {@code campagne.json} (id, nom et modules actifs), {@code partie.json} et
- * {@code cartes.json}, son Carnet dans {@code carnet/} et les données de chaque module dans {@code modules/<module>.json}. Un dossier sans {@code campagne.json} lisible est ignoré,
+ * {@code cartes.json}, ses combats dans {@code combats/<id>.json}, son Carnet dans {@code carnet/} et les données de chaque module dans {@code modules/<module>.json}. Un dossier sans {@code campagne.json} lisible est ignoré,
  * jamais écrasé.
  */
 public final class FileCampaignStore implements CampaignStore {
@@ -116,6 +117,11 @@ public final class FileCampaignStore implements CampaignStore {
     @Override
     public MapStore maps(String id) {
         return new JsonFileMapStore(dirOf(id).resolve("cartes.json"));
+    }
+
+    @Override
+    public CombatStore combats(String id) {
+        return new JsonFileCombatStore(dirOf(id).resolve("combats"));
     }
 
     @Override

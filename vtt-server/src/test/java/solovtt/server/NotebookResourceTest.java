@@ -28,6 +28,11 @@ class NotebookResourceTest {
             }
 
             @Override
+            public Page createCombatEntry(String combatId, String title) {
+                return pages.createCombatEntry(combatId, title);
+            }
+
+            @Override
             public void saveContent(String id, String content) {
                 pages.saveContent(id, content);
             }
