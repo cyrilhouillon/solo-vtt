@@ -205,6 +205,19 @@ class JsonFileNotebookStoreTest {
     }
 
     @Test
+    void lesEntreesDeModule_suiventLesReglesDuPort_etSeRelisent() throws IOException {
+        Path carnet = dir.resolve("carnet");
+        NotebookStoreTest.entreesDeModule(new JsonFileNotebookStore(carnet));
+
+        var relu = new JsonFileNotebookStore(carnet).list();
+        assertEquals(2, relu.stream().filter(Page::isModuleEntry).count());
+        assertEquals("essai", relu.stream().filter(p -> p.title().equals("Borin")).findFirst().orElseThrow().entryOf());
+        Page lore = relu.stream().filter(p -> p.title().equals("Lore")).findFirst().orElseThrow();
+        assertFalse(Files.readString(carnet.resolve(lore.id() + ".json")).contains("entryOf"),
+                "une page ordinaire n'écrit pas d'entrée");
+    }
+
+    @Test
     void laCorbeille_seRelitParUnNouvelAdaptateur() {
         Path carnet = dir.resolve("carnet");
         var store = new JsonFileNotebookStore(carnet);

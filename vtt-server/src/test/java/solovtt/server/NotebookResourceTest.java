@@ -33,6 +33,11 @@ class NotebookResourceTest {
             }
 
             @Override
+            public Page createEntry(String moduleId, String parentId, String title) {
+                return pages.createEntry(moduleId, parentId, title);
+            }
+
+            @Override
             public void saveContent(String id, String content) {
                 pages.saveContent(id, content);
             }

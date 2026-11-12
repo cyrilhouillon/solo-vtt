@@ -19,8 +19,10 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static solovtt.server.Campagnes.campagne;
 
 /** Le Carnet d'une campagne neuve : « Session 1 », puis « Bertrand ». */
@@ -504,6 +506,42 @@ class NotebookApiTest {
                 .put(carnet() + "/pages/" + aldric + "/parent").then().statusCode(204);
         given().delete(carnet() + "/pages/" + aldric).then().statusCode(204);
         given().get(carnet()).then().body("pages.title", equalTo(List.of("Fils")));
+    }
+
+    @Test
+    void uneEntreeDeModule_creeeParLePort_seMontreSeCherche_maisNAniTexteNiSousPage() {
+        String joueurs = sections.createSectionRoot(campagneId, "essai", "Personnages joueurs", null).id();
+        String aria = sections.createEntry(campagneId, "essai", joueurs, "Aria").id();
+        String session = creer("Session 1");
+        assertTrue(sections.isEntry(campagneId, "essai", aria));
+        assertFalse(sections.isEntry(campagneId, "autre", aria));
+        assertFalse(sections.isEntry(campagneId, "essai", session));
+        assertThrows(IllegalArgumentException.class, () -> sections.createEntry(campagneId, "essai", session, "Borin"));
+        assertThrows(IllegalArgumentException.class, () -> sections.createEntry(campagneId, "combats", joueurs, "Borin"));
+
+        given().get(carnet()).then().statusCode(200)
+                .body("pages.find { it.id == '" + aria + "' }.entryOf", equalTo("essai"))
+                .body("pages.find { it.id == '" + session + "' }.entryOf", nullValue());
+        given().get(carnet() + "/pages/" + aria).then().statusCode(200).body("entryOf", equalTo("essai"));
+        given().queryParam("q", "aria").get(carnet() + "/search").then().statusCode(200)
+                .body("[0].id", equalTo(aria)).body("[0].entryOf", equalTo("essai"));
+
+        given().contentType(ContentType.JSON).body("{\"content\":{\"type\":\"doc\",\"content\":[]}}")
+                .put(carnet() + "/pages/" + aria + "/content").then().statusCode(400)
+                .body("message", equalTo("Une entrée de module n'a pas de texte"));
+        given().contentType(ContentType.JSON).body(Map.of("title", "Notes", "parentId", aria))
+                .post(carnet() + "/pages").then().statusCode(400)
+                .body("message", equalTo("Une entrée de module n'a pas de sous-page"));
+        given().contentType(ContentType.JSON).body(Map.of("parentId", aria))
+                .put(carnet() + "/pages/" + session + "/parent").then().statusCode(400);
+
+        given().contentType(ContentType.JSON).body(Map.of("title", "Aria la Rouge"))
+                .put(carnet() + "/pages/" + aria + "/title").then().statusCode(204);
+        given().delete(carnet() + "/pages/" + aria).then().statusCode(204);
+        assertFalse(sections.isEntry(campagneId, "essai", aria));
+        given().post(corbeille() + "/" + aria + "/restore").then().statusCode(204);
+        assertEquals(Optional.of("Aria la Rouge"), sections.pageTitle(campagneId, aria));
+        assertTrue(sections.isEntry(campagneId, "essai", aria));
     }
 
     @Test

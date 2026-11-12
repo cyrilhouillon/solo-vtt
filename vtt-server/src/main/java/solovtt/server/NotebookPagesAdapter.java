@@ -65,11 +65,21 @@ public class NotebookPagesAdapter implements NotebookPages {
         return pages.stream().filter(page -> page.id().equals(pageId)).findFirst().map(Page::content);
     }
 
-    /** Vrai si la page est vivante et sa racine une racine de la section du module. */
+    @Override
+    public SectionPage createEntry(String campaignId, String moduleId, String parentId, String title) {
+        checkSection(moduleId);
+        Page page = notebook(campaignId).createEntry(moduleId, parentId, title);
+        return new SectionPage(page.id(), page.title());
+    }
+
+    @Override
+    public boolean isEntry(String campaignId, String moduleId, String pageId) {
+        checkSection(moduleId);
+        return notebook(campaignId).find(pageId).filter(page -> moduleId.equals(page.entryOf())).isPresent();
+    }
+
     private static boolean inSection(List<Page> pages, String moduleId, String pageId) {
-        return pages.stream()
-                .filter(page -> moduleId.equals(page.section()))
-                .anyMatch(root -> PageTree.isWithin(pages, pageId, root.id()) && pages.stream().anyMatch(p -> p.id().equals(pageId)));
+        return NotebookStore.inSection(pages, moduleId, pageId);
     }
 
     private NotebookStore notebook(String campaignId) {

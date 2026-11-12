@@ -57,6 +57,15 @@ public interface NotebookStore {
     Page createCombatEntry(String combatId, String title);
 
     /**
+     * Crée, sous {@code parentId}, une entrée du module {@code moduleId} sous ce titre : une page sans texte ni sous-page,
+     * que le module montre lui-même. Elle se renomme, se déplace et se supprime comme une page.
+     *
+     * @throws IllegalArgumentException si l'id du module est invalide, ou si le parent n'est pas une page vivante de la
+     *     section du module, ou est lui-même une entrée
+     */
+    Page createEntry(String moduleId, String parentId, String title);
+
+    /**
      * Remplace le contenu de la page.
      *
      * @throws IllegalArgumentException si aucune page n'a cet id, ou si c'est une entrée de combat
@@ -157,14 +166,38 @@ public interface NotebookStore {
         }
     }
 
-    /** Refuse de ranger une page sous une entrée de combat, qui n'a pas de sous-page. */
+    /** Refuse de ranger une page sous une entrée, de combat ou de module, qui n'a pas de sous-page. */
     static void checkParent(Page parent) {
         if (parent.isCombatEntry()) throw new IllegalArgumentException("Une entrée de combat n'a pas de sous-page");
+        if (parent.isModuleEntry()) throw new IllegalArgumentException("Une entrée de module n'a pas de sous-page");
     }
 
-    /** Refuse d'écrire le contenu d'une entrée de combat, qui n'a pas de texte. */
+    /** Refuse d'écrire le contenu d'une entrée, de combat ou de module, qui n'a pas de texte. */
     static void checkContent(Page page) {
         if (page.isCombatEntry()) throw new IllegalArgumentException("Une entrée de combat n'a pas de texte");
+        if (page.isModuleEntry()) throw new IllegalArgumentException("Une entrée de module n'a pas de texte");
+    }
+
+    /** Vrai si la page est vivante et sa racine une racine de la section du module. */
+    static boolean inSection(List<Page> pages, String moduleId, String pageId) {
+        return pages.stream().anyMatch(p -> p.id().equals(pageId))
+                && pages.stream()
+                        .filter(page -> moduleId.equals(page.section()))
+                        .anyMatch(root -> PageTree.isWithin(pages, pageId, root.id()));
+    }
+
+    /**
+     * La nouvelle entrée du module sous {@code parentId}, refusée si le parent n'est pas une page vivante de la section du
+     * module, ou est une entrée : l'appelant tient le verrou du Carnet.
+     */
+    static Page newEntry(List<Page> pages, String moduleId, String parentId, String title) {
+        CampaignStore.checkModuleId(moduleId);
+        if (COMBATS_SECTION.equals(moduleId)) throw new IllegalArgumentException("Section réservée par le cœur : " + moduleId);
+        if (parentId == null || !inSection(pages, moduleId, parentId)) {
+            throw new IllegalArgumentException("Une entrée se range dans la section de son module");
+        }
+        pages.stream().filter(p -> p.id().equals(parentId)).findFirst().ifPresent(NotebookStore::checkParent);
+        return new Page(UUID.randomUUID().toString(), title, parentId, null, null, null, moduleId);
     }
 
     /** La racine vivante de la section des combats, s'il y en a une. */
@@ -234,6 +267,13 @@ public interface NotebookStore {
             public synchronized Page createCombatEntry(String combatId, String title) {
                 Page root = combatsRoot(list()).orElseGet(() -> createSectionRoot(COMBATS_SECTION, "Combats", null));
                 var page = new Page(UUID.randomUUID().toString(), title, root.id(), null, null, CombatStore.checkId(combatId));
+                pages.put(page.id(), page);
+                return page;
+            }
+
+            @Override
+            public synchronized Page createEntry(String moduleId, String parentId, String title) {
+                Page page = newEntry(list(), moduleId, parentId, title);
                 pages.put(page.id(), page);
                 return page;
             }
