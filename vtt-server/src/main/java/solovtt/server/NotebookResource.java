@@ -225,7 +225,7 @@ public class NotebookResource {
     private static Dtos.PageDto dto(Page page) {
         try {
             JsonNode content = page.content() == null ? null : JSON.readTree(page.content());
-            return new Dtos.PageDto(page.id(), page.title(), page.parentId(), page.section(), content, page.combatId());
+            return new Dtos.PageDto(page.id(), page.title(), page.parentId(), page.section(), content, page.combatId(), page.entryOf());
         } catch (JsonProcessingException e) {
             throw new UncheckedIOException("Contenu de page illisible : " + page.id(), e);
         }

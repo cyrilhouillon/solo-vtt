@@ -86,4 +86,14 @@ final class PagesDeTest implements NotebookPages {
         }
         return false;
     }
+
+    @Override
+    public SectionPage createEntry(String campaignId, String moduleId, String parentId, String title) {
+        throw new UnsupportedOperationException("Ce module ne crée pas d'entrée");
+    }
+
+    @Override
+    public boolean isEntry(String campaignId, String moduleId, String pageId) {
+        return false;
+    }
 }

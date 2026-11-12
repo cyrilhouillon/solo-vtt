@@ -61,6 +61,25 @@ public interface NotebookPages {
      */
     Optional<String> sectionPageContent(String campaignId, String moduleId, String pageId);
 
+    /**
+     * Crée, sous {@code parentId}, une entrée du module sous ce titre : une page sans texte ni sous-page, que le Carnet
+     * montre par la vue du module, et dont le module garde les données sous l'id de la page. Elle se renomme, se déplace
+     * et se supprime comme une page.
+     *
+     * @param moduleId l'id du module, en minuscules, chiffres et tirets
+     * @throws IllegalArgumentException si aucune campagne n'a cet id, si l'id du module est invalide, ou si le parent
+     *     n'est pas une page vivante de la section du module, ou est une entrée
+     */
+    SectionPage createEntry(String campaignId, String moduleId, String parentId, String title);
+
+    /**
+     * Vrai si la page est une entrée vivante de ce module, où qu'elle soit rangée.
+     *
+     * @param moduleId l'id du module, en minuscules, chiffres et tirets
+     * @throws IllegalArgumentException si aucune campagne n'a cet id, ou si l'id du module est invalide
+     */
+    boolean isEntry(String campaignId, String moduleId, String pageId);
+
     /** Une page de section : son id et son titre actuel. */
     record SectionPage(String id, String title) {}
 }

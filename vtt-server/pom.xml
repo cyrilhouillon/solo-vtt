@@ -50,6 +50,10 @@
             <artifactId>oracle-server</artifactId>
         </dependency>
         <dependency>
+            <groupId>dnd</groupId>
+            <artifactId>dnd-server</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>

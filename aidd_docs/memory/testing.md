@@ -14,7 +14,7 @@
 
 ## Conventions
 
-- Les tests sont dans `vtt-engine/src/test/java/` (axiomes du moteur sur un système jouet, scène), `dnd-engine/src/test/java/` (règles D&D, catalogue), `mythic-engine/src/test/java/` (table de destin, focus, événements aléatoires), `mythic-server/src/test/java/` (ressource Mythic en JUnit simple, `ModuleData` en mémoire, dés scriptés ; l'assemblage se vérifie sur le serveur 8081), `oracle-server/src/test/java/` (oracle générique, de même) et `vtt-server/src/test/java/` (API ; reprise de partie avec un `GameStore` en mémoire, adaptateur JSON sur `@TempDir`).
+- Les tests sont dans `vtt-engine/src/test/java/` (axiomes du moteur sur un système jouet, scène), `dnd-engine/src/test/java/` (règles D&D, catalogue), `mythic-engine/src/test/java/` (table de destin, focus, événements aléatoires), `mythic-server/src/test/java/` (ressource Mythic en JUnit simple, `ModuleData` en mémoire, dés scriptés ; l'assemblage se vérifie sur le serveur 8081), `oracle-server/src/test/java/` (oracle générique, de même), `dnd-server/src/test/java/` (fiches des personnages joueurs, de même) et `vtt-server/src/test/java/` (API ; reprise de partie avec un `GameStore` en mémoire, adaptateur JSON sur `@TempDir`).
 - Les dés sont toujours scriptés (`Dice.scripted`, ou `ScriptedDice` dans les tests `@QuarkusTest` du serveur), dans l'ordre de consommation : d20 (un ou deux), dés bonus au jet, puis dés de dégâts. Il n'y a jamais de hasard réel dans un test.
 - Les noms de méthodes sont en français et décrivent la règle (`avantageEtDesavantageSAnnulent_unSeulD20`).
 - Toute nouvelle règle arrive avec le test de la situation de table qu'elle change.

@@ -119,7 +119,8 @@ export function branch(pages: readonly PageSummary[], id: string): Set<string> {
 export function canMove(pages: readonly PageSummary[], id: string, parentId: string | null): boolean {
   const page = pages.find((p) => p.id === id)
   if (!page || page.section !== null || page.parentId === parentId) return false
-  // Une entrée de combat n'a pas de sous-page.
-  if (parentId !== null && pages.find((p) => p.id === parentId)?.combatId) return false
+  // Une entrée, de combat ou de module, n'a pas de sous-page.
+  const parent = parentId === null ? undefined : pages.find((p) => p.id === parentId)
+  if (parent && (parent.combatId || parent.entryOf)) return false
   return parentId === null || !branch(pages, id).has(parentId)
 }

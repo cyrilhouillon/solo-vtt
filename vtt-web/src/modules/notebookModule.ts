@@ -14,6 +14,8 @@ export interface NotebookContext {
    * presse-papiers, prêt à coller dans une page.
    */
   writeResult: (blocks: JSONContent[]) => void
+  /** Relit le Carnet puis ouvre la page, après l'enregistrement en cours : pour ouvrir ce que le module vient de créer. */
+  openPage: (pageId: string) => Promise<void>
 }
 
 /**
@@ -32,4 +34,11 @@ export interface NotebookModule {
    * est celui de sa section dans l'arbre.
    */
   prepare?: (campaignId: string) => Promise<void>
+  /**
+   * La vue d'une entrée du module (page sans texte ni sous-page, `entryOf` : l'id du module), montrée à la place de
+   * l'éditeur, sous le titre de la page, avec les props `campaignId` et `pageId` ; elle émet `error` (un message) pour le
+   * bandeau du Carnet. Si elle enregistre une saisie, elle expose `saved(): Promise<boolean>` (`defineExpose`), que le
+   * Carnet attend avant de la quitter, comme l'enregistrement d'une page : `false`, il reste sur place.
+   */
+  entryView?: Component
 }

@@ -42,7 +42,8 @@ public final class JsonFileNotebookStore implements NotebookStore {
                             @JsonInclude(JsonInclude.Include.NON_NULL) String section, JsonNode content,
                             @JsonInclude(JsonInclude.Include.NON_NULL) String deletedWith,
                             @JsonInclude(JsonInclude.Include.NON_NULL) String deletedAt,
-                            @JsonInclude(JsonInclude.Include.NON_NULL) String combatId) {}
+                            @JsonInclude(JsonInclude.Include.NON_NULL) String combatId,
+                            @JsonInclude(JsonInclude.Include.NON_NULL) String entryOf) {}
 
     private record NotebookFile(String lastPageId, List<String> openPageIds) {}
 
@@ -92,6 +93,13 @@ public final class JsonFileNotebookStore implements NotebookStore {
     public synchronized Page createCombatEntry(String combatId, String title) {
         Page root = NotebookStore.combatsRoot(list()).orElseGet(() -> createSectionRoot(COMBATS_SECTION, "Combats", null));
         var page = new Page(UUID.randomUUID().toString(), title, root.id(), null, null, CombatStore.checkId(combatId));
+        write(page);
+        return page;
+    }
+
+    @Override
+    public synchronized Page createEntry(String moduleId, String parentId, String title) {
+        Page page = NotebookStore.newEntry(list(), moduleId, parentId, title);
         write(page);
         return page;
     }
@@ -235,7 +243,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
             }
             String content = page.content() == null || page.content().isNull() ? null : mapper.writer()
                     .without(SerializationFeature.INDENT_OUTPUT).writeValueAsString(page.content());
-            Page read = new Page(page.id(), page.title(), page.parentId(), page.section(), content, page.combatId());
+            Page read = new Page(page.id(), page.title(), page.parentId(), page.section(), content, page.combatId(), page.entryOf());
             Trashed trashed = page.deletedWith() == null ? null
                     : new Trashed(read, page.deletedWith(), Instant.parse(page.deletedAt()));
             return Optional.of(new Stored(read, trashed));
@@ -255,7 +263,7 @@ public final class JsonFileNotebookStore implements NotebookStore {
             JsonNode content = page.content() == null ? null : mapper.readTree(page.content());
             writeAtomically(dir.resolve(page.id() + EXTENSION),
                     new PageFile(page.id(), page.title(), page.parentId(), page.section(), content, deletedWith, deletedAt,
-                            page.combatId()));
+                            page.combatId(), page.entryOf()));
         } catch (IOException e) {
             throw new UncheckedIOException("Contenu de page illisible : " + page.id(), e);
         }

@@ -251,4 +251,50 @@ public class NotebookStoreTest {
         assertEquals(1, store.list().stream().filter(p -> NotebookStore.COMBATS_SECTION.equals(p.section())).count());
         assertThrows(IllegalArgumentException.class, () -> store.createCombatEntry("../x", "Combat 3"));
     }
+
+    @Test
+    void enMemoire_lesEntreesDeModule_suiventLesReglesDuPort() {
+        entreesDeModule(NotebookStore.inMemory());
+    }
+
+    /**
+     * Une entrée de module se range dans la section de son module ; elle se renomme, se déplace, se supprime, se restaure
+     * et se trouve par son titre comme une page, mais n'a ni texte ni sous-page.
+     */
+    public static void entreesDeModule(NotebookStore store) {
+        var joueurs = store.createSectionRoot("essai", "Personnages joueurs", null);
+        var lore = store.create("Lore", joueurs.id());
+        var aria = store.createEntry("essai", joueurs.id(), "Aria");
+        var borin = store.createEntry("essai", lore.id(), "Borin");
+
+        assertEquals(new Page(aria.id(), "Aria", joueurs.id(), null, null, null, "essai"), aria);
+        assertEquals(Optional.of(borin), store.find(borin.id()));
+        assertEquals("Borin", store.search("borin").getFirst().page().title());
+
+        store.rename(aria.id(), "Aria la Rouge");
+        var session = store.create("Session 1", null);
+        store.move(aria.id(), session.id());
+        assertEquals(Optional.of(new Page(aria.id(), "Aria la Rouge", session.id(), null, null, null, "essai")),
+                store.find(aria.id()));
+        store.delete(aria.id());
+        assertEquals(Optional.empty(), store.find(aria.id()));
+        store.restore(aria.id());
+        assertEquals("essai", store.find(aria.id()).orElseThrow().entryOf());
+
+        var texte = assertThrows(IllegalArgumentException.class, () -> store.saveContent(borin.id(), ARRIVEE));
+        assertEquals("Une entrée de module n'a pas de texte", texte.getMessage());
+        var sousPage = assertThrows(IllegalArgumentException.class, () -> store.create("Notes", borin.id()));
+        assertEquals("Une entrée de module n'a pas de sous-page", sousPage.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> store.move(session.id(), borin.id()));
+        assertThrows(IllegalArgumentException.class, () -> store.createEntry("essai", borin.id(), "Cael"));
+        assertNull(store.find(borin.id()).orElseThrow().content());
+
+        var horsSection = assertThrows(IllegalArgumentException.class, () -> store.createEntry("essai", session.id(), "Cael"));
+        assertEquals("Une entrée se range dans la section de son module", horsSection.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> store.createEntry("essai", null, "Cael"));
+        assertThrows(IllegalArgumentException.class, () -> store.createEntry("autre", joueurs.id(), "Cael"));
+        assertThrows(IllegalArgumentException.class, () -> store.createEntry("../x", joueurs.id(), "Cael"));
+        assertThrows(IllegalArgumentException.class, () -> store.createEntry(NotebookStore.COMBATS_SECTION, joueurs.id(), "Cael"));
+        assertEquals(2, store.list().stream().filter(Page::isModuleEntry).count());
+    }
 }

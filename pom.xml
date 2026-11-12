@@ -17,6 +17,7 @@
         <module>mythic-engine</module>
         <module>mythic-server</module>
         <module>oracle-server</module>
+        <module>dnd-server</module>
         <module>vtt-server</module>
     </modules>
 
@@ -56,6 +57,11 @@
             <dependency>
                 <groupId>oracle</groupId>
                 <artifactId>oracle-server</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dnd</groupId>
+                <artifactId>dnd-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

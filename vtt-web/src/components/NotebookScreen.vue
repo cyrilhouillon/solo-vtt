@@ -62,6 +62,8 @@ const pageTitle = ref('')
 const citing = ref<string[] | null>(null)
 /** L'éditeur de la page ouverte, qui insère les images. */
 const editor = ref<InstanceType<typeof PageEditor> | null>(null)
+/** La vue de l'entrée de module ouverte ; elle peut exposer `saved`, que le Carnet attend comme l'enregistrement d'une page. */
+const entryView = ref<{ saved?: () => Promise<boolean> } | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
 /** Vrai pendant l'envoi d'une image : le bouton Image attend. */
 const uploading = ref(false)
@@ -139,6 +141,10 @@ const moduleContext: NotebookContext = {
     if (page.value && editor.value) editor.value.insertBlocks(blocks)
     else showResult(blocks)
   },
+  openPage: async (pageId) => {
+    notebook.value = await api.notebook()
+    await open(pageId)
+  },
 }
 
 /** Le résultat d'un module montré sans page, `null` sans dialogue ; l'état de sa copie, comme `ResultDialog` l'attend. */
@@ -188,10 +194,11 @@ function flush(): Promise<void> {
   return saving
 }
 
-/** Vrai quand plus rien n'attend : on peut quitter la page sans perdre la frappe. */
+/** Vrai quand plus rien n'attend, page ou entrée de module : on peut la quitter sans perdre la frappe. */
 async function saved(): Promise<boolean> {
   await flush()
-  return pending === null
+  const entrySaved = (await entryView.value?.saved?.()) ?? true
+  return pending === null && entrySaved
 }
 
 function onVisibilityChange() {
@@ -423,6 +430,8 @@ const offeredModules = ref<NotebookModule[] | null>(null)
 /** Les modules du client actifs dans la campagne : seuls eux montrent panneau et section, et préparent le Carnet. */
 const activeModules = computed(() => notebookModules.filter((module) => activeModuleIds.value.includes(module.id)))
 const activePanelModules = computed(() => activeModules.value.filter((module) => module.panel))
+/** Le module actif qui montre la page ouverte, si elle est une de ses entrées ; `null` sinon, ou s'il est inactif. */
+const entryModule = computed(() => activeModules.value.find((module) => module.id === page.value?.entryOf && module.entryView) ?? null)
 /** L'arbre et le dialogue Déplacer taisent les sections des modules inactifs ; les liens, eux, voient toutes les pages. */
 const treePages = computed(() => visiblePages(notebook.value?.pages ?? [], activeModuleIds.value))
 
@@ -888,6 +897,22 @@ function leave(target: 'home' | 'notebook' | 'combat') {
             @open="openCombat"
             @error="(message) => (error = message)"
           />
+          <CitingPages v-if="citing" :page-ids="citing" :pages="notebook.pages" @open="open" />
+        </article>
+        <!-- Une entrée de module n'a pas de texte : la vue de son module, s'il est actif. -->
+        <article v-else-if="page?.entryOf" :key="page.id" class="leaf" aria-labelledby="page-title">
+          <header class="page-head">
+            <h2 id="page-title" class="page-title">{{ page.title }}</h2>
+          </header>
+          <component
+            :is="entryModule.entryView"
+            v-if="entryModule"
+            ref="entryView"
+            :campaign-id="campaign.id"
+            :page-id="page.id"
+            @error="(message: string) => (error = message)"
+          />
+          <p v-else class="hint">Module {{ page.entryOf }} inactif dans cette campagne.</p>
           <CitingPages v-if="citing" :page-ids="citing" :pages="notebook.pages" @open="open" />
         </article>
         <article v-else-if="page" :key="page.id" class="leaf" aria-labelledby="page-title">
