@@ -1,6 +1,5 @@
 package dnd.engine.state;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -42,7 +41,7 @@ public record CreatureProfile(int armorClass, int hitPointMax, int hitPoints, do
     /** Un profil sans sort ni capacité : celui d'un PJ tiré de sa fiche. */
     public static CreatureProfile of(int armorClass, int hitPointMax, int hitPoints, double speed, int initiative,
                                      List<Weapon> weapons) {
-        return new CreatureProfile(armorClass, hitPointMax, hitPoints, speed, initiative, new ArrayList<>(weapons),
+        return new CreatureProfile(armorClass, hitPointMax, hitPoints, speed, initiative, weapons,
                 Set.of(), Set.of(), List.of());
     }
 }

@@ -41,21 +41,24 @@ export type Skill = (typeof SKILLS)[number]['id']
 /** Aucune, maîtrise (+ bonus de maîtrise) ou expertise (deux fois). */
 export type Proficiency = 'NONE' | 'PROFICIENT' | 'EXPERTISE'
 
-/** Les 13 types de dégâts du SRD 5.2.1, tels que le serveur les nomme, et leur libellé après « dégâts ». */
+/**
+ * Les 13 types de dégâts du SRD 5.2.1, tels que le serveur les nomme, et leur libellé après « dégâts » ; rangés par ordre
+ * alphabétique du nom français (acide, contondants, feu…).
+ */
 export const DAMAGE_TYPES = [
   { id: 'ACID', label: 'd’acide' },
   { id: 'BLUDGEONING', label: 'contondants' },
-  { id: 'COLD', label: 'de froid' },
   { id: 'FIRE', label: 'de feu' },
   { id: 'FORCE', label: 'de force' },
   { id: 'LIGHTNING', label: 'de foudre' },
+  { id: 'COLD', label: 'de froid' },
   { id: 'NECROTIC', label: 'nécrotiques' },
   { id: 'PIERCING', label: 'perforants' },
   { id: 'POISON', label: 'de poison' },
   { id: 'PSYCHIC', label: 'psychiques' },
   { id: 'RADIANT', label: 'radiants' },
-  { id: 'SLASHING', label: 'tranchants' },
   { id: 'THUNDER', label: 'de tonnerre' },
+  { id: 'SLASHING', label: 'tranchants' },
 ] as const
 export type DamageType = (typeof DAMAGE_TYPES)[number]['id']
 
