@@ -1,6 +1,6 @@
 ---
 objective: "Sur la fiche d'un personnage joueur, le joueur choisit Guerrier puis ses caractéristiques (tableau standard, achat de points ou dés), deux compétences, un Style de combat, l'équipement A ou B et trois Bottes d'arme ; la fiche se remplit selon le SRD 5.2.1, se retouche à la main, et changer un choix recalcule ce qui en dérive, retouche comprise."
-status: in-progress
+status: implemented
 ---
 
 # Plan: créer en guidé un Guerrier de niveau 1

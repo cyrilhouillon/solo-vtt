@@ -26,3 +26,19 @@
 - [pass] Task 1 — `npm run build` passe ; les types suivent les DTO du serveur — `npm run build` : vue-tsc puis « ✓ built in 1.26s » ; `GET …/dnd/classes` sur 8081 rend `defaultBuild` (FIGHTER, standard suggéré, DEFENSE, FIGHTER_A, GREATSWORD/FLAIL/JAVELIN), lu tel quel par le client.
 - [pass] Task 2 — Choisir Guerrier, puis chaque choix, remplit la fiche dans le navigateur ; un achat au-delà de 27 est refusé avant l'envoi — Chrome, Vite 5174 → 8081 (scratchpad), campagne « Guerrier guide », fiche Aria ; captures d'écran indisponibles (CDP en délai dépassé), vérifié par le DOM et le journal réseau : Classe → Guerrier : CA 17, PV 11/11, init +2, Épée à deux mains 4 2d6+2, Fléau d’armes 4 1d8+2, Javeline 4 1d6+2 « 1,5 m ; lancer 9/36 m », « Enregistrée » ; Athlétisme et Perception cochés : Athlétisme +4, Perception +2, Histoire éteinte ; méthode Achat de points puis Dex 15 : « Points restants -2 / 27 », alerte « Achat de points : 29 points dépensés, 27 au plus », Appliquer éteint, aucun PUT envoyé ; méthode Dés puis « Lancer les dés » : POST ability-rolls 200 puis PUT build 200, six jets avec le dé écarté barré, totaux 15/12/10/15/8/15 rangés For 15 Dex 15 Con 15 Cha 12 Sag 10 Int 8, bouton de lancer disparu ; méthode Standard puis Con → 8 : échange avec Int (Con 8, Int 13), PV max 9 ; Bottes : Arc long à la place de l’Épée à deux mains, Capacités « Bottes d’arme : Arc long (Ralentissement), Fléau d’armes (Sape), Javeline (Ralentissement) » ; Style Archerie : CA 14, Arc long +6 ; Classe « — » : le reste de la section se cache.
 - [pass] Task 3 — Une frappe suivie d'un choix donne deux envois dans l'ordre et aucun troisième ; recharger l'onglet redonne la même fiche — CA tapée 20 puis Équipement B 300 ms après : journal réseau `PUT …/sheets/{id}` 200 puis `PUT …/build` 200, rien d'autre ; CA 15 (cuir clouté 12 + Dex 2 + Défense 1), Cimeterre, Épée courte, Arc long ; rechargement : classe FIGHTER, méthode ROLLED, 6 jets barrés, Athlétisme et Perception cochés, équipement B, CA 15, pas de bouton de lancer ; `modules/dnd.json` abîmé puis choix Archerie : alerte « Fiches de personnage illisibles : modules/dnd.json est abîmé », CA et attaques inchangées ; fichier restauré puis Archerie : appliqué.
+
+## Phase 4 · Stories des capacités non jouées et mémoire
+
+- Date: 2026-11-12
+- Validated on: 0c6cd35
+
+- [pass] Task 1 — Chaque capacité de niveau 1 du Guerrier est jouée, portée par la fiche, ou renvoie à une story — `dnd-engine/src/main/java/dnd/engine/rules/` ne contient que `DuelingStyle`, `Bless`, `RangeRules`, `ConditionRules`, `ShieldReaction` et les réactions : ni Second souffle, ni botte, ni style du Guerrier ; stories `utiliser-second-souffle-en-combat`, `appliquer-les-bottes-d-arme-en-combat` (les 8 bottes vérifiées dans les fiches d'armes du SRD), `jouer-les-styles-de-combat-du-guerrier`, rattachées à l'epic des personnages comme sa tâche (choix du joueur) ; tâche `lister-les-capacites-…` : tableau de 6 lignes, Défense « portée par la fiche ».
+- [pass] Task 2 — La mémoire nomme chaque nouveau type, route et événement — `architecture.md`, `codebase-map.md`, `project-brief.md` mis à jour ; `Build`, `GuidedValues`, `AbilityMethod`, `AbilityRoll`, `SrdWeapon`, `SrdArmor`, `FightingStyle`, `CharacterClass`, `StartingEquipment`, `SheetState`, `SheetBuilt`, `AbilitiesRolled`, `ClassOptionsDto`, `defaultBuild`, `suggested`, `GuidedCreation`, `ability-rolls` tous retrouvés dans `dnd-engine`, `dnd-server`, `vtt-web/modules/dnd` ; story au statut `done`.
+
+## Final
+
+- Date: 2026-11-12
+- Validated on: 0c6cd35
+
+- [pass] `mvn -q verify` — exit 0 ; surefire : dnd-engine 91, dnd-server 17, mythic-engine 65, mythic-server 43, oracle-server 10, vtt-engine 27, vtt-server 275 tests, 0 échec, 0 erreur.
+- [pass] `npm run build` dans `vtt-web/` — vue-tsc puis Vite : ✓ built in 1.14s.
