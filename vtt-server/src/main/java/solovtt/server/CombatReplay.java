@@ -8,7 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Le rejeu pas à pas d'un combat : sa partie est rejouée jusqu'au lancement (le pas 0), puis une commande après l'autre.
+ * Le rejeu pas à pas d'un combat : sa partie est rejouée jusqu'au lancement exclu (le pas 0, le départ), puis une commande
+ * après l'autre.
  * Un pas se ferme après une commande qui a écrit au journal sans laisser de décision en attente : une attaque et la
  * réponse à la réaction qu'elle déclenche forment un seul pas. Une commande qui n'écrit rien (repositionnement libre,
  * grille) rejoint le pas suivant.
@@ -20,6 +21,7 @@ final class CombatReplay {
     /**
      * Les pas du combat {@code combatId}, dans l'ordre.
      *
+     * @throws ActionRefusedException   si le combat est encore en cours
      * @throws IllegalArgumentException si la partie ne lance pas ce combat
      * @throws RuntimeException         si la partie ne se rejoue pas à l'identique
      */
@@ -52,6 +54,7 @@ final class CombatReplay {
                 targetId = null;
             }
         }
+        if (session.combatId().isPresent()) throw new ActionRefusedException("Ce combat est en cours : il se rejoue une fois terminé");
         return steps;
     }
 

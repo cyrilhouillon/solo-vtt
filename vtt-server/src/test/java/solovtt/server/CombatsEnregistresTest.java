@@ -7,8 +7,11 @@ import solovtt.engine.Dice;
 import solovtt.scene.DistanceUnit;
 import solovtt.server.SavedGame.SavedCommand;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -202,5 +205,67 @@ class CombatsEnregistresTest {
         assertTrue(lances.isEmpty());
         assertNull(((SavedCommand.StartCombat) avant.game().commands().get(3)).combatId());
         assertFalse(avant.game().commands().isEmpty());
+    }
+
+    @Test
+    void reprendreUnCombatTermine_estRefuse_laPartieEnCoursIntacte() {
+        var session = session(20, 15);
+        carte(session);
+        session.startCombat();
+        String id = lances.getFirst();
+        session.endCombat();
+        session.create(30, 20, DistanceUnit.METRE, null);
+        var avant = partie.game();
+
+        assertThrows(ActionRefusedException.class, () -> session.resume(combat(id)));
+
+        assertEquals(avant, partie.game());
+        assertTrue(session.scene().orElseThrow().tokens().isEmpty());
+    }
+
+    @Test
+    void uneEntreeDuCarnetQuiEchoue_neDefaitPasLeLancement() {
+        var session = new SceneSession(Dice.scripted(20, 15), partie, MapStore.inMemory(), combats, combatId -> {
+            throw new IllegalStateException("Carnet illisible");
+        });
+        carte(session);
+
+        session.startCombat();
+
+        String id = session.combatId().orElseThrow();
+        assertEquals(partie.game(), combat(id));
+    }
+
+    @Test
+    void unFichierDeCombatIllisible_estRefuseCommeIllisible_pasUneErreurServeur() {
+        GameStore abime = new GameStore() {
+            @Override
+            public Optional<SavedGame> load() {
+                throw new UncheckedIOException("Partie illisible", new IOException("JSON tronqué"));
+            }
+
+            @Override
+            public void save(SavedGame game) {}
+
+            @Override
+            public void setAside() {}
+        };
+        CombatStore store = new CombatStore() {
+            @Override
+            public GameStore game(String combatId) {
+                return abime;
+            }
+
+            @Override
+            public List<String> ids() {
+                return List.of();
+            }
+        };
+        var resource = new CombatsResource(store, session());
+        String id = "00000000-0000-0000-0000-000000000000";
+
+        assertThrows(ActionRefusedException.class, () -> resource.combat(id));
+        assertThrows(ActionRefusedException.class, () -> resource.replay(id));
+        assertThrows(ActionRefusedException.class, () -> resource.resume(id));
     }
 }

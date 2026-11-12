@@ -9,6 +9,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
+import java.io.UncheckedIOException;
+
 /**
  * Les combats d'une campagne : chacun se relit (son état actuel, ou final s'il est terminé) et, en cours, se reprend.
  * Un combat se relit en rejouant sa partie : un combat qui ne se rejoue plus (règles changées) est illisible (409).
@@ -48,28 +50,30 @@ public class CombatsResource {
     public void resume(@PathParam("combatId") String combatId) {
         if (isCurrent(combatId)) return;
         SavedGame game = game(combatId);
-        if (replayed(combatId, game).combatId().isEmpty()) {
-            throw new ActionRefusedException("Ce combat est terminé : il se rejoue, il ne se reprend pas");
+        try {
+            session.resume(game);
+        } catch (ActionRefusedException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw unreadable(combatId);
         }
-        session.resume(game);
     }
 
     /** Le combat terminé, pas à pas : une action par pas, avec ce qu'on voit à chacun. */
     @GET
     @Path("/{combatId}/replay")
-    @APIResponse(responseCode = "200", description = "Les pas du combat, le pas 0 étant l'état au lancement",
+    @APIResponse(responseCode = "200", description = "Les pas du combat, le pas 0 étant l'état juste avant le lancement",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.ReplayDto.class)))
     @APIResponse(responseCode = "404", description = "Aucun combat avec cet id")
     @APIResponse(responseCode = "409", description = "Combat en cours (il se rejoue une fois terminé) ou illisible")
     public Dtos.ReplayDto replay(@PathParam("combatId") String combatId) {
         SavedGame game = game(combatId);
-        if (replayed(combatId, game).combatId().isPresent()) {
-            throw new ActionRefusedException("Ce combat est en cours : il se rejoue une fois terminé");
-        }
         try {
             return new Dtos.ReplayDto(combatId, CombatReplay.of(game, combatId));
+        } catch (ActionRefusedException e) {
+            throw e;
         } catch (RuntimeException e) {
-            throw new ActionRefusedException("Combat illisible, il ne se rejoue plus : " + combatId);
+            throw unreadable(combatId);
         }
     }
 
@@ -77,12 +81,13 @@ public class CombatsResource {
         return session.combatId().filter(combatId::equals).isPresent();
     }
 
-    /** La partie du combat ; un id qui n'en est pas un est inconnu. */
+    /** La partie du combat ; un id qui n'en est pas un est inconnu, un fichier qui ne se lit pas est illisible. */
     private SavedGame game(String combatId) {
+        if (!CombatStore.isId(combatId)) throw new NotFoundException("Combat inconnu : " + combatId);
         try {
             return combats.game(combatId).load().orElseThrow(() -> new NotFoundException("Combat inconnu : " + combatId));
-        } catch (IllegalArgumentException e) {
-            throw new NotFoundException("Combat inconnu : " + combatId);
+        } catch (UncheckedIOException e) {
+            throw unreadable(combatId);
         }
     }
 
@@ -90,7 +95,11 @@ public class CombatsResource {
         try {
             return SceneSession.replayed(game);
         } catch (RuntimeException e) {
-            throw new ActionRefusedException("Combat illisible, il ne se rejoue plus : " + combatId);
+            throw unreadable(combatId);
         }
+    }
+
+    private static ActionRefusedException unreadable(String combatId) {
+        return new ActionRefusedException("Combat illisible, il ne se rejoue plus : " + combatId);
     }
 }

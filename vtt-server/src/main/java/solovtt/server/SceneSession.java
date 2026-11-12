@@ -199,12 +199,16 @@ public class SceneSession {
 
     /**
      * Remplace la partie en cours par cette partie, rejouée, puis la garde : un combat en cours se reprend là où il en était.
-     * La partie est d'abord rejouée à part : si elle ne se rejoue pas, la partie en cours ne change pas.
+     * La partie est d'abord rejouée à part : si elle ne se rejoue pas, ou si son combat est terminé, la partie en cours ne
+     * change pas.
      *
-     * @throws RuntimeException si la partie ne se rejoue pas à l'identique
+     * @throws ActionRefusedException si son combat est terminé
+     * @throws RuntimeException       si la partie ne se rejoue pas à l'identique
      */
     public synchronized void resume(SavedGame game) {
-        replayed(game);
+        if (replayed(game).combatId().isEmpty()) {
+            throw new ActionRefusedException("Ce combat est terminé : il se rejoue, il ne se reprend pas");
+        }
         reset();
         replay(game);
         store.save(new SavedGame(commands));
@@ -270,11 +274,18 @@ public class SceneSession {
         return recorded(() -> run(resolution, targetId), r -> new SavedGame.SavedCommand.Attack(attackerId, attackId, targetId, r));
     }
 
-    /** Lance le combat : chaque créature tire son initiative ; le combat est gardé à part, jusqu'à sa fin. */
+    /**
+     * Lance le combat : chaque créature tire son initiative ; le combat est gardé à part, jusqu'à sa fin. Un échec de
+     * {@code combatStarted} (l'entrée du Carnet) est journalisé sans défaire le lancement, déjà gardé.
+     */
     public synchronized ActionOutcome startCombat() {
         String id = UUID.randomUUID().toString();
         ActionOutcome outcome = startCombat(id);
-        combatStarted.accept(id);
+        try {
+            combatStarted.accept(id);
+        } catch (RuntimeException e) {
+            LOG.log(System.Logger.Level.WARNING, "Combat " + id + " lancé sans entrée du Carnet", e);
+        }
         return outcome;
     }
 

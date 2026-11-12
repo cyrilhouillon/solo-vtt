@@ -19,7 +19,7 @@ public class NotebookPagesAdapter implements NotebookPages {
 
     @Override
     public List<SectionPage> sectionRoots(String campaignId, String moduleId) {
-        CampaignStore.checkModuleId(moduleId);
+        checkSection(moduleId);
         return notebook(campaignId).list().stream()
                 .filter(page -> moduleId.equals(page.section()))
                 .map(page -> new SectionPage(page.id(), page.title()))
@@ -34,7 +34,7 @@ public class NotebookPagesAdapter implements NotebookPages {
 
     @Override
     public Optional<String> sectionRootContent(String campaignId, String moduleId, String pageId) {
-        CampaignStore.checkModuleId(moduleId);
+        checkSection(moduleId);
         return notebook(campaignId).find(pageId)
                 .filter(page -> moduleId.equals(page.section()))
                 .map(Page::content);
@@ -47,7 +47,7 @@ public class NotebookPagesAdapter implements NotebookPages {
 
     @Override
     public List<SectionPage> childPages(String campaignId, String moduleId, String pageId) {
-        CampaignStore.checkModuleId(moduleId);
+        checkSection(moduleId);
         List<Page> pages = notebook(campaignId).list();
         if (!inSection(pages, moduleId, pageId)) return List.of();
         return pages.stream()
@@ -59,7 +59,7 @@ public class NotebookPagesAdapter implements NotebookPages {
 
     @Override
     public Optional<String> sectionPageContent(String campaignId, String moduleId, String pageId) {
-        CampaignStore.checkModuleId(moduleId);
+        checkSection(moduleId);
         List<Page> pages = notebook(campaignId).list();
         if (!inSection(pages, moduleId, pageId)) return Optional.empty();
         return pages.stream().filter(page -> page.id().equals(pageId)).findFirst().map(Page::content);
@@ -75,5 +75,12 @@ public class NotebookPagesAdapter implements NotebookPages {
     private NotebookStore notebook(String campaignId) {
         if (campaigns.find(campaignId).isEmpty()) throw new IllegalArgumentException("Campagne inconnue : " + campaignId);
         return campaigns.notebook(campaignId);
+    }
+
+    /** La section d'un module : jamais celle des combats, que tient le cœur. */
+    private static void checkSection(String moduleId) {
+        if (NotebookStore.COMBATS_SECTION.equals(CampaignStore.checkModuleId(moduleId))) {
+            throw new IllegalArgumentException("Section réservée par le cœur : " + moduleId);
+        }
     }
 }

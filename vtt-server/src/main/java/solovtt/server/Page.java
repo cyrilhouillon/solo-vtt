@@ -3,8 +3,8 @@ package solovtt.server;
 /**
  * Une page du Carnet d'une campagne. {@code combatId} est le combat ({@link CombatStore}) dont elle est l'entrée : une
  * entrée de combat porte le nom du combat, sans contenu ni sous-page ; {@code null} pour toute autre page. {@code parentId} est la page sous laquelle elle est rangée, {@code null} à la racine.
- * {@code section} est l'id du module dont elle est une racine de section, {@code null}
- * pour toute autre page : une page est dans une section si sa racine en est une, sans le porter elle-même. Une racine de
+ * {@code section} est l'id de la section dont elle est la racine : celle d'un module, ou {@code combats}, que tient le
+ * cœur ; {@code null} pour toute autre page : une page est dans une section si sa racine en est une, sans le porter elle-même. Une racine de
  * section ne se déplace ni ne se supprime. {@code content} est le document de l'éditeur (JSON de Tiptap), que le serveur
  * garde sans l'interpréter ; {@code null} pour une page neuve.
  */

@@ -33,14 +33,7 @@ public final class JsonFileCombatStore implements CombatStore {
             return files.map(f -> f.getFileName().toString())
                     .filter(name -> name.endsWith(EXTENSION))
                     .map(name -> name.substring(0, name.length() - EXTENSION.length()))
-                    .filter(id -> {
-                        try {
-                            CombatStore.checkId(id);
-                            return true;
-                        } catch (IllegalArgumentException e) {
-                            return false;
-                        }
-                    })
+                    .filter(CombatStore::isId)
                     .toList();
         } catch (IOException e) {
             throw new UncheckedIOException("Combats illisibles : " + dir, e);

@@ -21,9 +21,14 @@ public interface CombatStore {
     /** Les ids des combats écrits. */
     List<String> ids();
 
+    /** Vrai pour un id de combat : un UUID, jamais un chemin. */
+    static boolean isId(String combatId) {
+        return combatId != null && combatId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+    }
+
     /** Un id de combat : un UUID, jamais un chemin. */
     static String checkId(String combatId) {
-        if (combatId == null || !combatId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+        if (!isId(combatId)) {
             throw new IllegalArgumentException("Id de combat invalide : " + combatId);
         }
         return combatId;

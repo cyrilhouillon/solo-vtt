@@ -128,7 +128,7 @@ final class Dtos {
      * Un pas du rejeu d'un combat : une action entière (lancement, déplacement de la créature active, attaque avec sa
      * réaction, fin de tour, créature posée ou retirée, fin du combat). {@code entries} : ce qu'elle a ajouté au journal ;
      * la cible d'une attaque et ses PV après coup ({@code null} sans cible) ; puis l'état après le pas : la carte, le
-     * combat ({@code null} hors combat) et la feuille de chaque créature. Le pas 0 est l'état au lancement, sans entrée.
+     * combat ({@code null} hors combat) et la feuille de chaque créature. Le pas 0 est le départ, l'état juste avant le lancement, sans entrée.
      */
     record ReplayStepDto(List<JournalEntryDto> entries, String targetId, Integer targetHitPoints, Integer targetMaxHitPoints,
                          SceneDto scene, CombatDto combat, List<CreatureSheetDto> sheets) {}

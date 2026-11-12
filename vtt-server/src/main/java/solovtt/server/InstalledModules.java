@@ -23,6 +23,10 @@ public class InstalledModules {
     /** Ces modules, tels qu'ils se déclarent : sert aussi aux tests, sans Quarkus. */
     InstalledModules(List<String> ids) {
         this.ids = ids.stream().map(CampaignStore::checkModuleId).distinct().sorted().toList();
+        // La section du Carnet de ce nom est celle des combats, que tient le cœur.
+        if (this.ids.contains(NotebookStore.COMBATS_SECTION)) {
+            throw new IllegalArgumentException("Id de module réservé par le cœur : " + NotebookStore.COMBATS_SECTION);
+        }
     }
 
     /** Les ids des modules installés, triés. */
