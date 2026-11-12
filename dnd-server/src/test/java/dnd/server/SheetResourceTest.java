@@ -234,4 +234,35 @@ class SheetResourceTest {
         assertThrows(ClientErrorException.class, () -> dnd().create(STRAHD, new DndDtos.NewSheetRequest("Borin")));
         assertEquals("{pas du json", donnees.fichiers.get(STRAHD + "/dnd"));
     }
+
+    @Test
+    void uneHistoireIllisible_estRefuseeEn409_sansEtreEcrasee() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+        String valide = donnees.fichiers.get(STRAHD + "/dnd");
+        String created = "{\"type\":\"created\"}";
+        for (String abimee : List.of(
+                created + ",{\"type\":\"edited\",\"values\":{\"level\":0}}",
+                created + ",{\"type\":\"edited\"}",
+                created + ",{\"type\":\"inconnu\"}",
+                created + "," + created)) {
+            String fichier = valide.replace(created, abimee);
+            donnees.fichiers.put(STRAHD + "/dnd", fichier);
+
+            var refus = assertThrows(ClientErrorException.class, () -> dnd().read(STRAHD, aria), abimee);
+            assertEquals(409, refus.getResponse().getStatus(), abimee);
+            assertThrows(ClientErrorException.class, () -> dnd().edit(STRAHD, aria, roublarde(14)), abimee);
+            assertEquals(fichier, donnees.fichiers.get(STRAHD + "/dnd"), abimee);
+        }
+    }
+
+    @Test
+    void uneFicheDontLaCreationNAPasEteEcrite_seLitVide_etSeSaisit() {
+        String joueurs = dnd().ensureSections(STRAHD).playersPageId();
+        String aria = pages.createEntry(STRAHD, "dnd", joueurs, "Aria").id();
+
+        assertEquals(1, dnd().read(STRAHD, aria).values().level());
+        dnd().edit(STRAHD, aria, roublarde(14));
+        assertEquals(14, dnd().read(STRAHD, aria).values().abilities().get(Ability.DEXTERITY));
+        assertTrue(donnees.fichiers.get(STRAHD + "/dnd").contains("[{\"type\":\"created\"},{\"type\":\"edited\""));
+    }
 }

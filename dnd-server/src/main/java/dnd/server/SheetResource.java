@@ -103,12 +103,14 @@ public class SheetResource {
         return DndDtos.SheetDto.of(pageId, edited);
     }
 
-    /** La fiche de cette page, pliée de son histoire ; 404 si la page n'est pas une fiche vivante du module. */
+    /**
+     * La fiche de cette page, pliée de son histoire ; 404 si la page n'est pas une fiche vivante du module, 409 si son
+     * histoire ne se relit pas. Une entrée sans histoire (écriture échouée après la création de sa page) est une fiche vide.
+     */
     private CharacterSheet sheet(String campaignId, SheetStore.State state, String pageId) {
         if (!pages.isEntry(campaignId, MODULE_ID, pageId)) throw new NotFoundException("Fiche inconnue : " + pageId);
-        List<SheetEvent> history = state.history(pageId).orElseThrow(() -> new NotFoundException("Fiche inconnue : " + pageId));
         try {
-            return SheetHistory.replay(history);
+            return SheetHistory.replay(state.history(pageId).orElse(List.of(new SheetEvent.SheetCreated())));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw SheetStore.unreadable();
         }

@@ -49,11 +49,6 @@ public record Page(String id, String title, String parentId, String section, Str
         return entryOf != null;
     }
 
-    /** Vrai si la page est une entrée, de combat ou de module : sans texte ni sous-page. */
-    public boolean isEntry() {
-        return isCombatEntry() || isModuleEntry();
-    }
-
     /** Vrai si la page est la racine de la section d'un module. */
     public boolean isSectionRoot() {
         return section != null;

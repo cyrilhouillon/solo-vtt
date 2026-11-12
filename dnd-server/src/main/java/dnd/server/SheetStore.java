@@ -41,6 +41,10 @@ final class SheetStore {
         State withEvent(String pageId, SheetEvent event) {
             Map<String, List<EventFile>> next = new LinkedHashMap<>(sheets);
             List<EventFile> history = new ArrayList<>(next.getOrDefault(pageId, List.of()));
+            // Une histoire commence par sa création, même si l'écriture de celle-ci a échoué.
+            if (history.isEmpty() && !(event instanceof SheetEvent.SheetCreated)) {
+                history.add(EventFile.of(new SheetEvent.SheetCreated()));
+            }
             history.add(EventFile.of(event));
             next.put(pageId, history);
             return new State(playersPageId, next);
@@ -67,10 +71,19 @@ final class SheetStore {
             };
         }
 
+        /**
+         * L'événement écrit.
+         *
+         * @throws IllegalStateException si son type est inconnu, ou si une saisie n'a pas de valeurs
+         * @throws IllegalArgumentException si une valeur saisie est hors bornes
+         */
         SheetEvent event() {
             return switch (type) {
                 case CREATED -> new SheetEvent.SheetCreated();
-                case EDITED -> new SheetEvent.SheetEdited(values.toSheet());
+                case EDITED -> {
+                    if (values == null) throw new IllegalStateException("Saisie de fiche sans valeurs");
+                    yield new SheetEvent.SheetEdited(values.toSheet());
+                }
                 case null, default -> throw new IllegalStateException("Événement de fiche inconnu : " + type);
             };
         }
