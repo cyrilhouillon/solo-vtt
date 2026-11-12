@@ -108,7 +108,7 @@ defineExpose({ saved })
 
 /**
  * Envoie un choix guidé : la saisie en attente part d'abord ; puis l'appel passe dans la file des envois, si bien
- * qu'aucun enregistrement ne le croise. Sa réponse remplace la fiche à l'écran, frappe faite pendant l'envoi comprise.
+ * qu'aucun enregistrement ne le croise. Sa réponse remplace la fiche à l'écran, figée pendant l'envoi.
  * Refusé, la fiche reste telle quelle et la raison s'affiche dans la section.
  */
 async function choose(call: () => Promise<void>) {
@@ -220,6 +220,8 @@ function removeAttack(index: number) {
       @roll="onRoll"
     />
 
+    <!-- Figée pendant un choix guidé : sa réponse remplace la fiche, une frappe faite entre-temps serait perdue. -->
+    <fieldset class="sheet-fields" :disabled="choosing">
     <section class="identity" aria-label="Identité">
       <label>Classe <input v-model="values.className" type="text" maxlength="80" /></label>
       <label class="narrow">Niveau <input v-model.number="values.level" type="number" min="1" max="20" /></label>
@@ -353,11 +355,21 @@ function removeAttack(index: number) {
         </section>
       </div>
     </div>
+    </fieldset>
   </div>
   <p v-else class="loading">Lecture de la fiche…</p>
 </template>
 
 <style scoped>
+.sheet-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 .character-sheet {
   display: flex;
   flex-direction: column;
