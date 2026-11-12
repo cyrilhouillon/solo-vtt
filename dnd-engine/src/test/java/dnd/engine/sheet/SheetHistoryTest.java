@@ -106,7 +106,7 @@ class SheetHistoryTest {
         assertEquals(15, archerie.armorClass(), "cuir clouté 12 + Dex 3, sans Défense");
         assertEquals(3, archerie.initiative());
         assertEquals(7, archerie.attacks().get(2).bonus(), "Arc long : maîtrise 2 + Dex 3 + Archerie 2");
-        assertEquals("1d6+3", archerie.attacks().get(0).damage(), "Cimeterre en Finesse : Dex 3 plutôt que For 2");
+        assertEquals(3, archerie.attacks().get(0).damageBonus(), "Cimeterre en Finesse : Dex 3 plutôt que For 2");
 
         SheetState apresB = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
                 new SheetEvent.SheetBuilt(premiere, etat.values()),

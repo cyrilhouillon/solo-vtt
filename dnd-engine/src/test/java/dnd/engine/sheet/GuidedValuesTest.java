@@ -1,5 +1,7 @@
 package dnd.engine.sheet;
 
+import dnd.engine.state.DamageType;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
@@ -49,9 +51,9 @@ class GuidedValuesTest {
         assertEquals("1d10", fiche.hitDice());
         assertEquals(2, fiche.initiative());
         assertEquals(List.of(
-                new SheetAttack("Épée à deux mains", 4, "2d6+2", "tranchants", "1,5 m"),
-                new SheetAttack("Fléau d’armes", 4, "1d8+2", "contondants", "1,5 m"),
-                new SheetAttack("Javeline", 4, "1d6+2", "perforants", "1,5 m ; lancer 9/36 m")), fiche.attacks());
+                new SheetAttack("Épée à deux mains", 4, 2, 6, 2, DamageType.SLASHING, 1.5, null, null),
+                new SheetAttack("Fléau d’armes", 4, 1, 8, 2, DamageType.BLUDGEONING, 1.5, null, null),
+                new SheetAttack("Javeline", 4, 1, 6, 2, DamageType.PIERCING, 1.5, 9.0, 36.0)), fiche.attacks());
         assertTrue(fiche.features().contains(
                 "Bottes d’arme : Épée à deux mains (Écorchure), Fléau d’armes (Sape), Javeline (Ralentissement)"), fiche.features());
         assertTrue(fiche.features().contains("Second souffle (2 utilisations) : action Bonus, 1d10 + 1 PV"), fiche.features());
@@ -67,9 +69,9 @@ class GuidedValuesTest {
 
         assertEquals(14, fiche.armorClass(), "cuir clouté 12 + Dex 2, sans Défense");
         assertEquals(List.of(
-                new SheetAttack("Cimeterre", 4, "1d6+2", "tranchants", "1,5 m"),
-                new SheetAttack("Épée courte", 4, "1d6+2", "perforants", "1,5 m"),
-                new SheetAttack("Arc long", 6, "1d8+2", "perforants", "45/180 m")), fiche.attacks());
+                new SheetAttack("Cimeterre", 4, 1, 6, 2, DamageType.SLASHING, 1.5, null, null),
+                new SheetAttack("Épée courte", 4, 1, 6, 2, DamageType.PIERCING, 1.5, null, null),
+                new SheetAttack("Arc long", 6, 1, 8, 2, DamageType.PIERCING, null, 45.0, 180.0)), fiche.attacks());
         assertTrue(fiche.equipment().endsWith("11 po"), fiche.equipment());
     }
 

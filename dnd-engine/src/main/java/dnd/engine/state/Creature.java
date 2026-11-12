@@ -42,7 +42,7 @@ public final class Creature {
         this.name = b.name;
         this.baseArmorClass = b.armorClass;
         this.maxHitPoints = b.hitPoints;
-        this.hitPoints = b.hitPoints;
+        this.hitPoints = b.currentHitPoints == null ? b.hitPoints : b.currentHitPoints;
         this.speed = b.speed;
         this.initiative = b.initiative;
         this.weapons = List.copyOf(b.weapons);
@@ -176,6 +176,7 @@ public final class Creature {
         private final String name;
         private int armorClass = 10;
         private int hitPoints = 1;
+        private Integer currentHitPoints;
         private double speed = 9;
         private int initiative = 0;
         private final List<Weapon> weapons = new ArrayList<>();
@@ -193,7 +194,10 @@ public final class Creature {
         }
 
         public Builder armorClass(int ac) { this.armorClass = ac; return this; }
+        /** Les PV maximum, qui sont aussi les PV actuels sauf {@link #currentHitPoints}. */
         public Builder hitPoints(int hp) { this.hitPoints = hp; return this; }
+        /** Des PV actuels sous le maximum (créature déjà blessée). */
+        public Builder currentHitPoints(int hp) { this.currentHitPoints = hp; return this; }
         public Builder speed(double metres) { this.speed = metres; return this; }
         public Builder initiative(int modifier) { this.initiative = modifier; return this; }
         /** Ajoute une arme ; une créature peut en avoir plusieurs. */
@@ -207,6 +211,9 @@ public final class Creature {
         public Builder spellSlots(int level, int count) { spellSlots[level] = count; return this; }
 
         public Creature build() {
+            if (currentHitPoints != null && (currentHitPoints < 0 || currentHitPoints > hitPoints)) {
+                throw new IllegalArgumentException("PV actuels entre 0 et %d : %d".formatted(hitPoints, currentHitPoints));
+            }
             return new Creature(this);
         }
     }

@@ -115,7 +115,9 @@ public enum SrdWeapon {
 
     private final String label;
     private final Category category;
-    private final String damage;
+    private final int diceCount;
+    private final int dieSides;
+    private final int flatDamage;
     private final DamageType damageType;
     private final String mastery;
     private final double normalRange;
@@ -126,7 +128,10 @@ public enum SrdWeapon {
               double normalRange, double longRange, Property... properties) {
         this.label = label;
         this.category = category;
-        this.damage = damage;
+        int d = damage.indexOf('d');
+        this.diceCount = d < 0 ? 0 : Integer.parseInt(damage.substring(0, d));
+        this.dieSides = d < 0 ? 4 : Integer.parseInt(damage.substring(d + 1));
+        this.flatDamage = d < 0 ? Integer.parseInt(damage) : 0;
         this.damageType = damageType;
         this.mastery = mastery;
         this.normalRange = normalRange;
@@ -144,7 +149,22 @@ public enum SrdWeapon {
 
     /** Les dés de dégâts, sans modificateur (« 2d6 », ou « 1 » pour la sarbacane). */
     public String damage() {
-        return damage;
+        return diceCount == 0 ? String.valueOf(flatDamage) : diceCount + "d" + dieSides;
+    }
+
+    /** Le nombre de dés de dégâts, 0 pour des dégâts fixes (sarbacane). */
+    public int diceCount() {
+        return diceCount;
+    }
+
+    /** Les faces d'un dé de dégâts ; sans dé, un d4 qui n'est jamais lancé. */
+    public int dieSides() {
+        return dieSides;
+    }
+
+    /** Les dégâts fixes d'une arme sans dé (1 pour la sarbacane), 0 sinon. */
+    public int flatDamage() {
+        return flatDamage;
     }
 
     public DamageType damageType() {
