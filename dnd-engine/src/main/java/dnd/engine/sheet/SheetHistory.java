@@ -26,13 +26,13 @@ public final class SheetHistory {
                     if (state != null) throw new IllegalArgumentException("Une fiche n'est créée qu'une fois");
                     yield SheetState.blank();
                 }
-                case SheetEvent.SheetEdited edited -> new SheetState(edited.values(), state.build(), state.rolls());
-                case SheetEvent.SheetBuilt built -> new SheetState(built.values(), built.build(), state.rolls());
+                case SheetEvent.SheetEdited edited -> new SheetState(edited.values(), state.build(), state.builtAbilities(), state.rolls());
+                case SheetEvent.SheetBuilt built -> new SheetState(built.values(), built.build(), built.values().abilities(), state.rolls());
                 case SheetEvent.AbilitiesRolled rolled -> {
                     if (state.rolls() != null) {
                         throw new IllegalArgumentException("Les dés de caractéristique ne se lancent qu'une fois");
                     }
-                    yield new SheetState(state.values(), state.build(), rolled.rolls());
+                    yield new SheetState(state.values(), state.build(), state.builtAbilities(), rolled.rolls());
                 }
             };
         }

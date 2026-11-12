@@ -511,4 +511,40 @@ class SheetResourceTest {
         }
         assertEquals(0, desTires);
     }
+
+    @Test
+    void uneConstructionTronquee_estRefuseeEn409_sansEtreEcrasee() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+        dnd().build(STRAHD, aria, DndDtos.BuildDto.of(Build.fighter()));
+        String valide = donnees.fichiers.get(STRAHD + "/dnd");
+        String scores = "\"scores\":{\"STRENGTH\":15,";
+        assertTrue(valide.contains(scores), valide);
+        String tronquee = valide.replace(scores, "\"scores\":{");
+        donnees.fichiers.put(STRAHD + "/dnd", tronquee);
+
+        var refus = assertThrows(ClientErrorException.class,
+                () -> dnd().build(STRAHD, aria, DndDtos.BuildDto.of(Build.fighter())));
+        assertEquals(409, refus.getResponse().getStatus());
+        assertEquals(tronquee, donnees.fichiers.get(STRAHD + "/dnd"));
+    }
+
+    @Test
+    void uneDexteriteRetouchee_compteDansLaCAAuChoixSuivant() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+        DndDtos.SheetDto construite = dnd().build(STRAHD, aria,
+                guerrier(Set.of(), StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE));
+        Map<Ability, Integer> abilities = new EnumMap<>(construite.values().abilities());
+        abilities.put(Ability.DEXTERITY, 16);
+        DndDtos.SheetValuesDto v = construite.values();
+        dnd().edit(STRAHD, aria, new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.background(), abilities,
+                v.proficiencyBonus(), v.savingThrows(), v.skills(), v.armorClass(), v.hitPointMax(), v.hitPoints(),
+                v.hitDice(), v.speed(), v.initiative(), v.attacks(), v.features(), v.equipment(), v.proficiencies(),
+                v.languages(), v.spellSlots()));
+
+        DndDtos.SheetDto equipementB = dnd().build(STRAHD, aria,
+                guerrier(Set.of(), StartingEquipment.FIGHTER_B, FightingStyle.DEFENSE));
+
+        assertEquals(16, equipementB.values().abilities().get(Ability.DEXTERITY));
+        assertEquals(16, equipementB.values().armorClass(), "cuir clouté 12 + Dex 3 + Défense 1");
+    }
 }

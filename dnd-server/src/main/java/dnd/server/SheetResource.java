@@ -4,8 +4,6 @@ import dnd.engine.sheet.Ability;
 import dnd.engine.sheet.AbilityRoll;
 import dnd.engine.sheet.Build;
 import dnd.engine.sheet.CharacterClass;
-import dnd.engine.sheet.CharacterSheet;
-import dnd.engine.sheet.GuidedValues;
 import dnd.engine.sheet.SheetEvent;
 import dnd.engine.sheet.SheetHistory;
 import dnd.engine.sheet.SheetState;
@@ -16,10 +14,10 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
-import org.eclipse.microprofile.openapi.annotations.media.Content;
-import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import solovtt.engine.Dice;
 import solovtt.module.ModuleData;
@@ -144,9 +142,7 @@ public class SheetResource {
         if (request == null) throw new IllegalArgumentException("Une construction porte ses choix");
         Build build = request.toBuild();
         build.validate(sheet.rolls());
-        GuidedValues before = sheet.build() == null ? GuidedValues.NONE : GuidedValues.of(sheet.build());
-        CharacterSheet values = GuidedValues.of(build).rebuild(sheet.values(), before);
-        return emit(campaignId, state, pageId, new SheetEvent.SheetBuilt(build, values));
+        return emit(campaignId, state, pageId, new SheetEvent.SheetBuilt(build, sheet.rebuild(build)));
     }
 
     /** Lance les six jets de caractéristique de la fiche, quatre d6 chacun : une seule fois par fiche. */

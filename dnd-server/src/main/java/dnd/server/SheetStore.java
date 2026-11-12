@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dnd.engine.sheet.Ability;
 import dnd.engine.sheet.AbilityRoll;
+import dnd.engine.sheet.Build;
 import dnd.engine.sheet.CharacterSheet;
 import dnd.engine.sheet.SheetEvent;
 import jakarta.ws.rs.ClientErrorException;
@@ -12,6 +14,7 @@ import jakarta.ws.rs.core.Response;
 import solovtt.module.ModuleData;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,8 +96,7 @@ final class SheetStore {
                 case CREATED -> new SheetEvent.SheetCreated();
                 case EDITED -> new SheetEvent.SheetEdited(sheetValues());
                 case BUILT -> {
-                    if (build == null) throw new IllegalStateException("Construction de fiche sans choix");
-                    yield new SheetEvent.SheetBuilt(build.toBuild(), sheetValues());
+                    yield new SheetEvent.SheetBuilt(storedBuild(), sheetValues());
                 }
                 case ROLLED -> {
                     if (rolls == null) throw new IllegalStateException("Jets de caractéristique sans dés");
@@ -102,6 +104,18 @@ final class SheetStore {
                 }
                 case null, default -> throw new IllegalStateException("Événement de fiche inconnu : " + type);
             };
+        }
+
+        /** La construction écrite, entière : une construction tronquée (fichier édité à la main) ne se relit pas. */
+        private Build storedBuild() {
+            if (build == null) throw new IllegalStateException("Construction de fiche sans choix");
+            Build stored = build.toBuild();
+            boolean complete = stored.characterClass() != null && stored.method() != null
+                    && stored.fightingStyle() != null && stored.equipment() != null
+                    && stored.scores().keySet().containsAll(EnumSet.allOf(Ability.class))
+                    && !stored.masteries().contains(null);
+            if (!complete) throw new IllegalStateException("Construction de fiche incomplète");
+            return stored;
         }
 
         private CharacterSheet sheetValues() {

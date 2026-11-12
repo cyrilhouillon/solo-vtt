@@ -40,10 +40,19 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
         attacks = List.copyOf(attacks);
     }
 
-    /** Les valeurs qu'une construction donne à la fiche ; la construction est supposée valide. */
+    /** Les valeurs qu'une construction donne à une fiche qui porte ses valeurs de caractéristique telles quelles. */
     public static GuidedValues of(Build build) {
+        return of(build, build.scores());
+    }
+
+    /**
+     * Les valeurs qu'une construction donne à la fiche ; la construction est supposée valide. CA, attaques, initiative et
+     * PV suivent les caractéristiques de la fiche ({@code abilities}), retouches comprises (hausses de l'historique…).
+     *
+     * @param abilities les valeurs de caractéristique de la fiche, une fois la construction appliquée
+     */
+    public static GuidedValues of(Build build, Map<Ability, Integer> abilities) {
         CharacterClass characterClass = build.characterClass();
-        Map<Ability, Integer> abilities = new EnumMap<>(build.scores());
         int str = modifier(abilities.get(Ability.STRENGTH));
         int dex = modifier(abilities.get(Ability.DEXTERITY));
         int con = modifier(abilities.get(Ability.CONSTITUTION));
@@ -57,7 +66,7 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
                 .map(weapon -> attack(weapon, str, dex, build.fightingStyle()))
                 .toList();
 
-        return new GuidedValues(characterClass.label(), LEVEL, PROFICIENCY_BONUS, abilities,
+        return new GuidedValues(characterClass.label(), LEVEL, PROFICIENCY_BONUS, build.scores(),
                 EnumSet.copyOf(characterClass.savingThrows()), skills,
                 armorClass(build.equipment(), dex, build.fightingStyle()), hitPoints, hitPoints,
                 "1d" + characterClass.hitDie(), dex, attacks,

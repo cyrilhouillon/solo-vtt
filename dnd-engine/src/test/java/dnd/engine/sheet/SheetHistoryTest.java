@@ -3,7 +3,9 @@ package dnd.engine.sheet;
 import org.junit.jupiter.api.Test;
 import solovtt.engine.Dice;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -76,5 +78,42 @@ class SheetHistoryTest {
         assertThrows(IllegalArgumentException.class, () -> new SheetEvent.SheetBuilt(Build.fighter(), null));
         assertThrows(IllegalArgumentException.class, () -> new SheetEvent.AbilitiesRolled(null));
         assertThrows(IllegalArgumentException.class, () -> new SheetEvent.AbilitiesRolled(sixJets().subList(0, 5)));
+    }
+
+    /** La fiche avec cette Dextérité retouchée à la main (hausse de l'historique). */
+    private static CharacterSheet avecDex(CharacterSheet f, int dex) {
+        Map<Ability, Integer> abilities = new EnumMap<>(f.abilities());
+        abilities.put(Ability.DEXTERITY, dex);
+        return new CharacterSheet(f.className(), f.level(), f.species(), f.background(), abilities, f.proficiencyBonus(),
+                f.savingThrows(), f.skills(), f.armorClass(), f.hitPointMax(), f.hitPoints(), f.hitDice(), f.speed(),
+                f.initiative(), f.attacks(), f.features(), f.equipment(), f.proficiencies(), f.languages(), f.spellSlots());
+    }
+
+    @Test
+    void uneDexteriteRetouchee_compteAuChoixSuivant_etSurvitAuChoix() {
+        Build premiere = Build.fighter();
+        Build archer = new Build(premiere.characterClass(), premiere.method(), premiere.scores(), premiere.skills(),
+                FightingStyle.ARCHERY, StartingEquipment.FIGHTER_B, premiere.masteries());
+        SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
+                new SheetEvent.SheetBuilt(premiere, SheetState.blank().rebuild(premiere))));
+        SheetState retouchee = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
+                new SheetEvent.SheetBuilt(premiere, etat.values()),
+                new SheetEvent.SheetEdited(avecDex(etat.values(), 16))));
+
+        CharacterSheet archerie = retouchee.rebuild(archer);
+
+        assertEquals(16, archerie.abilities().get(Ability.DEXTERITY), "la retouche survit : les valeurs de la construction n'ont pas changé");
+        assertEquals(15, archerie.armorClass(), "cuir clouté 12 + Dex 3, sans Défense");
+        assertEquals(3, archerie.initiative());
+        assertEquals(7, archerie.attacks().get(2).bonus(), "Arc long : maîtrise 2 + Dex 3 + Archerie 2");
+        assertEquals("1d6+3", archerie.attacks().get(0).damage(), "Cimeterre en Finesse : Dex 3 plutôt que For 2");
+
+        SheetState apresB = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
+                new SheetEvent.SheetBuilt(premiere, etat.values()),
+                new SheetEvent.SheetEdited(avecDex(etat.values(), 16)),
+                new SheetEvent.SheetBuilt(archer, archerie)));
+        Build defense = new Build(archer.characterClass(), archer.method(), archer.scores(), archer.skills(),
+                FightingStyle.DEFENSE, archer.equipment(), archer.masteries());
+        assertEquals(16, apresB.rebuild(defense).armorClass(), "12 + Dex 3 + Défense 1");
     }
 }
