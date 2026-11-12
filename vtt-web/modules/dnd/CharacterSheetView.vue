@@ -416,8 +416,11 @@ th {
 input.small {
   width: 4rem;
 }
-input.name {
-  min-width: 8rem;
+.attacks input[type='text'] {
+  min-width: 6rem;
+}
+.attacks input.name {
+  min-width: 9rem;
 }
 .attacks {
   overflow-x: auto;
