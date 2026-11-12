@@ -61,7 +61,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 /** L'adresse d'une image gardée par le serveur : fond de carte ou image d'une page du Carnet. */
 export const imageUrl = (id: string) => `/api/images/${encodeURIComponent(id)}`
 
-/** Ce qui ne dépend d'aucune campagne : les campagnes elles-mêmes, le catalogue, les images. */
+/** Ce qui ne dépend d'aucune campagne : les campagnes elles-mêmes, les modules installés, les images. */
 export const api = {
   /** Les campagnes, triées par nom. */
   campaigns: () => request<CampaignView[]>('/api/campaigns'),
@@ -72,8 +72,6 @@ export const api = {
 
   /** Les ids des modules installés dans le serveur. */
   installedModules: () => request<string[]>('/api/modules'),
-
-  catalog: () => request<CatalogEntry[]>('/api/catalog'),
 
   /** Garde une image (fond de carte ou image de page) sur le serveur ; rend son empreinte. */
   uploadImage: async (file: File) =>
@@ -90,6 +88,9 @@ export function campaignApi(campaignId: string) {
     /** Remplace les modules actifs ; rend ceux que le serveur garde. */
     setModules: async (modules: string[]) =>
       (await request<{ modules: string[] }>(`${base}/modules`, { method: 'PUT', body: JSON.stringify({ modules }) })).modules,
+
+    /** Le catalogue de préparation : les personnages joueurs de la campagne, puis les monstres. */
+    catalog: () => request<CatalogEntry[]>(`${base}/catalog`),
 
     /** Les pages du Carnet et ses onglets ouverts. */
     notebook: () => request<NotebookView>(`${base}/notebook`),

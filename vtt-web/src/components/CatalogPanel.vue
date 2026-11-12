@@ -144,7 +144,7 @@ defineExpose({ cancelDrag })
 
 <template>
   <section class="catalog" aria-labelledby="catalog-title">
-    <h2 id="catalog-title" class="panel-title">Catalogue SRD</h2>
+    <h2 id="catalog-title" class="panel-title">Catalogue</h2>
     <hr class="tapered" />
     <p class="hint">
       <template v-if="disabled">Créer une carte pour poser des créatures.</template>
