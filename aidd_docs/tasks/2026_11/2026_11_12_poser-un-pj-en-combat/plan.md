@@ -1,6 +1,6 @@
 ---
 objective: "En préparation de combat, le catalogue d'une campagne où D&D est actif liste ses PJ à la place de la Guerrière et de la Magicienne ; un PJ posé est une copie de sa fiche à la pose, gardée dans la partie et le combat, qui joue comme les autres créatures."
-status: in-progress
+status: implemented
 ---
 
 # Plan: poser un PJ en combat depuis le catalogue

@@ -28,3 +28,19 @@
 - [pass] Task 3 — Après retouche, renommage et suppression de la fiche, la reprise et le rejeu montrent le PJ tel que posé — `PlayerCharacterApiTest.retoucherRenommerSupprimerLaFiche_…` (CA d'origine et nom « Aria » sur la créature, sur une `SceneSession` rejouée depuis la partie gardée et au dernier pas de `…/combats/{id}/replay`) ; `JsonFileGameStoreTest` aller-retour d'un `place` avec profil ; `ResumeGameTest.unePartieDAvantQuiPoseUnPretire_sansSaCopie_estMiseDeCote`
 - [pass] Task 4 — `mvn -q verify` passe ; le catalogue SRD n'a plus que des monstres — `mvn -q verify` exit 0 (vtt-server : 281 tests puis 282, 0 échec) ; `SrdCatalogTest.leCatalogueSrdNeProposeQueTroisMonstres_…` ; `uneCarteEnregistree_…` (rechargée : CA retouchée de la fiche ; fiche supprimée : 409, carte inchangée) ; `uneFicheAZeroPVMax_neSePosePas` (400 avec la raison)
 - [pass] Task 5 — `npm run build` passe ; dans le navigateur (5174), le PJ se glisse sur la carte, entre en combat, se déplace et attaque — `npm run build` exit 0 ; Chrome, Vite 5174 → 8081 : nouvelle carte 30 × 20 m ; tiroir « Catalogue » : Personnages « Aria », Monstres Gobelin, Squelette, Loup ; Aria glissée sur la carte (Personnage, PV 11/11, CA 17), Gobelin à côté ; « Lancer le combat » → « Initiative : Aria 12 · Gobelin guerrier 9 », tour d'Aria, vitesse 9 m ; Aria glissée d'une case → « reste 7,3 m » ; Épée à deux mains sur le Gobelin à 2,6 m → « hors d'allonge (1,5 m) » ; Arc court → « Raté, 2 contre CA 15 » au journal
+
+## Phase 4 · Mémoire du projet et backlog
+
+- Date: 2026-11-12
+- Validated on: c3a86d7
+
+- [pass] Task 1 — Aucune mention de `/api/catalog` commun ni des prétirés au catalogue dans `aidd_docs/memory` — `grep -n "/api/catalog\|Guerrière\|Magicienne" aidd_docs/memory/*.md` : seules restent la route par campagne (`GET /api/campaigns/{id}/catalog`), le retrait des prétirés, le piège Bouclier et `TestCharacters` dans `testing.md`
+- [pass] Task 2 — Story `done`, plan `implemented` — `poser-un-pj-en-combat-depuis-le-catalogue.md` : `status: done` ; `plan.md` : `status: implemented`
+
+## Final
+
+- Date: 2026-11-12
+- Validated on: 48de503
+
+- [pass] `mvn -q verify` — exit 0 ; surefire tous modules : tests=551 failures=0 errors=0
+- [pass] `npm run build` dans `vtt-web/` — exit 0, « ✓ built in 1.11s »
