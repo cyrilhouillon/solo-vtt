@@ -31,9 +31,15 @@ public record SheetState(CharacterSheet values, Build build, Map<Ability, Intege
      * Les valeurs de la fiche une fois {@code next} appliquée : seuls les champs dont la valeur dérivée change depuis la
      * construction précédente sont réécrits. Une caractéristique prend la valeur de {@code next} si elle a changé de
      * construction en construction, sinon garde la fiche ; CA, attaques, initiative et PV suivent les caractéristiques
-     * qui en sortent, retouches comprises.
+     * qui en sortent, retouches comprises. Une espèce choisie se change, mais ne se retire pas : la fiche garderait son
+     * espèce et ses traits sans les PV qu'elle donne.
+     *
+     * @throws IllegalArgumentException si {@code next} retire l'espèce de la construction précédente
      */
     public CharacterSheet rebuild(Build next) {
+        if (build != null && build.species() != null && next.species() == null) {
+            throw new IllegalArgumentException("Espèce : elle se change, mais ne se retire pas");
+        }
         GuidedValues before = build == null ? GuidedValues.NONE : GuidedValues.of(build, builtAbilities);
         Map<Ability, Integer> abilities = new EnumMap<>(values.abilities());
         for (Ability ability : Ability.values()) {

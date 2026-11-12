@@ -11,8 +11,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Ce qu'une construction guidée écrit sur la fiche, champ par champ (SRD 5.2.1, niveau 1). Espèce, historique, vitesse,
- * langues et emplacements de sort n'en dérivent pas : ils restent au joueur.
+ * Ce qu'une construction guidée écrit sur la fiche, champ par champ (SRD 5.2.1, niveau 1). Historique, langues et
+ * emplacements de sort n'en dérivent pas : ils restent au joueur. Espèce, taille, vitesse et traits d'espèce valent
+ * {@code null} tant que la construction n'a pas d'espèce : la fiche garde alors ce que le joueur y a saisi.
  *
  * <p>{@link #rebuild} ne réécrit que les champs dont la valeur dérivée a changé depuis la construction précédente : une
  * retouche du joueur survit tant que le choix dont elle dépend ne change pas.</p>
@@ -20,11 +21,12 @@ import java.util.stream.Collectors;
 public record GuidedValues(String className, int level, int proficiencyBonus, Map<Ability, Integer> abilities,
                            Set<Ability> savingThrows, Map<Skill, Proficiency> skills,
                            int armorClass, int hitPointMax, int hitPoints, String hitDice, int initiative,
-                           List<SheetAttack> attacks, String features, String equipment, String proficiencies) {
+                           List<SheetAttack> attacks, String features, String equipment, String proficiencies,
+                           String species, String size, Double speed, String speciesTraits) {
 
     /** Aucune construction précédente : {@link #rebuild} réécrit tous les champs dérivés. */
     public static final GuidedValues NONE = new GuidedValues("", 0, 0, Map.of(), Set.of(), Map.of(),
-            0, 0, 0, "", 0, List.of(), "", "", "");
+            0, 0, 0, "", 0, List.of(), "", "", "", null, null, null, null);
 
     private static final int LEVEL = 1;
     private static final int PROFICIENCY_BONUS = 2;
@@ -57,11 +59,14 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
         int dex = modifier(abilities.get(Ability.DEXTERITY));
         int con = modifier(abilities.get(Ability.CONSTITUTION));
 
+        SpeciesChoice species = build.species();
+        Skill speciesSkill = species == null ? null : species.skill();
         Map<Skill, Proficiency> skills = new EnumMap<>(Skill.class);
         for (Skill skill : Skill.values()) {
-            skills.put(skill, build.skills().contains(skill) ? Proficiency.PROFICIENT : Proficiency.NONE);
+            boolean proficient = build.skills().contains(skill) || skill == speciesSkill;
+            skills.put(skill, proficient ? Proficiency.PROFICIENT : Proficiency.NONE);
         }
-        int hitPoints = characterClass.hitDie() + con;
+        int hitPoints = characterClass.hitDie() + con + (species == null ? 0 : species.species().hitPointsPerLevel() * LEVEL);
         List<SheetAttack> attacks = build.equipment().weapons().stream()
                 .map(weapon -> attack(weapon, str, dex, build.fightingStyle()))
                 .toList();
@@ -70,7 +75,11 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
                 EnumSet.copyOf(characterClass.savingThrows()), skills,
                 armorClass(build.equipment(), dex, build.fightingStyle()), hitPoints, hitPoints,
                 "1d" + characterClass.hitDie(), dex, attacks,
-                features(build), build.equipment().text(), characterClass.proficiencies());
+                features(build), build.equipment().text(), characterClass.proficiencies(),
+                species == null ? null : species.species().label(),
+                species == null ? null : species.sizeText(),
+                species == null ? null : species.speed(),
+                species == null ? null : species.traitsText());
     }
 
     /**
@@ -104,25 +113,32 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
         return new CharacterSheet(
                 pick(previous, GuidedValues::className, sheet.className()),
                 pick(previous, GuidedValues::level, sheet.level()),
-                sheet.species(), sheet.background(), abilities,
+                pick(previous, GuidedValues::species, sheet.species()),
+                pick(previous, GuidedValues::size, sheet.size()),
+                sheet.background(), abilities,
                 pick(previous, GuidedValues::proficiencyBonus, sheet.proficiencyBonus()),
                 saves, skills,
                 pick(previous, GuidedValues::armorClass, sheet.armorClass()),
                 pick(previous, GuidedValues::hitPointMax, sheet.hitPointMax()),
                 pick(previous, GuidedValues::hitPoints, sheet.hitPoints()),
                 pick(previous, GuidedValues::hitDice, sheet.hitDice()),
-                sheet.speed(),
+                pick(previous, GuidedValues::speed, sheet.speed()),
                 pick(previous, GuidedValues::initiative, sheet.initiative()),
                 pick(previous, GuidedValues::attacks, sheet.attacks()),
                 pick(previous, GuidedValues::features, sheet.features()),
+                pick(previous, GuidedValues::speciesTraits, sheet.speciesTraits()),
                 pick(previous, GuidedValues::equipment, sheet.equipment()),
                 pick(previous, GuidedValues::proficiencies, sheet.proficiencies()),
                 sheet.languages(), sheet.spellSlots());
     }
 
-    /** La valeur dérivée d'un champ s'il a changé depuis {@code previous}, sinon celle de la fiche. */
+    /**
+     * La valeur dérivée d'un champ s'il a changé depuis {@code previous}, sinon celle de la fiche ; un champ que cette
+     * construction ne dérive pas ({@code null}) garde la fiche.
+     */
     private <T> T pick(GuidedValues previous, Function<GuidedValues, T> field, T onSheet) {
-        return changed(previous, field) ? field.apply(this) : onSheet;
+        T derived = field.apply(this);
+        return derived != null && changed(previous, field) ? derived : onSheet;
     }
 
     private boolean changed(GuidedValues previous, Function<GuidedValues, ?> field) {

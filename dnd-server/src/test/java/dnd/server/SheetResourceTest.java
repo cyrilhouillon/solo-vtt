@@ -4,9 +4,13 @@ import dnd.engine.sheet.Ability;
 import dnd.engine.sheet.AbilityMethod;
 import dnd.engine.sheet.Build;
 import dnd.engine.sheet.CharacterClass;
+import dnd.engine.sheet.CreatureSize;
 import dnd.engine.sheet.FightingStyle;
 import dnd.engine.sheet.Proficiency;
 import dnd.engine.sheet.Skill;
+import dnd.engine.sheet.Species;
+import dnd.engine.sheet.SpeciesChoice;
+import dnd.engine.sheet.SpeciesOption;
 import dnd.engine.sheet.SrdWeapon;
 import dnd.engine.sheet.StartingEquipment;
 import dnd.engine.state.DamageType;
@@ -153,13 +157,13 @@ class SheetResourceTest {
     private static DndDtos.BuildDto guerrier(Set<Skill> skills, StartingEquipment equipment, FightingStyle style) {
         Build base = Build.fighter();
         return DndDtos.BuildDto.of(new Build(base.characterClass(), base.method(), base.scores(), skills, style,
-                equipment, equipment.weapons()));
+                equipment, equipment.weapons(), null));
     }
 
     private static DndDtos.SheetValuesDto avecCA(DndDtos.SheetValuesDto v, int armorClass) {
-        return new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.background(), v.abilities(),
+        return new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.size(), v.background(), v.abilities(),
                 v.proficiencyBonus(), v.savingThrows(), v.skills(), armorClass, v.hitPointMax(), v.hitPoints(), v.hitDice(),
-                v.speed(), v.initiative(), v.attacks(), v.features(), v.equipment(), v.proficiencies(), v.languages(),
+                v.speed(), v.initiative(), v.attacks(), v.features(), v.speciesTraits(), v.equipment(), v.proficiencies(), v.languages(),
                 v.spellSlots());
     }
 
@@ -168,10 +172,10 @@ class SheetResourceTest {
         for (Ability ability : Ability.values()) abilities.put(ability, 10);
         abilities.put(Ability.DEXTERITY, dex);
         abilities.put(Ability.WISDOM, 12);
-        return new DndDtos.SheetValuesDto("Roublard", 1, "Halfelin", "Criminel", abilities, 2, Set.of(Ability.DEXTERITY),
+        return new DndDtos.SheetValuesDto("Roublard", 1, "Halfelin", "P (petite)", "Criminel", abilities, 2, Set.of(Ability.DEXTERITY),
                 Map.of(Skill.STEALTH, Proficiency.EXPERTISE, Skill.PERCEPTION, Proficiency.PROFICIENT, Skill.ARCANA, Proficiency.NONE),
                 14, 9, 9, "1d8", 7.5, 2, List.of(new DndDtos.AttackDto("Rapière", 4, 1, 8, 2, DamageType.PIERCING, 1.5, null, null)),
-                "Attaque sournoise", "Armure de cuir", "Armes courantes", "Commun", List.of());
+                "Attaque sournoise", "Chance", "Armure de cuir", "Armes courantes", "Commun", List.of());
     }
 
     @Test
@@ -403,7 +407,7 @@ class SheetResourceTest {
         scores.put(Ability.CHARISMA, 12);
         Build base = Build.fighter();
         DndDtos.SheetDto construite = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(new Build(CharacterClass.FIGHTER,
-                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries())));
+                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries(), null)));
         assertEquals(scores, construite.values().abilities());
         assertEquals(AbilityMethod.ROLLED, construite.build().method());
         assertEquals(lancee.rolls(), construite.rolls(), "la construction garde les jets");
@@ -420,19 +424,19 @@ class SheetResourceTest {
                 guerrier(Set.of(Skill.ATHLETICS, Skill.PERCEPTION, Skill.HISTORY), StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE)));
         assertEquals("Guerrier : 2 compétences au plus", refus.getMessage());
         var sansDes = assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), AbilityMethod.ROLLED, c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries())));
+                c.characterClass(), AbilityMethod.ROLLED, c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null)));
         assertEquals("Dés : lancer d'abord les six jets de caractéristique", sansDes.getMessage());
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), null)));
+                c.characterClass(), c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), c.method(), null, c.skills(), c.fightingStyle(), c.equipment(), c.masteries())));
+                c.characterClass(), c.method(), null, c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), c.method(), c.scores(), null, c.fightingStyle(), c.equipment(), c.masteries())));
+                c.characterClass(), c.method(), c.scores(), null, c.fightingStyle(), c.equipment(), c.masteries(), null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                null, c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries())));
+                null, c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
                 c.characterClass(), c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(),
-                List.of(SrdWeapon.GREATSWORD, SrdWeapon.GREATSWORD, SrdWeapon.FLAIL))));
+                List.of(SrdWeapon.GREATSWORD, SrdWeapon.GREATSWORD, SrdWeapon.FLAIL), null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, null));
         assertEquals(avant, donnees.fichiers.get(STRAHD + "/dnd"));
         assertNull(dnd().read(STRAHD, aria).build());
@@ -537,9 +541,9 @@ class SheetResourceTest {
         Map<Ability, Integer> abilities = new EnumMap<>(construite.values().abilities());
         abilities.put(Ability.DEXTERITY, 16);
         DndDtos.SheetValuesDto v = construite.values();
-        dnd().edit(STRAHD, aria, new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.background(), abilities,
+        dnd().edit(STRAHD, aria, new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.size(), v.background(), abilities,
                 v.proficiencyBonus(), v.savingThrows(), v.skills(), v.armorClass(), v.hitPointMax(), v.hitPoints(),
-                v.hitDice(), v.speed(), v.initiative(), v.attacks(), v.features(), v.equipment(), v.proficiencies(),
+                v.hitDice(), v.speed(), v.initiative(), v.attacks(), v.features(), v.speciesTraits(), v.equipment(), v.proficiencies(),
                 v.languages(), v.spellSlots()));
 
         DndDtos.SheetDto equipementB = dnd().build(STRAHD, aria,
@@ -553,10 +557,10 @@ class SheetResourceTest {
     void uneAttaqueSansAllongeNiPortee_estRefuseeEn400_avecSaRaison() {
         String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
         var v = roublarde(14);
-        var sansPortee = new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.background(), v.abilities(),
+        var sansPortee = new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.size(), v.background(), v.abilities(),
                 v.proficiencyBonus(), v.savingThrows(), v.skills(), v.armorClass(), v.hitPointMax(), v.hitPoints(), v.hitDice(),
                 v.speed(), v.initiative(), List.of(new DndDtos.AttackDto("Coup", 2, 1, 4, 0, DamageType.BLUDGEONING, null, null, null)),
-                v.features(), v.equipment(), v.proficiencies(), v.languages(), v.spellSlots());
+                v.features(), v.speciesTraits(), v.equipment(), v.proficiencies(), v.languages(), v.spellSlots());
 
         var refus = assertThrows(IllegalArgumentException.class, () -> dnd().edit(STRAHD, aria, sansPortee));
         assertEquals("Coup : une allonge ou une portée", refus.getMessage());
@@ -580,5 +584,97 @@ class SheetResourceTest {
         var refus = assertThrows(ClientErrorException.class, () -> dnd().read(STRAHD, aria));
         assertEquals(409, refus.getResponse().getStatus());
         assertEquals(fichier, donnees.fichiers.get(STRAHD + "/dnd"));
+    }
+
+    /** Le Guerrier suggéré, Athlétisme et Perception, avec cette espèce. */
+    private static DndDtos.BuildDto guerrierDeLEspece(SpeciesChoice espece) {
+        Build base = Build.fighter();
+        return DndDtos.BuildDto.of(new Build(base.characterClass(), base.method(), base.scores(),
+                Set.of(Skill.ATHLETICS, Skill.PERCEPTION), base.fightingStyle(), base.equipment(), base.masteries(), espece));
+    }
+
+    @Test
+    void lesEspeces_disentLeursSousChoix() {
+        List<DndDtos.SpeciesOptionsDto> especes = dnd().species(STRAHD);
+
+        assertEquals(9, especes.size());
+        DndDtos.SpeciesOptionsDto elfe = especes.stream().filter(e -> e.id().equals("ELF")).findFirst().orElseThrow();
+        assertEquals("Elfe", elfe.label());
+        assertEquals(List.of(new DndDtos.ChoiceDto("MEDIUM", "M (moyenne)")), elfe.sizes());
+        assertEquals(9, elfe.speed());
+        assertEquals("Lignage elfique", elfe.optionLabel());
+        assertEquals(3, elfe.options().size());
+        assertTrue(elfe.options().contains(new DndDtos.DescribedChoiceDto("WOOD_ELF", "Elfe sylvestre",
+                SpeciesOption.WOOD_ELF.text())));
+        assertEquals("Sens aiguisés", elfe.skillTrait());
+        assertEquals(List.of("INSIGHT", "PERCEPTION", "SURVIVAL"), elfe.skillChoices().stream().map(DndDtos.ChoiceDto::id).toList());
+        assertEquals(List.of("INTELLIGENCE", "WISDOM", "CHARISMA"),
+                elfe.spellcastingAbilities().stream().map(DndDtos.ChoiceDto::id).toList());
+        DndDtos.SpeciesOptionsDto humain = especes.stream().filter(e -> e.id().equals("HUMAN")).findFirst().orElseThrow();
+        assertEquals(2, humain.sizes().size());
+        assertEquals(18, humain.skillChoices().size());
+        assertNull(humain.optionLabel());
+        assertEquals(List.of(), humain.spellcastingAbilities());
+        assertThrows(NotFoundException.class, () -> dnd().species("inconnue"));
+    }
+
+    @Test
+    void uneConstructionAvecEspece_remplitLaFiche_etSeRelitALIdentique() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+        dnd().build(STRAHD, aria, guerrierDeLEspece(null));
+
+        DndDtos.SheetDto nain = dnd().build(STRAHD, aria, guerrierDeLEspece(SpeciesChoice.of(Species.DWARF)));
+
+        assertEquals("Nain", nain.values().species());
+        assertEquals("M (moyenne)", nain.values().size());
+        assertEquals(9, nain.values().speed());
+        assertEquals(12, nain.values().hitPointMax(), "d10 + Con 1 + Ténacité naine");
+        assertTrue(nain.values().speciesTraits().startsWith("Vision dans le noir : 36 m"), nain.values().speciesTraits());
+        assertEquals(new DndDtos.SpeciesChoiceDto(Species.DWARF, CreatureSize.MEDIUM, null, null, null), nain.build().species());
+        assertEquals(nain, dnd().read(STRAHD, aria));
+        assertTrue(donnees.fichiers.get(STRAHD + "/dnd").contains("\"species\":{\"species\":\"DWARF\""));
+    }
+
+    @Test
+    void uneOptionDUneAutreEspece_estRefuseeEn400_sansRienEcrire() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+        String avant = donnees.fichiers.get(STRAHD + "/dnd");
+
+        var refus = assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria,
+                guerrierDeLEspece(new SpeciesChoice(Species.DWARF, null, SpeciesOption.DROW, null, null))));
+
+        assertEquals("Nain : Drow n’est pas une option de l’espèce", refus.getMessage());
+        assertEquals(avant, donnees.fichiers.get(STRAHD + "/dnd"));
+    }
+
+    @Test
+    void unDocumentDAvantLEspece_seRelit_etPrendUneEspece() {
+        String joueurs = dnd().ensureSections(STRAHD).playersPageId();
+        String aria = pages.createEntry(STRAHD, "dnd", joueurs, "Aria").id();
+        String valeurs = """
+                {"className":"Guerrier","level":1,"species":"Elfe des bois","background":"",
+                "abilities":{"STRENGTH":15,"DEXTERITY":14,"CONSTITUTION":13,"INTELLIGENCE":8,"WISDOM":10,"CHARISMA":12},
+                "proficiencyBonus":2,"savingThrows":["STRENGTH","CONSTITUTION"],"skills":{},
+                "armorClass":17,"hitPointMax":11,"hitPoints":11,"hitDice":"1d10","speed":10.5,"initiative":2,
+                "attacks":[],"features":"","equipment":"","proficiencies":"","languages":"","spellSlots":[]}""";
+        String construction = """
+                {"characterClass":"FIGHTER","method":"STANDARD_ARRAY",
+                "scores":{"STRENGTH":15,"DEXTERITY":14,"CONSTITUTION":13,"INTELLIGENCE":8,"WISDOM":10,"CHARISMA":12},
+                "skills":[],"fightingStyle":"DEFENSE","equipment":"FIGHTER_A","masteries":["GREATSWORD","FLAIL","JAVELIN"]}""";
+        donnees.fichiers.put(STRAHD + "/dnd", """
+                {"playersPageId":"%s","sheets":{"%s":[{"type":"created"},{"type":"built","values":%s,"build":%s},
+                {"type":"edited","values":%s}]}}
+                """.formatted(joueurs, aria, valeurs, construction, valeurs));
+
+        DndDtos.SheetDto relue = dnd().read(STRAHD, aria);
+        assertEquals("Elfe des bois", relue.values().species());
+        assertEquals("", relue.values().size());
+        assertEquals("", relue.values().speciesTraits());
+        assertNull(relue.build().species());
+
+        DndDtos.SheetDto orc = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(
+                Build.fighter().withSpecies(SpeciesChoice.of(Species.ORC))));
+        assertEquals("Orc", orc.values().species());
+        assertEquals(9, orc.values().speed(), "10,5 saisi, 9 pour un Orc");
     }
 }

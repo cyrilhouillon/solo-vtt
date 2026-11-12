@@ -230,6 +230,7 @@ function removeAttack(index: number) {
       <label>Classe <input v-model="values.className" type="text" maxlength="80" /></label>
       <label class="narrow">Niveau <input v-model.number="values.level" type="number" min="1" max="20" /></label>
       <label>Espèce <input v-model="values.species" type="text" maxlength="80" /></label>
+      <label class="narrow">Taille <input v-model="values.size" type="text" maxlength="40" /></label>
       <label>Historique <input v-model="values.background" type="text" maxlength="80" /></label>
     </section>
 
@@ -402,6 +403,7 @@ function removeAttack(index: number) {
 
         <section class="texts" aria-label="Textes">
           <label>Capacités <textarea v-model="values.features" rows="4" /></label>
+          <label>Traits d'espèce <textarea v-model="values.speciesTraits" rows="4" /></label>
           <label>Équipement <textarea v-model="values.equipment" rows="3" /></label>
           <label>Maîtrises <textarea v-model="values.proficiencies" rows="2" /></label>
           <label>Langues <textarea v-model="values.languages" rows="2" /></label>

@@ -22,8 +22,8 @@ class CharacterProfileTest {
     private static CharacterSheet fiche(int pvMax, int pv, List<SheetAttack> attaques) {
         Map<Ability, Integer> valeurs = new EnumMap<>(Ability.class);
         for (Ability ability : Ability.values()) valeurs.put(ability, 10);
-        return new CharacterSheet("Guerrier", 1, "", "", valeurs, 2, Set.of(), Map.of(),
-                18, pvMax, pv, "1d10", 9, 2, attaques, "", "", "", "", List.of());
+        return new CharacterSheet("Guerrier", 1, "", "", "", valeurs, 2, Set.of(), Map.of(),
+                18, pvMax, pv, "1d10", 9, 2, attaques, "", "", "", "", "", List.of());
     }
 
     @Test

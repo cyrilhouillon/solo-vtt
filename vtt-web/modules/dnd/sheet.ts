@@ -116,6 +116,8 @@ export interface SheetValues {
   className: string
   level: number
   species: string
+  /** La taille en texte (« M (moyenne) »). */
+  size: string
   background: string
   abilities: Record<Ability, number>
   proficiencyBonus: number
@@ -129,6 +131,7 @@ export interface SheetValues {
   initiative: number
   attacks: SheetAttack[]
   features: string
+  speciesTraits: string
   equipment: string
   proficiencies: string
   languages: string
@@ -147,6 +150,32 @@ export interface Build {
   fightingStyle: string
   equipment: string
   masteries: string[]
+  /** L'espèce et ses sous-choix, `null` tant qu'aucune n'est choisie. */
+  species: SpeciesChoice | null
+}
+
+/** L'espèce d'une construction et ses sous-choix, par leurs ids ; `null` : à choisir. */
+export interface SpeciesChoice {
+  species: string
+  size: string | null
+  option: string | null
+  skill: Skill | null
+  spellcastingAbility: Ability | null
+}
+
+/** Une espèce pour la création guidée, telle que le serveur la sert ; `optionLabel` et `skillTrait` `null` sans. */
+export interface SpeciesOptions {
+  id: string
+  label: string
+  sizes: Choice[]
+  speed: number
+  optionLabel: string | null
+  options: DescribedChoice[]
+  skillTrait: string | null
+  skillChoices: { id: Skill; label: string }[]
+  /** Les caractéristiques d'incantation au choix, vide si l'espèce n'en choisit pas. */
+  spellcastingAbilities: { id: Ability; label: string }[]
+  traits: string[]
 }
 
 /** Un jet de caractéristique : ses quatre d6 dans l'ordre du tirage, et la somme des trois plus hauts. */

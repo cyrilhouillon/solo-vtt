@@ -113,7 +113,8 @@ final class SheetStore {
             boolean complete = stored.characterClass() != null && stored.method() != null
                     && stored.fightingStyle() != null && stored.equipment() != null
                     && stored.scores().keySet().containsAll(EnumSet.allOf(Ability.class))
-                    && !stored.masteries().contains(null);
+                    && !stored.masteries().contains(null)
+                    && (stored.species() == null || stored.species().species() != null);
             if (!complete) throw new IllegalStateException("Construction de fiche incomplète");
             return stored;
         }

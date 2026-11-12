@@ -12,11 +12,13 @@ import {
   type Build,
   type ClassOptions,
   type Skill,
+  type SpeciesChoice,
+  type SpeciesOptions,
 } from './sheet'
 
 /**
- * La création guidée d'une fiche : classe, méthode et valeurs de caractéristique, compétences, Style de combat,
- * équipement de départ et Bottes d'arme. Chaque choix émet la construction entière, que la fiche envoie au serveur ;
+ * La création guidée d'une fiche : classe, espèce et ses sous-choix, méthode et valeurs de caractéristique, compétences,
+ * Style de combat, équipement de départ et Bottes d'arme. Chaque choix émet la construction entière, que la fiche envoie au serveur ;
  * rien n'est gardé ici que les brouillons d'un choix pas encore envoyable (achat de points, dés pas encore lancés).
  * Classe « — » : saisie libre, rien n'est envoyé ; proposée tant qu'aucune classe n'est choisie.
  */
@@ -43,7 +45,10 @@ const METHODS: { id: AbilityMethod; label: string }[] = [
 
 
 const options = ref<ClassOptions[]>([])
+const speciesList = ref<SpeciesOptions[]>([])
 const loadError = ref<string | null>(null)
+/** Change à chaque refus : les listes d'espèce se remontent sur la construction gardée. */
+const revision = ref(0)
 /** La classe choisie ; '' : saisie libre. */
 const classId = ref(props.build?.characterClass ?? '')
 const method = ref<AbilityMethod>(props.build?.method ?? 'STANDARD_ARRAY')
@@ -53,12 +58,19 @@ const scores = ref<Record<Ability, number>>(scoresOf(props.build))
 const id = useId()
 
 onMounted(async () => {
-  try {
-    options.value = await dndApi(props.campaignId).classes()
-  } catch (e) {
-    loadError.value = `Classes illisibles : ${e instanceof Error ? e.message : String(e)}`
-  }
+  const api = dndApi(props.campaignId)
+  const [classes, species] = await Promise.allSettled([api.classes(), api.species()])
+  const errors: string[] = []
+  if (classes.status === 'fulfilled') options.value = classes.value
+  else errors.push(`Classes illisibles : ${reasonOf(classes.reason)}`)
+  if (species.status === 'fulfilled') speciesList.value = species.value
+  else errors.push(`Espèces illisibles : ${reasonOf(species.reason)}`)
+  loadError.value = errors.length ? errors.join(' ; ') : null
 })
+
+function reasonOf(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
+}
 
 function scoresOf(build: Build | null): Record<Ability, number> {
   return Object.fromEntries(ABILITIES.map((a) => [a, build?.scores[a] ?? 10])) as Record<Ability, number>
@@ -81,7 +93,10 @@ watch(
 watch(
   () => props.error,
   (error) => {
-    if (error) resetDrafts(props.build)
+    if (error) {
+      resetDrafts(props.build)
+      revision.value++
+    }
   },
 )
 
@@ -102,7 +117,8 @@ function send(change: Partial<Build>) {
 function chooseClass(value: string) {
   classId.value = value
   const o = current.value
-  if (o && props.build?.characterClass !== o.id) emit('build', defaults(o))
+  // L'espèce ne dépend pas de la classe : elle la suit.
+  if (o && props.build?.characterClass !== o.id) emit('build', { ...defaults(o), species: props.build?.species ?? null })
 }
 
 /** Les totaux des jets, du plus haut au plus bas, sur les caractéristiques rangées par la répartition suggérée. */
@@ -179,6 +195,24 @@ function chooseMastery(index: number, weapon: string) {
   send({ masteries: next })
 }
 
+/** L'espèce choisie, ses options telles que le serveur les sert ; `null` sans espèce. */
+const species = computed(() => speciesList.value.find((s) => s.id === shown.value?.species?.species) ?? null)
+const speciesSkill = computed(() => shown.value?.species?.skill ?? null)
+const optionText = computed(() => species.value?.options.find((o) => o.id === shown.value?.species?.option)?.text)
+
+/** Une espèce choisie part sans sous-choix : ils restent à choisir. */
+function chooseSpecies(id: string) {
+  if (!id || id === shown.value?.species?.species) return
+  send({ species: { species: id, size: null, option: null, skill: null, spellcastingAbility: null } })
+}
+
+/** Un sous-choix de l'espèce ; '' le remet à choisir. */
+function setSpecies<K extends keyof Omit<SpeciesChoice, 'species'>>(key: K, value: string) {
+  const current = shown.value?.species
+  if (!current) return
+  send({ species: { ...current, [key]: value || null } })
+}
+
 const styleText = computed(() => current.value?.fightingStyles.find((s) => s.id === shown.value?.fightingStyle)?.text)
 const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.value)
 </script>
@@ -196,6 +230,62 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
       </label>
 
       <template v-if="current && shown">
+        <section :key="revision" class="part" :aria-labelledby="`${id}-species`">
+          <h4 :id="`${id}-species`">Espèce</h4>
+          <div class="row">
+            <label class="row">
+              Espèce
+              <select :value="shown.species?.species ?? ''" @change="chooseSpecies(($event.target as HTMLSelectElement).value)">
+                <!-- Comme la classe : « — » ne se propose qu'avant le premier choix, l'espèce saisie à la main reste. -->
+                <option v-if="!shown.species" value="">— (saisie libre)</option>
+                <option v-for="s in speciesList" :key="s.id" :value="s.id">{{ s.label }}</option>
+              </select>
+            </label>
+            <template v-if="species && shown.species">
+              <label v-if="species.sizes.length > 1" class="row">
+                Taille
+                <select :value="shown.species.size ?? ''" @change="setSpecies('size', ($event.target as HTMLSelectElement).value)">
+                  <option value="">à choisir</option>
+                  <option v-for="z in species.sizes" :key="z.id" :value="z.id">{{ z.label }}</option>
+                </select>
+              </label>
+              <span v-else class="muted">Taille {{ species.sizes[0]?.label }}</span>
+            </template>
+          </div>
+          <template v-if="species && shown.species">
+            <label v-if="species.optionLabel" class="row">
+              {{ species.optionLabel }}
+              <select :value="shown.species.option ?? ''" @change="setSpecies('option', ($event.target as HTMLSelectElement).value)">
+                <option value="">à choisir</option>
+                <option v-for="o in species.options" :key="o.id" :value="o.id">{{ o.label }}</option>
+              </select>
+            </label>
+            <p v-if="optionText" class="muted text">{{ optionText }}</p>
+            <div v-if="species.spellcastingAbilities.length || species.skillTrait" class="row">
+              <label v-if="species.spellcastingAbilities.length" class="row">
+                Incantation
+                <select
+                  :value="shown.species.spellcastingAbility ?? ''"
+                  @change="setSpecies('spellcastingAbility', ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">à choisir</option>
+                  <option v-for="a in species.spellcastingAbilities" :key="a.id" :value="a.id">{{ a.label }}</option>
+                </select>
+              </label>
+              <label v-if="species.skillTrait" class="row">
+                {{ species.skillTrait }}
+                <select :value="shown.species.skill ?? ''" @change="setSpecies('skill', ($event.target as HTMLSelectElement).value)">
+                  <option value="">à choisir</option>
+                  <!-- Une compétence que la classe donne déjà ne se prend pas deux fois. -->
+                  <option v-for="k in species.skillChoices" :key="k.id" :value="k.id" :disabled="shown.skills.includes(k.id)">
+                    {{ k.label }}
+                  </option>
+                </select>
+              </label>
+            </div>
+          </template>
+        </section>
+
         <section class="part" :aria-labelledby="`${id}-abilities`">
           <h4 :id="`${id}-abilities`">Caractéristiques</h4>
           <label class="row">
@@ -266,7 +356,9 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
                 <input
                   type="checkbox"
                   :checked="shown.skills.includes(s.id)"
-                  :disabled="!shown.skills.includes(s.id) && shown.skills.length >= current.skillCount"
+                  :disabled="
+                    (!shown.skills.includes(s.id) && shown.skills.length >= current.skillCount) || speciesSkill === s.id
+                  "
                   @change="toggleSkill(s.id, ($event.target as HTMLInputElement).checked)"
                 />
                 {{ s.label }}

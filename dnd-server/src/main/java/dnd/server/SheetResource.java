@@ -7,6 +7,7 @@ import dnd.engine.sheet.CharacterClass;
 import dnd.engine.sheet.SheetEvent;
 import dnd.engine.sheet.SheetHistory;
 import dnd.engine.sheet.SheetState;
+import dnd.engine.sheet.Species;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -61,6 +62,18 @@ public class SheetResource {
     public List<DndDtos.ClassOptionsDto> classes(@PathParam("campaignId") String campaignId) {
         known(campaignId);
         return Arrays.stream(CharacterClass.values()).map(DndDtos.ClassOptionsDto::of).toList();
+    }
+
+    /** Les espèces et leurs sous-choix pour la création guidée, communes à toutes les classes. */
+    @GET
+    @Path("/species")
+    @APIResponse(responseCode = "200", description = "Les espèces et leurs sous-choix",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = SchemaType.ARRAY, implementation = DndDtos.SpeciesOptionsDto.class)))
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public List<DndDtos.SpeciesOptionsDto> species(@PathParam("campaignId") String campaignId) {
+        known(campaignId);
+        return Arrays.stream(Species.values()).map(DndDtos.SpeciesOptionsDto::of).toList();
     }
 
     /**
