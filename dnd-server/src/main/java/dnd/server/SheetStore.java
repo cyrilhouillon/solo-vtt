@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dnd.engine.sheet.AbilityRoll;
+import dnd.engine.sheet.CharacterSheet;
 import dnd.engine.sheet.SheetEvent;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.core.Response;
@@ -58,36 +60,53 @@ final class SheetStore {
         }
     }
 
-    /** Un événement tel qu'il est écrit : {@code created}, ou {@code edited} avec les valeurs saisies. */
+    /**
+     * Un événement tel qu'il est écrit : {@code created} ; {@code edited} avec les valeurs saisies ; {@code built} avec la
+     * construction et les valeurs qui en sont sorties ; {@code rolled} avec les six jets, quatre d6 chacun.
+     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record EventFile(String type, DndDtos.SheetValuesDto values) {
+    record EventFile(String type, DndDtos.SheetValuesDto values, DndDtos.BuildDto build, List<List<Integer>> rolls) {
         static final String CREATED = "created";
         static final String EDITED = "edited";
+        static final String BUILT = "built";
+        static final String ROLLED = "rolled";
 
         static EventFile of(SheetEvent event) {
             return switch (event) {
-                case SheetEvent.SheetCreated created -> new EventFile(CREATED, null);
-                case SheetEvent.SheetEdited edited -> new EventFile(EDITED, DndDtos.SheetValuesDto.of(edited.values()));
-                case SheetEvent.SheetBuilt built -> throw new UnsupportedOperationException("Construction pas encore gardée");
-                case SheetEvent.AbilitiesRolled rolled -> throw new UnsupportedOperationException("Jets pas encore gardés");
+                case SheetEvent.SheetCreated created -> new EventFile(CREATED, null, null, null);
+                case SheetEvent.SheetEdited edited -> new EventFile(EDITED, DndDtos.SheetValuesDto.of(edited.values()), null, null);
+                case SheetEvent.SheetBuilt built ->
+                        new EventFile(BUILT, DndDtos.SheetValuesDto.of(built.values()), DndDtos.BuildDto.of(built.build()), null);
+                case SheetEvent.AbilitiesRolled rolled ->
+                        new EventFile(ROLLED, null, null, rolled.rolls().stream().map(AbilityRoll::dice).toList());
             };
         }
 
         /**
          * L'événement écrit.
          *
-         * @throws IllegalStateException si son type est inconnu, ou si une saisie n'a pas de valeurs
-         * @throws IllegalArgumentException si une valeur saisie est hors bornes
+         * @throws IllegalStateException si son type est inconnu, ou s'il lui manque ce qu'il porte
+         * @throws IllegalArgumentException si une valeur écrite est hors bornes
          */
         SheetEvent event() {
             return switch (type) {
                 case CREATED -> new SheetEvent.SheetCreated();
-                case EDITED -> {
-                    if (values == null) throw new IllegalStateException("Saisie de fiche sans valeurs");
-                    yield new SheetEvent.SheetEdited(values.toSheet());
+                case EDITED -> new SheetEvent.SheetEdited(sheetValues());
+                case BUILT -> {
+                    if (build == null) throw new IllegalStateException("Construction de fiche sans choix");
+                    yield new SheetEvent.SheetBuilt(build.toBuild(), sheetValues());
+                }
+                case ROLLED -> {
+                    if (rolls == null) throw new IllegalStateException("Jets de caractéristique sans dés");
+                    yield new SheetEvent.AbilitiesRolled(rolls.stream().map(AbilityRoll::new).toList());
                 }
                 case null, default -> throw new IllegalStateException("Événement de fiche inconnu : " + type);
             };
+        }
+
+        private CharacterSheet sheetValues() {
+            if (values == null) throw new IllegalStateException("Événement de fiche sans valeurs");
+            return values.toSheet();
         }
     }
 

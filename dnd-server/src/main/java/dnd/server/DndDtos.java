@@ -1,13 +1,23 @@
 package dnd.server;
 
 import dnd.engine.sheet.Ability;
+import dnd.engine.sheet.AbilityMethod;
+import dnd.engine.sheet.AbilityRoll;
+import dnd.engine.sheet.Build;
+import dnd.engine.sheet.CharacterClass;
 import dnd.engine.sheet.CharacterSheet;
+import dnd.engine.sheet.FightingStyle;
 import dnd.engine.sheet.Proficiency;
 import dnd.engine.sheet.SheetAttack;
+import dnd.engine.sheet.SheetState;
 import dnd.engine.sheet.Skill;
 import dnd.engine.sheet.SpellSlots;
+import dnd.engine.sheet.SrdWeapon;
+import dnd.engine.sheet.StartingEquipment;
 
+import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -93,11 +103,93 @@ public final class DndDtos {
         }
     }
 
-    /** Une fiche : la page qui la montre, ses valeurs saisies et leurs dérivés. */
-    public record SheetDto(String pageId, SheetValuesDto values, DerivedDto derived) {
+    /**
+     * Les choix de la création guidée, par leurs ids ; {@code skills} et {@code masteries} dans l'ordre de leurs listes,
+     * {@code masteries} par id d'arme.
+     */
+    public record BuildDto(CharacterClass characterClass, AbilityMethod method, Map<Ability, Integer> scores,
+                           List<Skill> skills, FightingStyle fightingStyle, StartingEquipment equipment,
+                           List<SrdWeapon> masteries) {
 
-        static SheetDto of(String pageId, CharacterSheet sheet) {
-            return new SheetDto(pageId, SheetValuesDto.of(sheet), DerivedDto.of(sheet));
+        static BuildDto of(Build build) {
+            return new BuildDto(build.characterClass(), build.method(),
+                    build.scores().isEmpty() ? Map.of() : new EnumMap<>(build.scores()),
+                    build.skills().stream().sorted().toList(), build.fightingStyle(), build.equipment(), build.masteries());
+        }
+
+        /**
+         * La construction de ces choix, à valider ({@link Build#validate}).
+         *
+         * @throws IllegalArgumentException s'il manque les valeurs, les compétences ou les Bottes d'arme
+         */
+        Build toBuild() {
+            if (scores == null) throw new IllegalArgumentException("Une construction porte ses valeurs de caractéristique");
+            if (skills == null) throw new IllegalArgumentException("Une construction porte ses compétences");
+            if (masteries == null) throw new IllegalArgumentException("Une construction porte ses Bottes d'arme");
+            if (scores.containsKey(null)) throw new IllegalArgumentException("Caractéristique inconnue");
+            if (skills.contains(null)) throw new IllegalArgumentException("Compétence inconnue");
+            return new Build(characterClass, method, scores, Set.copyOf(skills), fightingStyle, equipment, masteries);
+        }
+    }
+
+    /** Un jet de caractéristique : ses quatre d6 dans l'ordre du tirage, et la somme des trois plus hauts. */
+    public record AbilityRollDto(List<Integer> dice, int total) {
+
+        static AbilityRollDto of(AbilityRoll roll) {
+            return new AbilityRollDto(roll.dice(), roll.total());
+        }
+    }
+
+    /**
+     * Une fiche : la page qui la montre, ses valeurs saisies et leurs dérivés, sa construction guidée et ses jets de
+     * caractéristique ({@code null} s'il n'y en a pas).
+     */
+    public record SheetDto(String pageId, SheetValuesDto values, DerivedDto derived, BuildDto build,
+                           List<AbilityRollDto> rolls) {
+
+        static SheetDto of(String pageId, SheetState state) {
+            return new SheetDto(pageId, SheetValuesDto.of(state.values()), DerivedDto.of(state.values()),
+                    state.build() == null ? null : BuildDto.of(state.build()),
+                    state.rolls() == null ? null : state.rolls().stream().map(AbilityRollDto::of).toList());
+        }
+    }
+
+    /** Un choix proposé : son id et son libellé. */
+    public record ChoiceDto(String id, String label) {}
+
+    /** Un choix proposé, avec ce qu'il fait ou contient. */
+    public record DescribedChoiceDto(String id, String label, String text) {}
+
+    /** Une arme qu'une Botte d'arme peut viser, et sa botte. */
+    public record WeaponChoiceDto(String id, String label, String mastery) {}
+
+    /**
+     * Les options d'une classe pour la création guidée : compétences au choix et combien, Styles de combat, équipements
+     * de départ (leurs objets et pièces d'or), armes pour les Bottes et combien, répartition suggérée, valeurs standard et
+     * coûts de l'achat de points (par valeur).
+     */
+    public record ClassOptionsDto(String id, String label, List<ChoiceDto> skillChoices, int skillCount,
+                                  List<DescribedChoiceDto> fightingStyles, List<DescribedChoiceDto> equipments,
+                                  List<WeaponChoiceDto> weapons, int masteryCount, Map<Ability, Integer> suggestedScores,
+                                  List<Integer> standardScores, Map<String, Integer> pointBuyCosts, int pointBuyBudget) {
+
+        static ClassOptionsDto of(CharacterClass characterClass) {
+            Map<String, Integer> costs = new LinkedHashMap<>();
+            for (int score = AbilityMethod.POINT_BUY_MIN; score <= AbilityMethod.POINT_BUY_MAX; score++) {
+                costs.put(String.valueOf(score), AbilityMethod.pointBuyCost(score));
+            }
+            return new ClassOptionsDto(characterClass.name(), characterClass.label(),
+                    Arrays.stream(Skill.values()).filter(characterClass.skillChoices()::contains)
+                            .map(skill -> new ChoiceDto(skill.name(), skill.label())).toList(),
+                    characterClass.skillCount(),
+                    Arrays.stream(FightingStyle.values())
+                            .map(style -> new DescribedChoiceDto(style.name(), style.label(), style.text())).toList(),
+                    characterClass.equipments().stream()
+                            .map(equipment -> new DescribedChoiceDto(equipment.name(), equipment.label(), equipment.text())).toList(),
+                    Arrays.stream(SrdWeapon.values())
+                            .map(weapon -> new WeaponChoiceDto(weapon.name(), weapon.label(), weapon.mastery())).toList(),
+                    characterClass.masteryCount(), new EnumMap<>(characterClass.suggestedScores()),
+                    AbilityMethod.STANDARD_SCORES, costs, AbilityMethod.POINT_BUY_BUDGET);
         }
     }
 }

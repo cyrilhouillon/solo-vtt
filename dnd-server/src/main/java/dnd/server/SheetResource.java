@@ -1,8 +1,15 @@
 package dnd.server;
 
+import dnd.engine.sheet.Ability;
+import dnd.engine.sheet.AbilityRoll;
+import dnd.engine.sheet.Build;
+import dnd.engine.sheet.CharacterClass;
 import dnd.engine.sheet.CharacterSheet;
+import dnd.engine.sheet.GuidedValues;
 import dnd.engine.sheet.SheetEvent;
 import dnd.engine.sheet.SheetHistory;
+import dnd.engine.sheet.SheetState;
+import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
@@ -11,11 +18,16 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import solovtt.engine.Dice;
 import solovtt.module.ModuleData;
 import solovtt.module.NotebookPages;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Les fiches des personnages joueurs d'une campagne. Chaque fiche est une entrée du module dans le Carnet, rangée sous la
@@ -32,11 +44,25 @@ public class SheetResource {
     private final ModuleData data;
     private final NotebookPages pages;
     private final SheetStore store;
+    private final Dice dice;
 
-    public SheetResource(ModuleData data, NotebookPages pages) {
+    public SheetResource(ModuleData data, NotebookPages pages, Dice dice) {
         this.data = data;
         this.pages = pages;
         this.store = new SheetStore(data, MODULE_ID);
+        this.dice = dice;
+    }
+
+    /** Les options de chaque classe pour la création guidée. */
+    @GET
+    @Path("/classes")
+    @APIResponse(responseCode = "200", description = "Les options de chaque classe",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = SchemaType.ARRAY, implementation = DndDtos.ClassOptionsDto.class)))
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public List<DndDtos.ClassOptionsDto> classes(@PathParam("campaignId") String campaignId) {
+        known(campaignId);
+        return Arrays.stream(CharacterClass.values()).map(DndDtos.ClassOptionsDto::of).toList();
     }
 
     /**
@@ -68,9 +94,7 @@ public class SheetResource {
         String title = title(request == null ? null : request.title());
         String parent = playersPage(campaignId);
         String pageId = pages.createEntry(campaignId, MODULE_ID, parent, title).id();
-        SheetEvent created = new SheetEvent.SheetCreated();
-        store.write(campaignId, store.read(campaignId).withEvent(pageId, created));
-        return DndDtos.SheetDto.of(pageId, SheetHistory.replay(List.of(created)).values());
+        return emit(campaignId, store.read(campaignId), pageId, new SheetEvent.SheetCreated());
     }
 
     @GET
@@ -98,19 +122,67 @@ public class SheetResource {
         SheetStore.State state = store.read(campaignId);
         sheet(campaignId, state, pageId);
         if (values == null) throw new IllegalArgumentException("Une saisie porte les valeurs de la fiche");
-        CharacterSheet edited = values.toSheet();
-        store.write(campaignId, state.withEvent(pageId, new SheetEvent.SheetEdited(edited)));
-        return DndDtos.SheetDto.of(pageId, edited);
+        return emit(campaignId, state, pageId, new SheetEvent.SheetEdited(values.toSheet()));
+    }
+
+    /**
+     * Applique ces choix guidés à la fiche : seuls les champs dont la valeur dérivée change depuis la construction
+     * précédente sont réécrits, si bien qu'une retouche survit tant que son choix ne change pas.
+     */
+    @PUT
+    @Path("/sheets/{pageId}/build")
+    @APIResponse(responseCode = "200", description = "La fiche construite, ses valeurs, leurs dérivés et sa construction",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DndDtos.SheetDto.class)))
+    @APIResponse(responseCode = "400", description = "Construction impossible ou incomplète, avec la raison ; rien n'est écrit")
+    @APIResponse(responseCode = "404", description = "Campagne inconnue, ou page qui n'est pas une fiche de la campagne")
+    @APIResponse(responseCode = "409", description = "Fiches de personnage illisibles")
+    public synchronized DndDtos.SheetDto build(@PathParam("campaignId") String campaignId, @PathParam("pageId") String pageId,
+                                               DndDtos.BuildDto request) {
+        known(campaignId);
+        SheetStore.State state = store.read(campaignId);
+        SheetState sheet = sheet(campaignId, state, pageId);
+        if (request == null) throw new IllegalArgumentException("Une construction porte ses choix");
+        Build build = request.toBuild();
+        build.validate(sheet.rolls());
+        GuidedValues before = sheet.build() == null ? GuidedValues.NONE : GuidedValues.of(sheet.build());
+        CharacterSheet values = GuidedValues.of(build).rebuild(sheet.values(), before);
+        return emit(campaignId, state, pageId, new SheetEvent.SheetBuilt(build, values));
+    }
+
+    /** Lance les six jets de caractéristique de la fiche, quatre d6 chacun : une seule fois par fiche. */
+    @POST
+    @Path("/sheets/{pageId}/ability-rolls")
+    @APIResponse(responseCode = "200", description = "La fiche et ses six jets",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DndDtos.SheetDto.class)))
+    @APIResponse(responseCode = "404", description = "Campagne inconnue, ou page qui n'est pas une fiche de la campagne")
+    @APIResponse(responseCode = "409", description = "Dés déjà lancés pour cette fiche, ou fiches de personnage illisibles")
+    public synchronized DndDtos.SheetDto rollAbilities(@PathParam("campaignId") String campaignId,
+                                                       @PathParam("pageId") String pageId) {
+        known(campaignId);
+        SheetStore.State state = store.read(campaignId);
+        if (sheet(campaignId, state, pageId).rolls() != null) {
+            throw new ClientErrorException("Les dés de caractéristique de cette fiche sont déjà lancés", Response.Status.CONFLICT);
+        }
+        List<AbilityRoll> rolls = Stream.generate(() -> AbilityRoll.roll(dice)).limit(Ability.values().length).toList();
+        return emit(campaignId, state, pageId, new SheetEvent.AbilitiesRolled(rolls));
+    }
+
+    /** Ajoute l'événement à l'histoire de la fiche, l'écrit et rend la fiche repliée. */
+    private DndDtos.SheetDto emit(String campaignId, SheetStore.State state, String pageId, SheetEvent event) {
+        SheetStore.State next = state.withEvent(pageId, event);
+        SheetState sheet = SheetHistory.replay(next.history(pageId).orElseThrow());
+        store.write(campaignId, next);
+        return DndDtos.SheetDto.of(pageId, sheet);
     }
 
     /**
      * La fiche de cette page, pliée de son histoire ; 404 si la page n'est pas une fiche vivante du module, 409 si son
      * histoire ne se relit pas. Une entrée sans histoire (écriture échouée après la création de sa page) est une fiche vide.
      */
-    private CharacterSheet sheet(String campaignId, SheetStore.State state, String pageId) {
+    private SheetState sheet(String campaignId, SheetStore.State state, String pageId) {
         if (!pages.isEntry(campaignId, MODULE_ID, pageId)) throw new NotFoundException("Fiche inconnue : " + pageId);
         try {
-            return SheetHistory.replay(state.history(pageId).orElse(List.of(new SheetEvent.SheetCreated()))).values();
+            return SheetHistory.replay(state.history(pageId).orElse(List.of(new SheetEvent.SheetCreated())));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw SheetStore.unreadable();
         }
