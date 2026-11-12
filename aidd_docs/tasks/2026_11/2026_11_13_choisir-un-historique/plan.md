@@ -1,6 +1,6 @@
 ---
 objective: "Sur la fiche d'un personnage construit en guidé, le joueur choisit l'un des 4 historiques du SRD 5.2.1 (augmentations, compétences, outil, don d'origine, équipement A ou B) et l'Humain son don d'origine (Polyvalent) ; la fiche s'en remplit, changer d'historique recalcule ce qui en dérive, et chaque don d'origine que le moteur ne joue pas a sa story."
-status: in-progress
+status: implemented
 ---
 
 # Plan: choisir un historique en création guidée

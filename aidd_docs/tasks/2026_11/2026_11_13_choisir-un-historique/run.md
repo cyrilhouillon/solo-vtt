@@ -34,3 +34,12 @@
 
 - [pass] Task 1 — Chaque don d'origines non joué renvoie à une story existante du backlog — liste de la tâche : Sauvagerie martiale → `relancer-les-degats-avec-sauvagerie-martiale.md` (créée, ordre 20) ; Vigilant, Échange d'Initiative → `echanger-son-initiative-avec-vigilant.md` (créée, ordre 21) ; sorts d'Initié à la magie → `creer-en-guide-les-autres-lanceurs-de-sorts.md` (critère ajouté) ; Doué, Vigilant (initiative) et Polyvalent « portés par la fiche » ; les trois fichiers existent (`test -f` : ok)
 - [pass] Task 2 — La mémoire nomme les nouvelles classes et routes ; les deux stories sont `done` — `architecture.md` (puce Historique : `BackgroundChoice`, `OriginFeatChoice`, `Build.abilities`, `feats`, `backgrounds`, `origin-feats`, refus) et `codebase-map.md` (`Background`, `BackgroundChoice`, `BackgroundEquipment`, `GamingSet`, `OriginFeat`, `OriginFeatChoice`, `SpellList`), `project-brief.md` (historique, don de l'Humain) ; `status: done` pour `choisir-un-historique-en-creation-guidee.md` et `creer-un-personnage-en-saisie-libre-dans-personnages-joueurs.md`
+
+## Final
+
+- Date: 2026-11-13
+- Validated on: e8ee101 (dernier commit de code ; seuls des fichiers Markdown ont changé depuis)
+
+- [pass] `mvn -q compile` — exit 0, aucune erreur
+- [pass] `mvn verify` — `BUILD SUCCESS` ; dnd-engine `Tests run: 133, Failures: 0`, dnd-server `Tests run: 33, Failures: 0`, vtt-server `Tests run: 282, Failures: 0`, autres modules 27, 65, 43, 10 sans échec
+- [pass] `npm run build` dans `vtt-web/` — vue-tsc et vite : `✓ built in 1.04s`, aucune erreur
