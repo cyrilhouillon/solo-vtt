@@ -60,7 +60,8 @@ export interface PageDocument {
 /**
  * Une page du Carnet, telle que l'arbre la montre : `parentId` est `null` à la racine ; `section`, l'id de la section
  * dont elle est une racine (elle ne se déplace ni ne se supprime), `null` pour toute autre page ; `combatId`, le combat
- * dont elle est l'entrée (sans texte ni sous-page), `null` pour une page.
+ * dont elle est l'entrée (sans texte ni sous-page), `null` pour une page ; `entryOf`, le module dont elle est une entrée
+ * (sans texte ni sous-page, montrée par la vue du module), `null` sinon.
  */
 export interface PageSummary {
   id: string
@@ -68,6 +69,7 @@ export interface PageSummary {
   parentId: string | null
   section: string | null
   combatId: string | null
+  entryOf: string | null
 }
 
 /** Une page ouverte : `content` est `null` pour une page neuve. */
