@@ -25,3 +25,19 @@
 - [pass] Task 1 — `npm run build` passe ; les types suivent les DTO du serveur — `npm run build` dans `vtt-web/` : `✓ built`, sans erreur `vue-tsc`
 - [pass] Task 2 — Choisir chaque espèce du Test Scope remplit la fiche dans le navigateur ; une compétence déjà maîtrisée n'est pas proposable — Chrome, 5174 → 8081 (campagne neuve « Test especes », Aria construite en Guerrier, Athlétisme et Perception). Nain : Espèce Nain, Taille « M (moyenne) », Vitesse 9, PV 12 / 12, quatre traits. Elfe, Elfe sylvestre, Sagesse, Intuition : Vitesse 10.5, PV 11, Intuition en maîtrise sur la fiche, case Intuition des compétences de classe éteinte, option Perception éteinte dans Sens aiguisés. Vitesse retouchée à 12 puis lignage Haut-elfe : vitesse 9 à l'écran et au serveur ; `dnd.json` montre `edited` (12) puis `built` (9), sans envoi en trop. Perception forcée dans Sens aiguisés : « Perception déjà maîtrisée par la classe » affiché, liste remise à Intuition. Rechargement : espèce, lignage, incantation, compétence et valeurs reviennent ; « — » n'est plus proposé. Brin, espèce saisie « Elfe des bois » et vitesse 10.5, puis Classe → Guerrier : espèce et vitesse saisies gardées, « — (saisie libre) » proposé. Humain : Taille « à choisir » (liste M / P), Compétent avec 18 compétences, traits « à choisir »
 - [pass] Task 3 — Taille et traits retouchés survivent au rechargement — Brin : Taille et Traits d'espèce saisis, enregistrés seuls (`GET` : `size` « M (moyenne) », `speciesTraits` saisi), relus identiques après rechargement ; serveurs 8081 et 5174 arrêtés ensuite, 8080 et 5173 intacts
+
+## Phase 4 · Stories des traits non joués et mémoire
+
+- Date: 2026-11-12
+- Validated on: 4fa0005
+
+- [pass] Task 1 — Chaque trait de niveau 1 des 9 espèces est joué, porté par la fiche, hors combat, ou renvoie à une story — `rules/` relu : résistance jouée dans l'attaque mais absente de `CreatureProfile`, aucun jet de sauvegarde au moteur (`Bless` : « non modélisés »), pas d'éclairage ; la tâche `lister-les-capacites-…` liste 26 lignes pour les 9 espèces et leurs options, chacune avec une story (six nouvelles, ordres 14 à 19 ; sorts d'espèce → lanceurs de sorts ; Polyvalent → historique) ou la raison (portée par la fiche, hors combat, niveau 5)
+- [pass] Task 2 — La mémoire nomme chaque nouveau type, champ et route — `architecture.md` : `SpeciesChoice`, `Species`, `SpeciesOption`, `CreatureSize`, `size`, `speciesTraits`, `GET …/dnd/species`, refus d'une compétence déjà maîtrisée ; `codebase-map.md` : les quatre types ; `project-brief.md` : choix de l'espèce ; story au statut `done`
+
+## Final
+
+- Date: 2026-11-12
+- Validated on: 4fa0005
+
+- [pass] `mvn verify` — exit 0, `BUILD SUCCESS` ; `Tests run: 116, Failures: 0` (dnd-engine), `29` (dnd-server), `282` (vtt-server), aucun échec
+- [pass] `npm run build` dans `vtt-web/` — `✓ built`, sans erreur `vue-tsc` (arbre propre, hors `vtt-web/vite.config.ts` et `.mcp.json`, modifications du joueur antérieures à la branche, non committées)

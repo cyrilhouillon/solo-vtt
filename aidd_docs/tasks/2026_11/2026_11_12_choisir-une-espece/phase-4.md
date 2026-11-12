@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: stories des traits non joués et mémoire

@@ -1,6 +1,6 @@
 ---
 objective: "Sur la fiche d'un personnage construit en guidé, le joueur choisit l'une des 9 espèces du SRD 5.2.1 et ses sous-choix ; taille, vitesse et traits s'écrivent sur la fiche, les traits qui changent un calcul (vitesse, PV, compétence) sont recalculés, changer d'espèce les recalcule, et chaque trait que le moteur ne joue pas a sa story."
-status: in-progress
+status: implemented
 ---
 
 # Plan: choisir une espèce en création guidée
