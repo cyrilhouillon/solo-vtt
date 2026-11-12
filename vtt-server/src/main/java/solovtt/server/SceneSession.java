@@ -493,7 +493,7 @@ public class SceneSession {
             entries.put(id, entry);
             if (state.combat().isPresent()) run(JoinCombat.of(state, id), null);
             return token;
-        }, r -> new SavedGame.SavedCommand.Place(entry.id(), x, y, r));
+        }, r -> new SavedGame.SavedCommand.Place(entry.id(), entry.profile() == null ? null : entry.name(), entry.profile(), x, y, r));
     }
 
     /**
@@ -531,11 +531,15 @@ public class SceneSession {
      * combat, et ses créatures sont neuves, aux positions enregistrées. La partie copie la carte en commandes ordinaires
      * (création, grille, calage, poses) et n'en garde le nom qu'à titre d'information. Permis en combat et pendant une décision.
      *
+     * Un personnage joueur est copié de sa fiche maintenant.
+     *
+     * @param catalog le catalogue de la campagne
      * @throws ActionRefusedException si une créature de la carte n'est plus au catalogue ; la carte en cours ne change pas
+     * @throws IllegalArgumentException si la fiche d'un personnage ne peut pas jouer ; la carte en cours ne change pas
      */
-    public synchronized Scene load(SavedMap map) {
+    public synchronized Scene load(SavedMap map, Function<String, Optional<CatalogEntry>> catalog) {
         List<CatalogEntry> toPlace = map.tokens().stream()
-                .map(t -> catalogEntry(t.catalogId()).orElseThrow(() -> new ActionRefusedException(
+                .map(t -> catalog.apply(t.catalogId()).orElseThrow(() -> new ActionRefusedException(
                         "Carte « " + map.name() + " » : créature inconnue au catalogue (" + t.catalogId() + ")")))
                 .toList();
         create(map.width(), map.height(), map.unit(), map.imageId(), map.name());
@@ -615,8 +619,7 @@ public class SceneSession {
             case SavedGame.SavedCommand.Create c -> create(c.width(), c.height(), c.unit(), c.imageId(), c.mapName());
             case SavedGame.SavedCommand.ShowGrid c -> showGrid(c.visible());
             case SavedGame.SavedCommand.AlignGrid c -> alignGrid(c.width(), c.height(), c.offsetX(), c.offsetY());
-            case SavedGame.SavedCommand.Place c -> place(catalogEntry(c.catalogId())
-                    .orElseThrow(() -> new IllegalStateException("Entrée de catalogue inconnue : " + c.catalogId())), c.x(), c.y());
+            case SavedGame.SavedCommand.Place c -> place(placed(c), c.x(), c.y());
             case SavedGame.SavedCommand.Remove c -> remove(c.tokenId());
             case SavedGame.SavedCommand.Move c -> move(c.tokenId(), c.x(), c.y());
             case SavedGame.SavedCommand.Attack c -> attack(c.attackerId(), c.attackId(), c.targetId());
@@ -669,7 +672,10 @@ public class SceneSession {
         }
     }
 
-    public static Optional<CatalogEntry> catalogEntry(String id) {
-        return SrdCatalog.entries().stream().filter(e -> e.id().equals(id)).findFirst();
+    /** L'entrée d'une pose gardée : la copie du personnage qu'elle porte, sinon le monstre du SRD ; jamais une fiche. */
+    private static CatalogEntry placed(SavedGame.SavedCommand.Place c) {
+        if (c.profile() != null) return CatalogEntry.character(c.catalogId(), c.name(), c.profile());
+        return SrdCatalog.entries().stream().filter(e -> e.id().equals(c.catalogId())).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Entrée de catalogue inconnue : " + c.catalogId()));
     }
 }

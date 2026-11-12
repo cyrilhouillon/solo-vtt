@@ -1,5 +1,6 @@
 package solovtt.server;
 
+import dnd.engine.catalog.CatalogEntry;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -12,6 +13,8 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.jboss.resteasy.reactive.ResponseStatus;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
 /** Les cartes enregistrées d'une campagne : enregistrer la carte en cours sous un nom, les lister, en charger une. */
 public class MapResource {
@@ -19,9 +22,12 @@ public class MapResource {
     static final int MAX_NAME_LENGTH = 80;
 
     private final SceneSession session;
+    /** Le catalogue de la campagne, d'où viennent les créatures d'une carte chargée. */
+    private final Function<String, Optional<CatalogEntry>> catalog;
 
-    public MapResource(SceneSession session) {
+    public MapResource(SceneSession session, Function<String, Optional<CatalogEntry>> catalog) {
         this.session = session;
+        this.catalog = catalog;
     }
 
     @GET
@@ -58,14 +64,14 @@ public class MapResource {
     @Path("/load")
     @APIResponse(responseCode = "200", description = "La carte chargée et ses jetons",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dtos.SceneDto.class)))
-    @APIResponse(responseCode = "400", description = "Nom absent ou vide")
+    @APIResponse(responseCode = "400", description = "Nom absent ou vide, ou fiche de personnage qui ne peut pas jouer")
     @APIResponse(responseCode = "404", description = "Aucune carte enregistrée sous ce nom")
     @APIResponse(responseCode = "409", description = "Une créature de la carte n'est plus au catalogue")
     public Dtos.SceneDto load(Dtos.MapNameRequest request) {
         String name = nameOf(request);
         SavedMap map = session.maps().find(name)
                 .orElseThrow(() -> new NotFoundException("Aucune carte enregistrée sous le nom « " + name + " »"));
-        return Dtos.SceneDto.of(session.load(map), session);
+        return Dtos.SceneDto.of(session.load(map, catalog), session);
     }
 
     private static String nameOf(Dtos.MapNameRequest request) {

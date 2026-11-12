@@ -94,7 +94,7 @@ class CombatDeBoutEnBoutTest {
     }
 
     private static dnd.engine.catalog.CatalogEntry entree(String id) {
-        return SceneSession.catalogEntry(id).orElseThrow();
+        return TestCharacters.entry(id);
     }
 
     private static List<String> positions(SceneSession session) {

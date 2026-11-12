@@ -21,7 +21,7 @@ class CampaignSessionsTest {
     private final CampaignStore campaigns = CampaignStore.inMemory();
 
     private static dnd.engine.catalog.CatalogEntry entree(String id) {
-        return SceneSession.catalogEntry(id).orElseThrow();
+        return TestCharacters.entry(id);
     }
 
     @Test
