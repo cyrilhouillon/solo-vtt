@@ -90,7 +90,7 @@ public final class DndDtos {
                     savingThrows, skills == null ? Map.of() : withoutNone(skills),
                     armorClass, hitPointMax, hitPoints, hitDice, speed, initiative,
                     attacks == null ? List.of() : attacks.stream().map(AttackDto::toAttack).toList(),
-                    features, speciesTraits, equipment, proficiencies, languages,
+                    features, speciesTraits, "", equipment, proficiencies, languages,
                     spellSlots == null ? List.of() : spellSlots.stream()
                             .map(s -> new SpellSlots(s.level(), s.max(), s.expended())).toList());
         }
@@ -131,7 +131,7 @@ public final class DndDtos {
         }
 
         SpeciesChoice toChoice() {
-            return new SpeciesChoice(species, size, option, skill, spellcastingAbility);
+            return new SpeciesChoice(species, size, option, skill, spellcastingAbility, null);
         }
     }
 
@@ -163,7 +163,7 @@ public final class DndDtos {
             if (scores.containsKey(null)) throw new IllegalArgumentException("Caractéristique inconnue");
             if (skills.contains(null)) throw new IllegalArgumentException("Compétence inconnue");
             return new Build(characterClass, method, scores, Set.copyOf(skills), fightingStyle, equipment, masteries,
-                    species == null ? null : species.toChoice());
+                    species == null ? null : species.toChoice(), null);
         }
     }
 

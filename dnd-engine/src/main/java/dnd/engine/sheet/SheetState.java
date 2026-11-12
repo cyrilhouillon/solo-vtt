@@ -31,20 +31,23 @@ public record SheetState(CharacterSheet values, Build build, Map<Ability, Intege
      * Les valeurs de la fiche une fois {@code next} appliquée : seuls les champs dont la valeur dérivée change depuis la
      * construction précédente sont réécrits. Une caractéristique prend la valeur de {@code next} si elle a changé de
      * construction en construction, sinon garde la fiche ; CA, attaques, initiative et PV suivent les caractéristiques
-     * qui en sortent, retouches comprises. Une espèce choisie se change, mais ne se retire pas : la fiche garderait son
-     * espèce et ses traits sans les PV qu'elle donne.
+     * qui en sortent, retouches comprises. Une caractéristique se compare augmentations de l'historique comprises. Une espèce
+     * ou un historique choisi se change, mais ne se retire pas : la fiche garderait ce qu'il a écrit sans ce qu'il donne.
      *
-     * @throws IllegalArgumentException si {@code next} retire l'espèce de la construction précédente
+     * @throws IllegalArgumentException si {@code next} retire l'espèce ou l'historique de la construction précédente
      */
     public CharacterSheet rebuild(Build next) {
         if (build != null && build.species() != null && next.species() == null) {
             throw new IllegalArgumentException("Espèce : elle se change, mais ne se retire pas");
         }
+        if (build != null && build.background() != null && next.background() == null) {
+            throw new IllegalArgumentException("Historique : il se change, mais ne se retire pas");
+        }
         GuidedValues before = build == null ? GuidedValues.NONE : GuidedValues.of(build, builtAbilities);
         Map<Ability, Integer> abilities = new EnumMap<>(values.abilities());
         for (Ability ability : Ability.values()) {
-            Integer previous = build == null ? null : build.scores().get(ability);
-            if (!Objects.equals(previous, next.scores().get(ability))) abilities.put(ability, next.scores().get(ability));
+            Integer previous = build == null ? null : build.abilities().get(ability);
+            if (!Objects.equals(previous, next.abilities().get(ability))) abilities.put(ability, next.abilities().get(ability));
         }
         return GuidedValues.of(next, abilities).rebuild(values, before);
     }

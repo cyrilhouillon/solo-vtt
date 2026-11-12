@@ -157,7 +157,7 @@ class SheetResourceTest {
     private static DndDtos.BuildDto guerrier(Set<Skill> skills, StartingEquipment equipment, FightingStyle style) {
         Build base = Build.fighter();
         return DndDtos.BuildDto.of(new Build(base.characterClass(), base.method(), base.scores(), skills, style,
-                equipment, equipment.weapons(), null));
+                equipment, equipment.weapons(), null, null));
     }
 
     private static DndDtos.SheetValuesDto avecCA(DndDtos.SheetValuesDto v, int armorClass) {
@@ -407,7 +407,7 @@ class SheetResourceTest {
         scores.put(Ability.CHARISMA, 12);
         Build base = Build.fighter();
         DndDtos.SheetDto construite = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(new Build(CharacterClass.FIGHTER,
-                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries(), null)));
+                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries(), null, null)));
         assertEquals(scores, construite.values().abilities());
         assertEquals(AbilityMethod.ROLLED, construite.build().method());
         assertEquals(lancee.rolls(), construite.rolls(), "la construction garde les jets");
@@ -590,7 +590,7 @@ class SheetResourceTest {
     private static DndDtos.BuildDto guerrierDeLEspece(SpeciesChoice espece) {
         Build base = Build.fighter();
         return DndDtos.BuildDto.of(new Build(base.characterClass(), base.method(), base.scores(),
-                Set.of(Skill.ATHLETICS, Skill.PERCEPTION), base.fightingStyle(), base.equipment(), base.masteries(), espece));
+                Set.of(Skill.ATHLETICS, Skill.PERCEPTION), base.fightingStyle(), base.equipment(), base.masteries(), espece, null));
     }
 
     @Test
@@ -641,7 +641,7 @@ class SheetResourceTest {
         String avant = donnees.fichiers.get(STRAHD + "/dnd");
 
         var refus = assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria,
-                guerrierDeLEspece(new SpeciesChoice(Species.DWARF, null, SpeciesOption.DROW, null, null))));
+                guerrierDeLEspece(new SpeciesChoice(Species.DWARF, null, SpeciesOption.DROW, null, null, null))));
 
         assertEquals("Nain : Drow n’est pas une option de l’espèce", refus.getMessage());
         assertEquals(avant, donnees.fichiers.get(STRAHD + "/dnd"));

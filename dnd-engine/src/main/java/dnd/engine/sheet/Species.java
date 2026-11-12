@@ -35,8 +35,7 @@ public enum Species {
                     "Discrétion naturelle : Furtivité possible dans l’ombre d’une créature plus grande d’au moins une taille")),
     HUMAN("Humain", List.of(CreatureSize.MEDIUM, CreatureSize.SMALL), 9, 0, 0, EnumSet.allOf(Skill.class), "Compétent",
             false, null,
-            List.of("Ingénieux : Inspiration héroïque à chaque Repos long",
-                    "Polyvalent : un don d’origine au choix (Doué recommandé)")),
+            List.of("Ingénieux : Inspiration héroïque à chaque Repos long")),
     ORC("Orc", List.of(CreatureSize.MEDIUM), 9, 36, 0, Set.of(), null, false, null,
             List.of("Acharnement : tombé à 0 PV sans être tué, vous restez à 1 PV ; une fois par Repos long",
                     "Poussée d’adrénaline : action Pointe en action Bonus, et autant de PV temporaires que le bonus de maîtrise ; "
@@ -116,6 +115,11 @@ public enum Species {
     /** Les traits de niveau 1 qui ne dépendent d'aucun choix, un par ligne (« Nom : résumé »). */
     public List<String> traits() {
         return traits;
+    }
+
+    /** L'espèce choisit-elle un don d'origines (Polyvalent de l'Humain). */
+    public boolean choosesOriginFeat() {
+        return this == HUMAN;
     }
 
     /** Les options du trait {@link #optionLabel()}, vide sans option. */

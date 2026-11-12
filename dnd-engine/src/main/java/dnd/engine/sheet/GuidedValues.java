@@ -11,9 +11,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Ce qu'une construction guidée écrit sur la fiche, champ par champ (SRD 5.2.1, niveau 1). Historique, langues et
- * emplacements de sort n'en dérivent pas : ils restent au joueur. Espèce, taille, vitesse et traits d'espèce valent
- * {@code null} tant que la construction n'a pas d'espèce : la fiche garde alors ce que le joueur y a saisi.
+ * Ce qu'une construction guidée écrit sur la fiche, champ par champ (SRD 5.2.1, niveau 1). Langues et emplacements de
+ * sort n'en dérivent pas : ils restent au joueur. Espèce, taille, vitesse et traits d'espèce valent {@code null} tant que
+ * la construction n'a pas d'espèce, historique tant qu'elle n'a pas d'historique, dons tant qu'elle n'a ni historique ni
+ * Polyvalent : la fiche garde alors ce que le joueur y a saisi.
  *
  * <p>{@link #rebuild} ne réécrit que les champs dont la valeur dérivée a changé depuis la construction précédente : une
  * retouche du joueur survit tant que le choix dont elle dépend ne change pas.</p>
@@ -22,11 +23,12 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
                            Set<Ability> savingThrows, Map<Skill, Proficiency> skills,
                            int armorClass, int hitPointMax, int hitPoints, String hitDice, int initiative,
                            List<SheetAttack> attacks, String features, String equipment, String proficiencies,
-                           String species, String size, Double speed, String speciesTraits) {
+                           String species, String size, Double speed, String speciesTraits,
+                           String background, String feats) {
 
     /** Aucune construction précédente : {@link #rebuild} réécrit tous les champs dérivés. */
     public static final GuidedValues NONE = new GuidedValues("", 0, 0, Map.of(), Set.of(), Map.of(),
-            0, 0, 0, "", 0, List.of(), "", "", "", null, null, null, null);
+            0, 0, 0, "", 0, List.of(), "", "", "", null, null, null, null, null, null);
 
     private static final int LEVEL = 1;
     private static final int PROFICIENCY_BONUS = 2;
@@ -60,26 +62,39 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
         int con = modifier(abilities.get(Ability.CONSTITUTION));
 
         SpeciesChoice species = build.species();
-        Skill speciesSkill = species == null ? null : species.skill();
+        BackgroundChoice background = build.background();
+        Set<Skill> granted = EnumSet.noneOf(Skill.class);
+        granted.addAll(build.skills());
+        granted.addAll(build.backgroundSkills());
+        if (species != null) granted.addAll(species.grantedSkills());
         Map<Skill, Proficiency> skills = new EnumMap<>(Skill.class);
-        for (Skill skill : Skill.values()) {
-            boolean proficient = build.skills().contains(skill) || skill == speciesSkill;
-            skills.put(skill, proficient ? Proficiency.PROFICIENT : Proficiency.NONE);
-        }
+        for (Skill skill : Skill.values()) skills.put(skill, granted.contains(skill) ? Proficiency.PROFICIENT : Proficiency.NONE);
         int hitPoints = characterClass.hitDie() + con + (species == null ? 0 : species.species().hitPointsPerLevel() * LEVEL);
-        List<SheetAttack> attacks = build.equipment().weapons().stream()
-                .map(weapon -> attack(weapon, str, dex, build.fightingStyle()))
-                .toList();
 
-        return new GuidedValues(characterClass.label(), LEVEL, PROFICIENCY_BONUS, build.scores(),
+        // Les armes de l'historique suivent celles de la classe, sans doublon.
+        List<SrdWeapon> weapons = new ArrayList<>(build.equipment().weapons());
+        if (background != null) background.weapons().stream().filter(w -> !weapons.contains(w)).forEach(weapons::add);
+        List<SheetAttack> attacks = weapons.stream().map(weapon -> attack(weapon, str, dex, build.fightingStyle())).toList();
+
+        List<OriginFeatChoice> feats = new ArrayList<>();
+        if (background != null) feats.add(background.feat());
+        if (species != null && species.originFeat() != null) feats.add(species.originFeat());
+        boolean alert = feats.stream().anyMatch(feat -> feat.feat() == OriginFeat.ALERT);
+
+        return new GuidedValues(characterClass.label(), LEVEL, PROFICIENCY_BONUS, build.abilities(),
                 EnumSet.copyOf(characterClass.savingThrows()), skills,
                 armorClass(build.equipment(), dex, build.fightingStyle()), hitPoints, hitPoints,
-                "1d" + characterClass.hitDie(), dex, attacks,
-                features(build), build.equipment().text(), characterClass.proficiencies(),
+                "1d" + characterClass.hitDie(), dex + (alert ? PROFICIENCY_BONUS : 0), attacks,
+                features(build),
+                background == null ? build.equipment().text() : build.equipment().text() + "\n" + background.equipmentText(),
+                background == null ? characterClass.proficiencies()
+                        : characterClass.proficiencies() + "\nOutils : " + background.toolText(),
                 species == null ? null : species.species().label(),
                 species == null ? null : species.sizeText(),
                 species == null ? null : species.speed(),
-                species == null ? null : species.traitsText());
+                species == null ? null : species.traitsText(),
+                background == null ? null : background.background().label(),
+                feats.isEmpty() ? null : feats.stream().map(OriginFeatChoice::text).collect(Collectors.joining("\n")));
     }
 
     /**
@@ -115,7 +130,7 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
                 pick(previous, GuidedValues::level, sheet.level()),
                 pick(previous, GuidedValues::species, sheet.species()),
                 pick(previous, GuidedValues::size, sheet.size()),
-                sheet.background(), abilities,
+                pick(previous, GuidedValues::background, sheet.background()), abilities,
                 pick(previous, GuidedValues::proficiencyBonus, sheet.proficiencyBonus()),
                 saves, skills,
                 pick(previous, GuidedValues::armorClass, sheet.armorClass()),
@@ -127,6 +142,7 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
                 pick(previous, GuidedValues::attacks, sheet.attacks()),
                 pick(previous, GuidedValues::features, sheet.features()),
                 pick(previous, GuidedValues::speciesTraits, sheet.speciesTraits()),
+                pick(previous, GuidedValues::feats, sheet.feats()),
                 pick(previous, GuidedValues::equipment, sheet.equipment()),
                 pick(previous, GuidedValues::proficiencies, sheet.proficiencies()),
                 sheet.languages(), sheet.spellSlots());
