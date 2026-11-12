@@ -241,4 +241,40 @@ class BackgroundChoiceTest {
         assertDoesNotThrow(() -> guerrier(ACROBATIES_PERCEPTION).withBackground(soldat).validate(List.of()));
         assertFalse(Build.fighter().withBackground(BackgroundChoice.of(Background.SAGE)).abilities().isEmpty());
     }
+    @Test
+    void polyvalent_neReprendPasLeDonDeLHistorique_saufDoueOuUneAutreListe() {
+        Build base = guerrier(ACROBATIES_PERCEPTION);
+        BackgroundChoice criminel = new BackgroundChoice(Background.CRIMINAL,
+                augmentations(Ability.DEXTERITY, 2, Ability.CONSTITUTION, 1), BackgroundEquipment.A, null, null);
+        assertEquals("Polyvalent : Vigilant déjà donné par l’historique", refus(base.withBackground(criminel)
+                .withSpecies(SpeciesChoice.of(Species.HUMAN).withOriginFeat(OriginFeatChoice.of(OriginFeat.ALERT)))));
+        assertEquals("Polyvalent : Sauvagerie martiale déjà donné par l’historique", refus(base
+                .withBackground(soldat(BackgroundEquipment.A, GamingSet.DICE))
+                .withSpecies(SpeciesChoice.of(Species.HUMAN).withOriginFeat(OriginFeatChoice.of(OriginFeat.SAVAGE_ATTACKER)))));
+
+        BackgroundChoice acolyte = new BackgroundChoice(Background.ACOLYTE,
+                augmentations(Ability.WISDOM, 2, Ability.CHARISMA, 1), BackgroundEquipment.A, null, null);
+        assertEquals("Polyvalent : Initié à la magie (Clerc) déjà donné par l’historique ; choisir une autre liste",
+                refus(base.withBackground(acolyte).withSpecies(SpeciesChoice.of(Species.HUMAN).withOriginFeat(
+                        new OriginFeatChoice(OriginFeat.MAGIC_INITIATE, SpellList.CLERIC, null, Set.of())))));
+        assertDoesNotThrow(() -> base.withBackground(acolyte).withSpecies(SpeciesChoice.of(Species.HUMAN).withOriginFeat(
+                new OriginFeatChoice(OriginFeat.MAGIC_INITIATE, SpellList.DRUID, null, Set.of()))).validate(List.of()));
+        assertDoesNotThrow(() -> base.withBackground(acolyte).withSpecies(SpeciesChoice.of(Species.HUMAN).withOriginFeat(
+                OriginFeatChoice.of(OriginFeat.MAGIC_INITIATE))).validate(List.of()));
+    }
+
+    @Test
+    void unDonDePolyvalentRetire_videLesDons_commeLInitiative() {
+        Build vigilant = guerrier(ACROBATIES_PERCEPTION)
+                .withSpecies(SpeciesChoice.of(Species.HUMAN).withOriginFeat(OriginFeatChoice.of(OriginFeat.ALERT)));
+        SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
+                new SheetEvent.SheetBuilt(vigilant, construite(vigilant))));
+
+        for (Build sansDon : List.of(guerrier(ACROBATIES_PERCEPTION).withSpecies(SpeciesChoice.of(Species.HUMAN)),
+                guerrier(ACROBATIES_PERCEPTION).withSpecies(SpeciesChoice.of(Species.DWARF)))) {
+            CharacterSheet fiche = etat.rebuild(sansDon);
+            assertEquals("", fiche.feats());
+            assertEquals(2, fiche.initiative());
+        }
+    }
 }

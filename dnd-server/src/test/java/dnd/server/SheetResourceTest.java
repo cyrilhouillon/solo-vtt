@@ -779,7 +779,8 @@ class SheetResourceTest {
         assertTrue(valide.contains(augmentations), valide);
 
         for (String tronquee : List.of(valide.replace(historique, "\"background\":{"),
-                valide.replace(augmentations, "\"increases\":{}"))) {
+                valide.replace(augmentations, "\"increases\":{}"),
+                valide.replace(augmentations, "\"increases\":{\"STRENGTH\":null,\"CONSTITUTION\":1}"))) {
             donnees.fichiers.put(STRAHD + "/dnd", tronquee);
 
             var refus = assertThrows(ClientErrorException.class, () -> dnd().read(STRAHD, aria));

@@ -29,6 +29,7 @@ import dnd.engine.state.DamageType;
 
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -140,7 +141,7 @@ public final class DndDtos {
 
         OriginFeatChoice toChoice() {
             if (skills != null && skills.stream().anyMatch(Objects::isNull)) throw new IllegalArgumentException("Compétence inconnue");
-            return new OriginFeatChoice(feat, spellList, spellcastingAbility, skills == null ? Set.of() : Set.copyOf(skills));
+            return new OriginFeatChoice(feat, spellList, spellcastingAbility, skills == null ? Set.of() : new HashSet<>(skills));
         }
     }
 
@@ -208,7 +209,7 @@ public final class DndDtos {
             if (masteries == null) throw new IllegalArgumentException("Une construction porte ses Bottes d'arme");
             if (scores.containsKey(null)) throw new IllegalArgumentException("Caractéristique inconnue");
             if (skills.contains(null)) throw new IllegalArgumentException("Compétence inconnue");
-            return new Build(characterClass, method, scores, Set.copyOf(skills), fightingStyle, equipment, masteries,
+            return new Build(characterClass, method, scores, new HashSet<>(skills), fightingStyle, equipment, masteries,
                     species == null ? null : species.toChoice(), background == null ? null : background.toChoice());
         }
     }
@@ -238,11 +239,13 @@ public final class DndDtos {
     /**
      * Une espèce pour la création guidée : ses tailles (prise d'office s'il n'y en a qu'une), sa vitesse en mètres, le
      * trait dont on choisit une option et ses options, les compétences au choix et le trait qui les donne, les
-     * caractéristiques d'incantation au choix (vide si elle n'en choisit pas), et ses traits qui ne dépendent d'aucun choix.
+     * caractéristiques d'incantation au choix (vide si elle n'en choisit pas), si elle choisit un don d'origines
+     * (Polyvalent), et ses traits qui ne dépendent d'aucun choix.
      */
     public record SpeciesOptionsDto(String id, String label, List<ChoiceDto> sizes, double speed, String optionLabel,
                                     List<DescribedChoiceDto> options, String skillTrait, List<ChoiceDto> skillChoices,
-                                    List<ChoiceDto> spellcastingAbilities, List<String> traits) {
+                                    List<ChoiceDto> spellcastingAbilities, boolean choosesOriginFeat,
+                                    List<String> traits) {
 
         static SpeciesOptionsDto of(Species species) {
             return new SpeciesOptionsDto(species.name(), species.label(),
@@ -257,7 +260,7 @@ public final class DndDtos {
                             ? SpeciesChoice.SPELLCASTING_ABILITIES.stream()
                                     .map(ability -> new ChoiceDto(ability.name(), ability.label())).toList()
                             : List.of(),
-                    species.traits());
+                    species.choosesOriginFeat(), species.traits());
         }
     }
 

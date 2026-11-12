@@ -13,6 +13,7 @@ import {
   type BackgroundOptions,
   type Build,
   type ClassOptions,
+  type OriginFeatChoice,
   type OriginFeatOptions,
   type Skill,
   type SpeciesChoice,
@@ -256,6 +257,15 @@ function takenForFeat(skill: Skill) {
   return !!shown.value?.skills.includes(skill) || backgroundSkills.value.includes(skill) || speciesSkill.value === skill
 }
 
+/** Le don de l'historique, que Polyvalent ne reprend pas (SRD « Feats ») sauf Doué, répétable. */
+function takenFeat(feat: string) {
+  return feat === background.value?.feat.id && feat !== 'SKILLED' && feat !== 'MAGIC_INITIATE'
+}
+/** La liste d'Initié à la magie de l'historique, que Polyvalent ne reprend pas. */
+function takenSpellList(list: string) {
+  return versatile.value?.feat === background.value?.feat.id && list === background.value?.spellList?.id
+}
+
 /** Un don de Polyvalent choisi part sans sous-choix ; '' le remet à choisir. */
 function chooseFeat(id: string) {
   const current = shown.value?.species
@@ -279,6 +289,17 @@ function toggleFeatSkill(skill: Skill, checked: boolean) {
 }
 
 /**
+ * Le don de Polyvalent sous un nouvel historique : sans les compétences qu'il donne ; le même don que le sien repasse à
+ * choisir, et Initié à la magie perd la même liste.
+ */
+function versatileAfter(feat: OriginFeatChoice | null, b: BackgroundOptions, given: Set<Skill>): OriginFeatChoice | null {
+  if (!feat) return null
+  if (feat.feat === b.feat.id && feat.feat !== 'SKILLED' && feat.feat !== 'MAGIC_INITIATE') return null
+  const spellList = feat.feat === b.feat.id && feat.spellList === b.spellList?.id ? null : feat.spellList
+  return { ...feat, spellList, skills: feat.skills.filter((s) => !given.has(s)) }
+}
+
+/**
  * Un historique choisi part avec +1 aux trois et l'équipement A, ses autres choix à faire ; les compétences de classe,
  * d'espèce ou de Doué qu'il donne repassent à choisir.
  */
@@ -291,10 +312,7 @@ function chooseBackground(id: string) {
   const species = build.species && {
     ...build.species,
     skill: build.species.skill && given.has(build.species.skill) ? null : build.species.skill,
-    originFeat: build.species.originFeat && {
-      ...build.species.originFeat,
-      skills: build.species.originFeat.skills.filter((s) => !given.has(s)),
-    },
+    originFeat: versatileAfter(build.species.originFeat, b, given),
   }
   send({
     skills: build.skills.filter((s) => !given.has(s)),
@@ -412,12 +430,13 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
                 </select>
               </label>
             </div>
-            <template v-if="species.id === 'HUMAN'">
+            <template v-if="species.choosesOriginFeat">
               <label class="row">
                 Polyvalent
                 <select :value="versatile?.feat ?? ''" @change="chooseFeat(($event.target as HTMLSelectElement).value)">
                   <option value="">à choisir</option>
-                  <option v-for="f in featList" :key="f.id" :value="f.id">{{ f.label }}</option>
+                  <!-- Un don ne se prend qu'une fois : celui de l'historique est éteint, sauf Doué et Initié (autre liste). -->
+                  <option v-for="f in featList" :key="f.id" :value="f.id" :disabled="takenFeat(f.id)">{{ f.label }}</option>
                 </select>
               </label>
               <p v-if="versatileFeat" class="muted text">{{ versatileFeat.text }}</p>
@@ -426,7 +445,9 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
                   Liste de sorts
                   <select :value="versatile.spellList ?? ''" @change="setFeat('spellList', ($event.target as HTMLSelectElement).value)">
                     <option value="">à choisir</option>
-                    <option v-for="l in versatileFeat.spellLists" :key="l.id" :value="l.id">{{ l.label }}</option>
+                    <option v-for="l in versatileFeat.spellLists" :key="l.id" :value="l.id" :disabled="takenSpellList(l.id)">
+                      {{ l.label }}
+                    </option>
                   </select>
                 </label>
                 <label class="row">

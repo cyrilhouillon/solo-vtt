@@ -118,7 +118,8 @@ final class SheetStore {
                     && (stored.species() == null || stored.species().originFeat() == null
                         || stored.species().originFeat().feat() != null)
                     && (stored.background() == null || stored.background().background() != null
-                        && !stored.background().increases().isEmpty() && stored.background().equipment() != null);
+                        && !stored.background().increases().isEmpty() && !stored.background().increases().containsValue(null)
+                        && stored.background().equipment() != null);
             if (!complete) throw new IllegalStateException("Construction de fiche incomplète");
             return stored;
         }

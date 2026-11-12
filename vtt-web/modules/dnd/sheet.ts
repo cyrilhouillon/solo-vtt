@@ -221,6 +221,8 @@ export interface SpeciesOptions {
   skillChoices: { id: Skill; label: string }[]
   /** Les caractéristiques d'incantation au choix, vide si l'espèce n'en choisit pas. */
   spellcastingAbilities: { id: Ability; label: string }[]
+  /** L'espèce choisit-elle un don d'origines (Polyvalent de l'Humain). */
+  choosesOriginFeat: boolean
   traits: string[]
 }
 

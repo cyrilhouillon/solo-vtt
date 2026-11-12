@@ -93,5 +93,24 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
             throw new IllegalArgumentException("Bottes d'arme : %d types d'arme différents".formatted(characterClass.masteryCount()));
         }
         if (species != null) species.validate(skills, backgroundSkills());
+        if (species != null && species.originFeat() != null && background != null) {
+            checkDistinctFeats(background.feat(), species.originFeat());
+        }
+    }
+
+    /**
+     * Un don ne se prend qu'une fois (SRD 5.2.1, « Feats ») : Polyvalent ne reprend pas celui de l'historique. Doué est
+     * répétable ; Initié à la magie aussi, avec une autre liste de sorts.
+     */
+    private static void checkDistinctFeats(OriginFeatChoice fromBackground, OriginFeatChoice versatile) {
+        OriginFeat feat = versatile.feat();
+        if (feat != fromBackground.feat() || feat == OriginFeat.SKILLED) return;
+        if (feat != OriginFeat.MAGIC_INITIATE) {
+            throw new IllegalArgumentException("Polyvalent : %s déjà donné par l’historique".formatted(feat.label()));
+        }
+        if (versatile.spellList() == fromBackground.spellList()) {
+            throw new IllegalArgumentException("Polyvalent : %s (%s) déjà donné par l’historique ; choisir une autre liste"
+                    .formatted(feat.label(), fromBackground.spellList().label()));
+        }
     }
 }

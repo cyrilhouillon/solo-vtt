@@ -44,9 +44,9 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
         attacks = List.copyOf(attacks);
     }
 
-    /** Les valeurs qu'une construction donne à une fiche qui porte ses valeurs de caractéristique telles quelles. */
+    /** Les valeurs qu'une construction donne à une fiche qui porte ses valeurs de caractéristique, augmentations comprises. */
     public static GuidedValues of(Build build) {
-        return of(build, build.scores());
+        return of(build, build.abilities());
     }
 
     /**
@@ -142,7 +142,7 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
                 pick(previous, GuidedValues::attacks, sheet.attacks()),
                 pick(previous, GuidedValues::features, sheet.features()),
                 pick(previous, GuidedValues::speciesTraits, sheet.speciesTraits()),
-                pick(previous, GuidedValues::feats, sheet.feats()),
+                pickWithdrawn(previous, GuidedValues::feats, sheet.feats()),
                 pick(previous, GuidedValues::equipment, sheet.equipment()),
                 pick(previous, GuidedValues::proficiencies, sheet.proficiencies()),
                 sheet.languages(), sheet.spellSlots());
@@ -155,6 +155,15 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
     private <T> T pick(GuidedValues previous, Function<GuidedValues, T> field, T onSheet) {
         T derived = field.apply(this);
         return derived != null && changed(previous, field) ? derived : onSheet;
+    }
+
+    /**
+     * Comme {@link #pick}, mais un texte que la construction précédente dérivait et que celle-ci ne dérive plus (don de
+     * Polyvalent retiré) est vidé, plutôt que gardé sur la fiche.
+     */
+    private String pickWithdrawn(GuidedValues previous, Function<GuidedValues, String> field, String onSheet) {
+        boolean withdrawn = field.apply(this) == null && previous != null && field.apply(previous) != null;
+        return withdrawn ? "" : pick(previous, field, onSheet);
     }
 
     private boolean changed(GuidedValues previous, Function<GuidedValues, ?> field) {
