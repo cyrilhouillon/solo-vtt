@@ -82,11 +82,11 @@ public final class DndDtos {
          * @throws IllegalArgumentException si une valeur est hors bornes, avec la raison
          */
         CharacterSheet toSheet() {
-            return new CharacterSheet(className, level, species, background, abilities, proficiencyBonus,
+            return new CharacterSheet(className, level, species, "", background, abilities, proficiencyBonus,
                     savingThrows, skills == null ? Map.of() : withoutNone(skills),
                     armorClass, hitPointMax, hitPoints, hitDice, speed, initiative,
                     attacks == null ? List.of() : attacks.stream().map(AttackDto::toAttack).toList(),
-                    features, equipment, proficiencies, languages,
+                    features, "", equipment, proficiencies, languages,
                     spellSlots == null ? List.of() : spellSlots.stream()
                             .map(s -> new SpellSlots(s.level(), s.max(), s.expended())).toList());
         }
@@ -142,7 +142,7 @@ public final class DndDtos {
             if (masteries == null) throw new IllegalArgumentException("Une construction porte ses Bottes d'arme");
             if (scores.containsKey(null)) throw new IllegalArgumentException("Caractéristique inconnue");
             if (skills.contains(null)) throw new IllegalArgumentException("Compétence inconnue");
-            return new Build(characterClass, method, scores, Set.copyOf(skills), fightingStyle, equipment, masteries);
+            return new Build(characterClass, method, scores, Set.copyOf(skills), fightingStyle, equipment, masteries, null);
         }
     }
 

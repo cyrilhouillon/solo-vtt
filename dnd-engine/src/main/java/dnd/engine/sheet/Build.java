@@ -10,11 +10,12 @@ import java.util.Set;
 
 /**
  * Les choix de la création guidée d'un personnage : classe, méthode et valeurs de caractéristique, compétences, Style de
- * combat, équipement de départ et Bottes d'arme. Le record n'impose rien : {@link #validate} dit ce qui est impossible.
+ * combat, équipement de départ, Bottes d'arme et espèce ({@code null} tant qu'elle n'est pas choisie). Le record n'impose
+ * rien : {@link #validate} dit ce qui est impossible.
  */
 public record Build(CharacterClass characterClass, AbilityMethod method, Map<Ability, Integer> scores,
                     Set<Skill> skills, FightingStyle fightingStyle, StartingEquipment equipment,
-                    List<SrdWeapon> masteries) {
+                    List<SrdWeapon> masteries, SpeciesChoice species) {
 
     public Build {
         scores = scores == null || scores.isEmpty() ? Map.of() : Collections.unmodifiableMap(new EnumMap<>(scores));
@@ -27,7 +28,12 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
         CharacterClass fighter = CharacterClass.FIGHTER;
         StartingEquipment equipment = StartingEquipment.FIGHTER_A;
         return new Build(fighter, AbilityMethod.STANDARD_ARRAY, fighter.suggestedScores(), Set.of(),
-                FightingStyle.DEFENSE, equipment, equipment.weapons());
+                FightingStyle.DEFENSE, equipment, equipment.weapons(), null);
+    }
+
+    /** Cette construction, avec cette espèce. */
+    public Build withSpecies(SpeciesChoice species) {
+        return new Build(characterClass, method, scores, skills, fightingStyle, equipment, masteries, species);
     }
 
     /** La construction d'où part une classe quand le joueur la choisit. */
@@ -63,5 +69,6 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
         if (masteries.size() != characterClass.masteryCount() || Set.copyOf(masteries).size() != masteries.size()) {
             throw new IllegalArgumentException("Bottes d'arme : %d types d'arme différents".formatted(characterClass.masteryCount()));
         }
+        if (species != null) species.validate(skills);
     }
 }

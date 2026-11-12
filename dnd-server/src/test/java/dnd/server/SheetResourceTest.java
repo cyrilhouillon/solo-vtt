@@ -153,7 +153,7 @@ class SheetResourceTest {
     private static DndDtos.BuildDto guerrier(Set<Skill> skills, StartingEquipment equipment, FightingStyle style) {
         Build base = Build.fighter();
         return DndDtos.BuildDto.of(new Build(base.characterClass(), base.method(), base.scores(), skills, style,
-                equipment, equipment.weapons()));
+                equipment, equipment.weapons(), null));
     }
 
     private static DndDtos.SheetValuesDto avecCA(DndDtos.SheetValuesDto v, int armorClass) {
@@ -403,7 +403,7 @@ class SheetResourceTest {
         scores.put(Ability.CHARISMA, 12);
         Build base = Build.fighter();
         DndDtos.SheetDto construite = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(new Build(CharacterClass.FIGHTER,
-                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries())));
+                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries(), null)));
         assertEquals(scores, construite.values().abilities());
         assertEquals(AbilityMethod.ROLLED, construite.build().method());
         assertEquals(lancee.rolls(), construite.rolls(), "la construction garde les jets");

@@ -20,7 +20,7 @@ class GuidedValuesTest {
     private static Build guerrier(StartingEquipment equipement, FightingStyle style) {
         Build base = Build.fighter();
         return new Build(base.characterClass(), base.method(), base.scores(), ATHLETISME_PERCEPTION, style,
-                equipement, base.masteries());
+                equipement, base.masteries(), null);
     }
 
     private static CharacterSheet construite(Build build) {
@@ -29,9 +29,9 @@ class GuidedValuesTest {
 
     /** La fiche avec une CA, des PV max ou des compétences retouchés à la main. */
     private static CharacterSheet retouchee(CharacterSheet f, int armorClass, int hitPointMax, Map<Skill, Proficiency> skills) {
-        return new CharacterSheet(f.className(), f.level(), f.species(), f.background(), f.abilities(), f.proficiencyBonus(),
+        return new CharacterSheet(f.className(), f.level(), f.species(), f.size(), f.background(), f.abilities(), f.proficiencyBonus(),
                 f.savingThrows(), skills, armorClass, hitPointMax, f.hitPoints(), f.hitDice(), f.speed(),
-                f.initiative(), f.attacks(), f.features(), f.equipment(), f.proficiencies(), f.languages(), f.spellSlots());
+                f.initiative(), f.attacks(), f.features(), f.speciesTraits(), f.equipment(), f.proficiencies(), f.languages(), f.spellSlots());
     }
 
     @Test
@@ -97,7 +97,7 @@ class GuidedValuesTest {
         echangees.put(Ability.CONSTITUTION, 8);
         echangees.put(Ability.INTELLIGENCE, 13);
         Build apres = new Build(avant.characterClass(), avant.method(), echangees, avant.skills(),
-                avant.fightingStyle(), avant.equipment(), avant.masteries());
+                avant.fightingStyle(), avant.equipment(), avant.masteries(), null);
         CharacterSheet fiche = construite(avant);
         Map<Skill, Proficiency> expertise = new HashMap<>(fiche.skills());
         expertise.put(Skill.PERCEPTION, Proficiency.EXPERTISE);
@@ -110,5 +110,94 @@ class GuidedValuesTest {
         assertEquals(13, recalculee.abilities().get(Ability.INTELLIGENCE));
         assertEquals(9, recalculee.hitPointMax(), "d10 + Con −1");
         assertEquals(9, recalculee.hitPoints());
+    }
+
+    private static Build guerrierA(SpeciesChoice espece) {
+        return guerrier(StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE).withSpecies(espece);
+    }
+
+    private static CharacterSheet vitesse(CharacterSheet f, String espece, double speed) {
+        return new CharacterSheet(f.className(), f.level(), espece, f.size(), f.background(), f.abilities(), f.proficiencyBonus(),
+                f.savingThrows(), f.skills(), f.armorClass(), f.hitPointMax(), f.hitPoints(), f.hitDice(), speed,
+                f.initiative(), f.attacks(), f.features(), f.speciesTraits(), f.equipment(), f.proficiencies(), f.languages(),
+                f.spellSlots());
+    }
+
+    @Test
+    void unNain_ecritSonEspece_saTaille_saVitesse_sesTraits_etUnPVDePlus() {
+        CharacterSheet fiche = construite(guerrierA(SpeciesChoice.of(Species.DWARF)));
+
+        assertEquals("Nain", fiche.species());
+        assertEquals("M (moyenne)", fiche.size());
+        assertEquals(9, fiche.speed());
+        assertEquals(12, fiche.hitPointMax(), "d10 + Con 1 + Ténacité naine 1");
+        assertEquals(12, fiche.hitPoints());
+        assertTrue(fiche.speciesTraits().startsWith("Vision dans le noir : 36 m"), fiche.speciesTraits());
+        assertTrue(fiche.speciesTraits().contains("Résistance naine"), fiche.speciesTraits());
+        assertTrue(fiche.speciesTraits().contains("Ténacité naine"), fiche.speciesTraits());
+    }
+
+    @Test
+    void unElfeSylvestre_aSaVitesse_etSaCompetence() {
+        CharacterSheet fiche = construite(guerrierA(
+                new SpeciesChoice(Species.ELF, null, SpeciesOption.WOOD_ELF, Skill.INSIGHT, Ability.WISDOM)));
+
+        assertEquals(10.5, fiche.speed());
+        assertEquals(11, fiche.hitPointMax());
+        assertEquals(Proficiency.PROFICIENT, fiche.proficiency(Skill.INSIGHT));
+        assertTrue(fiche.speciesTraits().contains("Lignage elfique : Elfe sylvestre — Vitesse portée à 10,50 m ; sort mineur druidisme"),
+                fiche.speciesTraits());
+        assertTrue(fiche.speciesTraits().contains("Caractéristique d’incantation : Sagesse"), fiche.speciesTraits());
+    }
+
+    @Test
+    void unGoliathSansAscendance_etUnHumainSansSousChoix_disentCeQuiResteAChoisir() {
+        CharacterSheet goliath = construite(guerrierA(SpeciesChoice.of(Species.GOLIATH)));
+        assertEquals(10.5, goliath.speed());
+        assertTrue(goliath.speciesTraits().contains("Ascendance gigante : à choisir"), goliath.speciesTraits());
+
+        CharacterSheet humain = construite(guerrierA(SpeciesChoice.of(Species.HUMAN)));
+        assertEquals("M ou P (à choisir)", humain.size());
+        assertTrue(humain.speciesTraits().contains("Compétent : une compétence au choix (à choisir)"), humain.speciesTraits());
+        assertTrue(humain.speciesTraits().contains("Polyvalent : un don d’origine au choix"), humain.speciesTraits());
+    }
+
+    @Test
+    void passerDeNainAHautElfe_gardeLaVitesseRetouchee_etRecalculeTraitsEtPV() {
+        Build nain = guerrierA(SpeciesChoice.of(Species.DWARF));
+        Build hautElfe = guerrierA(new SpeciesChoice(Species.ELF, null, SpeciesOption.HIGH_ELF, null, null));
+        CharacterSheet fiche = vitesse(construite(nain), "Nain", 12);
+
+        CharacterSheet recalculee = GuidedValues.of(hautElfe).rebuild(fiche, GuidedValues.of(nain));
+
+        assertEquals(12, recalculee.speed(), "9 → 9 : la valeur dérivée ne change pas");
+        assertEquals("Elfe", recalculee.species());
+        assertEquals(11, recalculee.hitPointMax());
+        assertEquals(11, recalculee.hitPoints());
+        assertTrue(recalculee.speciesTraits().contains("Lignage elfique : Haut-elfe"), recalculee.speciesTraits());
+    }
+
+    @Test
+    void passerDElfeSylvestreANain_reecritLaVitesse_etRetireLaCompetenceDEspece() {
+        Build elfe = guerrierA(new SpeciesChoice(Species.ELF, null, SpeciesOption.WOOD_ELF, Skill.INSIGHT, null));
+        Build nain = guerrierA(SpeciesChoice.of(Species.DWARF));
+
+        CharacterSheet recalculee = GuidedValues.of(nain).rebuild(construite(elfe), GuidedValues.of(elfe));
+
+        assertEquals(9, recalculee.speed());
+        assertEquals(Proficiency.NONE, recalculee.proficiency(Skill.INSIGHT));
+        assertEquals(Proficiency.PROFICIENT, recalculee.proficiency(Skill.PERCEPTION), "compétence de la classe gardée");
+    }
+
+    @Test
+    void uneConstructionSansEspece_gardeEspeceEtVitesseSaisies() {
+        CharacterSheet saisie = vitesse(CharacterSheet.blank(), "Elfe des bois", 10.5);
+
+        CharacterSheet fiche = GuidedValues.of(guerrierA(null)).rebuild(saisie, GuidedValues.NONE);
+
+        assertEquals("Elfe des bois", fiche.species());
+        assertEquals(10.5, fiche.speed());
+        assertEquals("", fiche.speciesTraits());
+        assertEquals("Guerrier", fiche.className());
     }
 }
