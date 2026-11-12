@@ -126,6 +126,8 @@ export interface ClassOptions {
   standardScores: number[]
   pointBuyCosts: Record<string, number>
   pointBuyBudget: number
+  /** La construction d'où part la classe quand le joueur la choisit. */
+  defaultBuild: Build
 }
 
 /**

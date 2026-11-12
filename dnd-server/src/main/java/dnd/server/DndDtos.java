@@ -171,7 +171,8 @@ public final class DndDtos {
     public record ClassOptionsDto(String id, String label, List<ChoiceDto> skillChoices, int skillCount,
                                   List<DescribedChoiceDto> fightingStyles, List<DescribedChoiceDto> equipments,
                                   List<WeaponChoiceDto> weapons, int masteryCount, Map<Ability, Integer> suggestedScores,
-                                  List<Integer> standardScores, Map<String, Integer> pointBuyCosts, int pointBuyBudget) {
+                                  List<Integer> standardScores, Map<String, Integer> pointBuyCosts, int pointBuyBudget,
+                                  BuildDto defaultBuild) {
 
         static ClassOptionsDto of(CharacterClass characterClass) {
             Map<String, Integer> costs = new LinkedHashMap<>();
@@ -189,7 +190,8 @@ public final class DndDtos {
                     Arrays.stream(SrdWeapon.values())
                             .map(weapon -> new WeaponChoiceDto(weapon.name(), weapon.label(), weapon.mastery())).toList(),
                     characterClass.masteryCount(), new EnumMap<>(characterClass.suggestedScores()),
-                    AbilityMethod.STANDARD_SCORES, costs, AbilityMethod.POINT_BUY_BUDGET);
+                    AbilityMethod.STANDARD_SCORES, costs, AbilityMethod.POINT_BUY_BUDGET,
+                    BuildDto.of(Build.suggested(characterClass)));
         }
     }
 }

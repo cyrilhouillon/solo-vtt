@@ -41,9 +41,6 @@ const METHODS: { id: AbilityMethod; label: string }[] = [
   { id: 'ROLLED', label: 'Dés' },
 ]
 
-/** Les armes de l'équipement de départ par défaut de chaque classe, en Bottes d'arme d'emblée (SRD 5.2.1). */
-const DEFAULT_MASTERIES: Record<string, string[]> = { FIGHTER: ['GREATSWORD', 'FLAIL', 'JAVELIN'] }
-const DEFAULT_STYLE = 'DEFENSE'
 
 const options = ref<ClassOptions[]>([])
 const loadError = ref<string | null>(null)
@@ -82,18 +79,9 @@ const current = computed(() => options.value.find((o) => o.id === classId.value)
 /** La construction de la classe choisie, `null` tant que le serveur ne l'a pas rendue. */
 const shown = computed(() => (current.value && props.build?.characterClass === classId.value ? props.build : null))
 
+/** La construction d'où part la classe, telle que le serveur la propose. */
 function defaults(o: ClassOptions): Build {
-  const known = (DEFAULT_MASTERIES[o.id] ?? []).filter((w) => o.weapons.some((weapon) => weapon.id === w))
-  const masteries = [...known, ...o.weapons.map((w) => w.id).filter((w) => !known.includes(w))].slice(0, o.masteryCount)
-  return {
-    characterClass: o.id,
-    method: 'STANDARD_ARRAY',
-    scores: { ...o.suggestedScores },
-    skills: [],
-    fightingStyle: o.fightingStyles.find((s) => s.id === DEFAULT_STYLE)?.id ?? o.fightingStyles[0].id,
-    equipment: o.equipments[0].id,
-    masteries,
-  }
+  return JSON.parse(JSON.stringify(o.defaultBuild)) as Build
 }
 
 function send(change: Partial<Build>) {

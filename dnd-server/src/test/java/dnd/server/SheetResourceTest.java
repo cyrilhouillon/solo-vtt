@@ -313,6 +313,7 @@ class SheetResourceTest {
         assertEquals(9, guerrier.skillChoices().size());
         assertTrue(guerrier.skillChoices().contains(new DndDtos.ChoiceDto("ATHLETICS", Skill.ATHLETICS.label())));
         assertEquals(4, guerrier.fightingStyles().size());
+        assertEquals(DndDtos.BuildDto.of(Build.fighter()), guerrier.defaultBuild());
         assertTrue(guerrier.fightingStyles().contains(
                 new DndDtos.DescribedChoiceDto("DEFENSE", "Défense", FightingStyle.DEFENSE.text())));
         assertEquals(List.of(

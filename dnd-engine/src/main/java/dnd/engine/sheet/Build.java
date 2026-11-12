@@ -30,6 +30,13 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
                 FightingStyle.DEFENSE, equipment, equipment.weapons());
     }
 
+    /** La construction d'où part une classe quand le joueur la choisit. */
+    public static Build suggested(CharacterClass characterClass) {
+        return switch (characterClass) {
+            case FIGHTER -> fighter();
+        };
+    }
+
     /**
      * Refuse une construction impossible, avec la raison.
      *
