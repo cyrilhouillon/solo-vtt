@@ -114,7 +114,11 @@ final class SheetStore {
                     && stored.fightingStyle() != null && stored.equipment() != null
                     && stored.scores().keySet().containsAll(EnumSet.allOf(Ability.class))
                     && !stored.masteries().contains(null)
-                    && (stored.species() == null || stored.species().species() != null);
+                    && (stored.species() == null || stored.species().species() != null)
+                    && (stored.species() == null || stored.species().originFeat() == null
+                        || stored.species().originFeat().feat() != null)
+                    && (stored.background() == null || stored.background().background() != null
+                        && !stored.background().increases().isEmpty() && stored.background().equipment() != null);
             if (!complete) throw new IllegalStateException("Construction de fiche incomplète");
             return stored;
         }

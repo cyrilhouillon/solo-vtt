@@ -2,10 +2,16 @@ package dnd.server;
 
 import dnd.engine.sheet.Ability;
 import dnd.engine.sheet.AbilityMethod;
+import dnd.engine.sheet.Background;
+import dnd.engine.sheet.BackgroundChoice;
+import dnd.engine.sheet.BackgroundEquipment;
 import dnd.engine.sheet.Build;
 import dnd.engine.sheet.CharacterClass;
 import dnd.engine.sheet.CreatureSize;
 import dnd.engine.sheet.FightingStyle;
+import dnd.engine.sheet.GamingSet;
+import dnd.engine.sheet.OriginFeat;
+import dnd.engine.sheet.OriginFeatChoice;
 import dnd.engine.sheet.Proficiency;
 import dnd.engine.sheet.Skill;
 import dnd.engine.sheet.Species;
@@ -163,7 +169,7 @@ class SheetResourceTest {
     private static DndDtos.SheetValuesDto avecCA(DndDtos.SheetValuesDto v, int armorClass) {
         return new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.size(), v.background(), v.abilities(),
                 v.proficiencyBonus(), v.savingThrows(), v.skills(), armorClass, v.hitPointMax(), v.hitPoints(), v.hitDice(),
-                v.speed(), v.initiative(), v.attacks(), v.features(), v.speciesTraits(), v.equipment(), v.proficiencies(), v.languages(),
+                v.speed(), v.initiative(), v.attacks(), v.features(), v.speciesTraits(), v.feats(), v.equipment(), v.proficiencies(), v.languages(),
                 v.spellSlots());
     }
 
@@ -175,7 +181,7 @@ class SheetResourceTest {
         return new DndDtos.SheetValuesDto("Roublard", 1, "Halfelin", "P (petite)", "Criminel", abilities, 2, Set.of(Ability.DEXTERITY),
                 Map.of(Skill.STEALTH, Proficiency.EXPERTISE, Skill.PERCEPTION, Proficiency.PROFICIENT, Skill.ARCANA, Proficiency.NONE),
                 14, 9, 9, "1d8", 7.5, 2, List.of(new DndDtos.AttackDto("Rapière", 4, 1, 8, 2, DamageType.PIERCING, 1.5, null, null)),
-                "Attaque sournoise", "Chance", "Armure de cuir", "Armes courantes", "Commun", List.of());
+                "Attaque sournoise", "Chance", "Vigilant", "Armure de cuir", "Armes courantes", "Commun", List.of());
     }
 
     @Test
@@ -424,19 +430,19 @@ class SheetResourceTest {
                 guerrier(Set.of(Skill.ATHLETICS, Skill.PERCEPTION, Skill.HISTORY), StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE)));
         assertEquals("Guerrier : 2 compétences au plus", refus.getMessage());
         var sansDes = assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), AbilityMethod.ROLLED, c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null)));
+                c.characterClass(), AbilityMethod.ROLLED, c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null, null)));
         assertEquals("Dés : lancer d'abord les six jets de caractéristique", sansDes.getMessage());
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), null, null)));
+                c.characterClass(), c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), null, null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), c.method(), null, c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null)));
+                c.characterClass(), c.method(), null, c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), c.method(), c.scores(), null, c.fightingStyle(), c.equipment(), c.masteries(), null)));
+                c.characterClass(), c.method(), c.scores(), null, c.fightingStyle(), c.equipment(), c.masteries(), null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                null, c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null)));
+                null, c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
                 c.characterClass(), c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(),
-                List.of(SrdWeapon.GREATSWORD, SrdWeapon.GREATSWORD, SrdWeapon.FLAIL), null)));
+                List.of(SrdWeapon.GREATSWORD, SrdWeapon.GREATSWORD, SrdWeapon.FLAIL), null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, null));
         assertEquals(avant, donnees.fichiers.get(STRAHD + "/dnd"));
         assertNull(dnd().read(STRAHD, aria).build());
@@ -543,7 +549,7 @@ class SheetResourceTest {
         DndDtos.SheetValuesDto v = construite.values();
         dnd().edit(STRAHD, aria, new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.size(), v.background(), abilities,
                 v.proficiencyBonus(), v.savingThrows(), v.skills(), v.armorClass(), v.hitPointMax(), v.hitPoints(),
-                v.hitDice(), v.speed(), v.initiative(), v.attacks(), v.features(), v.speciesTraits(), v.equipment(), v.proficiencies(),
+                v.hitDice(), v.speed(), v.initiative(), v.attacks(), v.features(), v.speciesTraits(), v.feats(), v.equipment(), v.proficiencies(),
                 v.languages(), v.spellSlots()));
 
         DndDtos.SheetDto equipementB = dnd().build(STRAHD, aria,
@@ -560,7 +566,7 @@ class SheetResourceTest {
         var sansPortee = new DndDtos.SheetValuesDto(v.className(), v.level(), v.species(), v.size(), v.background(), v.abilities(),
                 v.proficiencyBonus(), v.savingThrows(), v.skills(), v.armorClass(), v.hitPointMax(), v.hitPoints(), v.hitDice(),
                 v.speed(), v.initiative(), List.of(new DndDtos.AttackDto("Coup", 2, 1, 4, 0, DamageType.BLUDGEONING, null, null, null)),
-                v.features(), v.speciesTraits(), v.equipment(), v.proficiencies(), v.languages(), v.spellSlots());
+                v.features(), v.speciesTraits(), v.feats(), v.equipment(), v.proficiencies(), v.languages(), v.spellSlots());
 
         var refus = assertThrows(IllegalArgumentException.class, () -> dnd().edit(STRAHD, aria, sansPortee));
         assertEquals("Coup : une allonge ou une portée", refus.getMessage());
@@ -630,7 +636,7 @@ class SheetResourceTest {
         assertEquals(9, nain.values().speed());
         assertEquals(12, nain.values().hitPointMax(), "d10 + Con 1 + Ténacité naine");
         assertTrue(nain.values().speciesTraits().startsWith("Vision dans le noir : 36 m"), nain.values().speciesTraits());
-        assertEquals(new DndDtos.SpeciesChoiceDto(Species.DWARF, CreatureSize.MEDIUM, null, null, null), nain.build().species());
+        assertEquals(new DndDtos.SpeciesChoiceDto(Species.DWARF, CreatureSize.MEDIUM, null, null, null, null), nain.build().species());
         assertEquals(nain, dnd().read(STRAHD, aria));
         assertTrue(donnees.fichiers.get(STRAHD + "/dnd").contains("\"species\":{\"species\":\"DWARF\""));
     }
@@ -671,10 +677,114 @@ class SheetResourceTest {
         assertEquals("", relue.values().size());
         assertEquals("", relue.values().speciesTraits());
         assertNull(relue.build().species());
+        assertNull(relue.build().background(), "construction d'avant l'historique");
+        assertEquals("", relue.values().feats(), "valeurs d'avant les dons");
 
         DndDtos.SheetDto orc = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(
                 Build.fighter().withSpecies(SpeciesChoice.of(Species.ORC))));
         assertEquals("Orc", orc.values().species());
         assertEquals(9, orc.values().speed(), "10,5 saisi, 9 pour un Orc");
+    }
+
+    /** Le Guerrier suggéré, Acrobaties et Perception, Soldat +2 For, +1 Con, équipement A, dés. */
+    private static Build guerrierSoldat() {
+        Build base = Build.fighter();
+        return new Build(base.characterClass(), base.method(), base.scores(), Set.of(Skill.ACROBATICS, Skill.PERCEPTION),
+                base.fightingStyle(), base.equipment(), base.masteries(), null,
+                new BackgroundChoice(Background.SOLDIER, Map.of(Ability.STRENGTH, 2, Ability.CONSTITUTION, 1),
+                        BackgroundEquipment.A, GamingSet.DICE, null));
+    }
+
+    @Test
+    void lesHistoriquesEtLesDons_disentLeursChoix() {
+        List<DndDtos.BackgroundOptionsDto> historiques = dnd().backgrounds(STRAHD);
+
+        assertEquals(List.of("ACOLYTE", "CRIMINAL", "SAGE", "SOLDIER"), historiques.stream().map(DndDtos.BackgroundOptionsDto::id).toList());
+        DndDtos.BackgroundOptionsDto soldat = historiques.get(3);
+        assertEquals(List.of("STRENGTH", "DEXTERITY", "CONSTITUTION"), soldat.abilities().stream().map(DndDtos.ChoiceDto::id).toList());
+        assertEquals("SAVAGE_ATTACKER", soldat.feat().id());
+        assertNull(soldat.spellList());
+        assertEquals(List.of("ATHLETICS", "INTIMIDATION"), soldat.skills().stream().map(DndDtos.ChoiceDto::id).toList());
+        assertNull(soldat.tool());
+        assertEquals(4, soldat.gamingSets().size());
+        assertEquals(new DndDtos.DescribedChoiceDto("B", "Équipement B", "50 po"), soldat.equipments().get(1));
+        DndDtos.BackgroundOptionsDto acolyte = historiques.get(0);
+        assertEquals(new DndDtos.ChoiceDto("CLERIC", "Clerc"), acolyte.spellList());
+        assertEquals("matériel de calligraphe", acolyte.tool());
+        assertEquals(List.of(), acolyte.gamingSets());
+
+        List<DndDtos.OriginFeatOptionsDto> dons = dnd().originFeats(STRAHD);
+        assertEquals(List.of("SKILLED", "MAGIC_INITIATE", "SAVAGE_ATTACKER", "ALERT"),
+                dons.stream().map(DndDtos.OriginFeatOptionsDto::id).toList());
+        assertEquals(3, dons.get(0).skillCount());
+        assertEquals(List.of("CLERIC", "DRUID", "WIZARD"), dons.get(1).spellLists().stream().map(DndDtos.ChoiceDto::id).toList());
+        assertEquals(3, dons.get(1).spellcastingAbilities().size());
+        assertEquals(List.of(), dons.get(3).spellLists());
+        assertThrows(NotFoundException.class, () -> dnd().backgrounds("inconnue"));
+        assertThrows(NotFoundException.class, () -> dnd().originFeats("inconnue"));
+    }
+
+    @Test
+    void uneConstructionAvecHistorique_remplitLaFiche_etSeRelitALIdentique() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+
+        DndDtos.SheetDto soldat = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(guerrierSoldat()));
+
+        assertEquals("Soldat", soldat.values().background());
+        assertEquals(17, soldat.values().abilities().get(Ability.STRENGTH));
+        assertEquals(Proficiency.PROFICIENT, soldat.values().skills().get(Skill.ATHLETICS));
+        assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Arc court", "Lance"),
+                soldat.values().attacks().stream().map(DndDtos.AttackDto::name).toList());
+        assertTrue(soldat.values().feats().startsWith("Sauvagerie martiale"), soldat.values().feats());
+        assertEquals(DndDtos.BackgroundChoiceDto.of(guerrierSoldat().background()), soldat.build().background());
+        // dnd() construit une ressource neuve sur les mêmes données : une relecture vaut un redémarrage.
+        assertEquals(soldat, dnd().read(STRAHD, aria));
+
+        DndDtos.SheetDto humain = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(guerrierSoldat().withSpecies(
+                SpeciesChoice.of(Species.HUMAN).withOriginFeat(OriginFeatChoice.of(OriginFeat.ALERT)))));
+        assertEquals(4, humain.values().initiative(), "Dex 2 + Vigilant 2");
+        assertEquals(OriginFeat.ALERT, humain.build().species().originFeat().feat());
+        assertEquals(humain, dnd().read(STRAHD, aria));
+    }
+
+    @Test
+    void uneConstructionAvecHistoriqueImpossible_estRefuseeEn400_sansRienEcrire() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+        dnd().build(STRAHD, aria, DndDtos.BuildDto.of(guerrierSoldat()));
+        String avant = donnees.fichiers.get(STRAHD + "/dnd");
+        Build base = guerrierSoldat();
+
+        var doublon = assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, DndDtos.BuildDto.of(
+                new Build(base.characterClass(), base.method(), base.scores(), Set.of(Skill.ATHLETICS), base.fightingStyle(),
+                        base.equipment(), base.masteries(), null, base.background()))));
+        assertEquals("Athlétisme déjà donnée par l’historique", doublon.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, DndDtos.BuildDto.of(base.withBackground(
+                new BackgroundChoice(Background.SOLDIER, Map.of(Ability.STRENGTH, 3), BackgroundEquipment.A, null, null)))));
+        assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, DndDtos.BuildDto.of(base.withSpecies(
+                SpeciesChoice.of(Species.DWARF).withOriginFeat(OriginFeatChoice.of(OriginFeat.ALERT))))));
+        var retrait = assertThrows(IllegalArgumentException.class,
+                () -> dnd().build(STRAHD, aria, DndDtos.BuildDto.of(base.withBackground(null))));
+        assertEquals("Historique : il se change, mais ne se retire pas", retrait.getMessage());
+        assertEquals(avant, donnees.fichiers.get(STRAHD + "/dnd"));
+    }
+
+    @Test
+    void unHistoriqueGardeTronque_estRefuseEn409_sansEtreEcrase() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+        dnd().build(STRAHD, aria, DndDtos.BuildDto.of(guerrierSoldat()));
+        String valide = donnees.fichiers.get(STRAHD + "/dnd");
+        String historique = "\"background\":{\"background\":\"SOLDIER\",";
+        String augmentations = "\"increases\":{\"STRENGTH\":2,\"CONSTITUTION\":1}";
+        assertTrue(valide.contains(historique), valide);
+        assertTrue(valide.contains(augmentations), valide);
+
+        for (String tronquee : List.of(valide.replace(historique, "\"background\":{"),
+                valide.replace(augmentations, "\"increases\":{}"))) {
+            donnees.fichiers.put(STRAHD + "/dnd", tronquee);
+
+            var refus = assertThrows(ClientErrorException.class, () -> dnd().read(STRAHD, aria));
+            assertEquals(409, refus.getResponse().getStatus());
+            assertEquals(tronquee, donnees.fichiers.get(STRAHD + "/dnd"));
+        }
     }
 }
