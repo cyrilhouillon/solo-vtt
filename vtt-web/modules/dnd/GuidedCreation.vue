@@ -18,7 +18,7 @@ import {
  * La création guidée d'une fiche : classe, méthode et valeurs de caractéristique, compétences, Style de combat,
  * équipement de départ et Bottes d'arme. Chaque choix émet la construction entière, que la fiche envoie au serveur ;
  * rien n'est gardé ici que les brouillons d'un choix pas encore envoyable (achat de points, dés pas encore lancés).
- * Classe « — » : saisie libre, rien n'est envoyé.
+ * Classe « — » : saisie libre, rien n'est envoyé ; proposée tant qu'aucune classe n'est choisie.
  */
 const props = defineProps<{
   campaignId: string
@@ -64,14 +64,24 @@ function scoresOf(build: Build | null): Record<Ability, number> {
   return Object.fromEntries(ABILITIES.map((a) => [a, build?.scores[a] ?? 10])) as Record<Ability, number>
 }
 
-// La réponse du serveur fait foi : brouillons remis à la construction gardée.
+/** Remet les brouillons (classe, méthode, valeurs) à la construction gardée au serveur. */
+function resetDrafts(build: Build | null) {
+  classId.value = build?.characterClass ?? ''
+  method.value = build?.method ?? 'STANDARD_ARRAY'
+  scores.value = scoresOf(build)
+}
+
+// La réponse du serveur fait foi : brouillons remis à la construction gardée, et de même après un refus.
 watch(
   () => props.build,
   (build) => {
-    if (!build) return
-    classId.value = build.characterClass
-    method.value = build.method
-    scores.value = scoresOf(build)
+    if (build) resetDrafts(build)
+  },
+)
+watch(
+  () => props.error,
+  (error) => {
+    if (error) resetDrafts(props.build)
   },
 )
 
@@ -179,7 +189,8 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
       <label class="row">
         Classe
         <select :value="classId" @change="chooseClass(($event.target as HTMLSelectElement).value)">
-          <option value="">— (saisie libre)</option>
+          <!-- Une fiche construite reste retouchable à la main : « — » ne se propose qu'avant le premier choix. -->
+          <option v-if="!build" value="">— (saisie libre)</option>
           <option v-for="o in options" :key="o.id" :value="o.id">{{ o.label }}</option>
         </select>
       </label>
