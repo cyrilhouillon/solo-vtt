@@ -125,6 +125,7 @@ class CampaignApiTest {
         given().post(sans + "/mythic/lists").then().statusCode(404);
         given().contentType(ContentType.JSON).body("{}").post(sans + "/oracle/yes-no").then().statusCode(404);
         given().contentType(ContentType.JSON).body("{}").post(avec + "/oracle/d100").then().statusCode(404);
+        given().post(avec + "/dnd/sections").then().statusCode(404);
         // Les routes communes d'un module ne dépendent d'aucune campagne.
         given().get("/api/mythic/meaning-tables").then().statusCode(200);
         // Le reste de la campagne n'est pas touché.
@@ -134,7 +135,7 @@ class CampaignApiTest {
     @Test
     void sansListeDeModules_tousLesModulesInstallesSontActifs() {
         String id = creer("Sans choix " + UUID.randomUUID());
-        given().get("/api/campaigns/" + id + "/modules").then().statusCode(200).body("modules", equalTo(List.of("mythic", "oracle")));
+        given().get("/api/campaigns/" + id + "/modules").then().statusCode(200).body("modules", equalTo(List.of("dnd", "mythic", "oracle")));
         dice.script(37);
         given().contentType(ContentType.JSON).body("{\"question\":\"Le pont tient ?\"}").post("/api/campaigns/" + id + "/oracle/yes-no")
                 .then().statusCode(200).body("question", equalTo("Le pont tient ?")).body("roll", equalTo(37)).body("yes", equalTo(true));
@@ -154,7 +155,7 @@ class CampaignApiTest {
 
     @Test
     void lesModulesInstalles_seListent() {
-        given().get("/api/modules").then().statusCode(200).body("$", equalTo(List.of("mythic", "oracle")));
+        given().get("/api/modules").then().statusCode(200).body("$", equalTo(List.of("dnd", "mythic", "oracle")));
     }
 
     @Test
