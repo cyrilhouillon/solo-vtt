@@ -14,14 +14,15 @@ import java.util.Set;
  * page dans le Carnet.
  *
  * <p>Une compétence absente de {@code skills} n'est pas maîtrisée. Vitesse en mètres. Taille et traits d'espèce sont du
- * texte, comme l'espèce. Les textes absents valent {@code ""}.</p>
+ * texte, comme l'espèce ; les dons aussi. Les textes absents valent {@code ""}.</p>
  */
 public record CharacterSheet(String className, int level, String species, String size, String background,
                              Map<Ability, Integer> abilities, int proficiencyBonus,
                              Set<Ability> savingThrows, Map<Skill, Proficiency> skills,
                              int armorClass, int hitPointMax, int hitPoints, String hitDice, double speed, int initiative,
                              List<SheetAttack> attacks,
-                             String features, String speciesTraits, String equipment, String proficiencies, String languages,
+                             String features, String speciesTraits, String feats, String equipment, String proficiencies,
+                             String languages,
                              List<SpellSlots> spellSlots) {
 
     public static final int MIN_SCORE = 1;
@@ -37,6 +38,7 @@ public record CharacterSheet(String className, int level, String species, String
         hitDice = text(hitDice);
         features = text(features);
         speciesTraits = text(speciesTraits);
+        feats = text(feats);
         equipment = text(equipment);
         proficiencies = text(proficiencies);
         languages = text(languages);
@@ -74,7 +76,7 @@ public record CharacterSheet(String className, int level, String species, String
         Map<Ability, Integer> abilities = new EnumMap<>(Ability.class);
         for (Ability ability : Ability.values()) abilities.put(ability, 10);
         return new CharacterSheet("", 1, "", "", "", abilities, 2, Set.of(), Map.of(),
-                10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", List.of());
+                10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of());
     }
 
     /** Le modificateur d'une caractéristique : (valeur − 10) / 2, arrondi à l'inférieur. */

@@ -20,7 +20,7 @@ class GuidedValuesTest {
     private static Build guerrier(StartingEquipment equipement, FightingStyle style) {
         Build base = Build.fighter();
         return new Build(base.characterClass(), base.method(), base.scores(), ATHLETISME_PERCEPTION, style,
-                equipement, base.masteries(), null);
+                equipement, base.masteries(), null, null);
     }
 
     private static CharacterSheet construite(Build build) {
@@ -31,7 +31,7 @@ class GuidedValuesTest {
     private static CharacterSheet retouchee(CharacterSheet f, int armorClass, int hitPointMax, Map<Skill, Proficiency> skills) {
         return new CharacterSheet(f.className(), f.level(), f.species(), f.size(), f.background(), f.abilities(), f.proficiencyBonus(),
                 f.savingThrows(), skills, armorClass, hitPointMax, f.hitPoints(), f.hitDice(), f.speed(),
-                f.initiative(), f.attacks(), f.features(), f.speciesTraits(), f.equipment(), f.proficiencies(), f.languages(), f.spellSlots());
+                f.initiative(), f.attacks(), f.features(), f.speciesTraits(), f.feats(), f.equipment(), f.proficiencies(), f.languages(), f.spellSlots());
     }
 
     @Test
@@ -97,7 +97,7 @@ class GuidedValuesTest {
         echangees.put(Ability.CONSTITUTION, 8);
         echangees.put(Ability.INTELLIGENCE, 13);
         Build apres = new Build(avant.characterClass(), avant.method(), echangees, avant.skills(),
-                avant.fightingStyle(), avant.equipment(), avant.masteries(), null);
+                avant.fightingStyle(), avant.equipment(), avant.masteries(), null, null);
         CharacterSheet fiche = construite(avant);
         Map<Skill, Proficiency> expertise = new HashMap<>(fiche.skills());
         expertise.put(Skill.PERCEPTION, Proficiency.EXPERTISE);
@@ -119,7 +119,7 @@ class GuidedValuesTest {
     private static CharacterSheet vitesse(CharacterSheet f, String espece, double speed) {
         return new CharacterSheet(f.className(), f.level(), espece, f.size(), f.background(), f.abilities(), f.proficiencyBonus(),
                 f.savingThrows(), f.skills(), f.armorClass(), f.hitPointMax(), f.hitPoints(), f.hitDice(), speed,
-                f.initiative(), f.attacks(), f.features(), f.speciesTraits(), f.equipment(), f.proficiencies(), f.languages(),
+                f.initiative(), f.attacks(), f.features(), f.speciesTraits(), f.feats(), f.equipment(), f.proficiencies(), f.languages(),
                 f.spellSlots());
     }
 
@@ -140,7 +140,7 @@ class GuidedValuesTest {
     @Test
     void unElfeSylvestre_aSaVitesse_etSaCompetence() {
         CharacterSheet fiche = construite(guerrierA(
-                new SpeciesChoice(Species.ELF, null, SpeciesOption.WOOD_ELF, Skill.INSIGHT, Ability.WISDOM)));
+                new SpeciesChoice(Species.ELF, null, SpeciesOption.WOOD_ELF, Skill.INSIGHT, Ability.WISDOM, null)));
 
         assertEquals(10.5, fiche.speed());
         assertEquals(11, fiche.hitPointMax());
@@ -159,13 +159,13 @@ class GuidedValuesTest {
         CharacterSheet humain = construite(guerrierA(SpeciesChoice.of(Species.HUMAN)));
         assertEquals("M ou P (à choisir)", humain.size());
         assertTrue(humain.speciesTraits().contains("Compétent : une compétence au choix (à choisir)"), humain.speciesTraits());
-        assertTrue(humain.speciesTraits().contains("Polyvalent : un don d’origine au choix"), humain.speciesTraits());
+        assertTrue(humain.speciesTraits().contains("Polyvalent : un don d’origines au choix (à choisir)"), humain.speciesTraits());
     }
 
     @Test
     void passerDeNainAHautElfe_gardeLaVitesseRetouchee_etRecalculeTraitsEtPV() {
         Build nain = guerrierA(SpeciesChoice.of(Species.DWARF));
-        Build hautElfe = guerrierA(new SpeciesChoice(Species.ELF, null, SpeciesOption.HIGH_ELF, null, null));
+        Build hautElfe = guerrierA(new SpeciesChoice(Species.ELF, null, SpeciesOption.HIGH_ELF, null, null, null));
         CharacterSheet fiche = vitesse(construite(nain), "Nain", 12);
 
         CharacterSheet recalculee = GuidedValues.of(hautElfe).rebuild(fiche, GuidedValues.of(nain));
@@ -179,7 +179,7 @@ class GuidedValuesTest {
 
     @Test
     void passerDElfeSylvestreANain_reecritLaVitesse_etRetireLaCompetenceDEspece() {
-        Build elfe = guerrierA(new SpeciesChoice(Species.ELF, null, SpeciesOption.WOOD_ELF, Skill.INSIGHT, null));
+        Build elfe = guerrierA(new SpeciesChoice(Species.ELF, null, SpeciesOption.WOOD_ELF, Skill.INSIGHT, null, null));
         Build nain = guerrierA(SpeciesChoice.of(Species.DWARF));
 
         CharacterSheet recalculee = GuidedValues.of(nain).rebuild(construite(elfe), GuidedValues.of(elfe));

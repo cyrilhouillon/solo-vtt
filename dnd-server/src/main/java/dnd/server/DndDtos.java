@@ -3,11 +3,17 @@ package dnd.server;
 import dnd.engine.sheet.Ability;
 import dnd.engine.sheet.AbilityMethod;
 import dnd.engine.sheet.AbilityRoll;
+import dnd.engine.sheet.Background;
+import dnd.engine.sheet.BackgroundChoice;
+import dnd.engine.sheet.BackgroundEquipment;
 import dnd.engine.sheet.Build;
 import dnd.engine.sheet.CharacterClass;
 import dnd.engine.sheet.CharacterSheet;
 import dnd.engine.sheet.CreatureSize;
 import dnd.engine.sheet.FightingStyle;
+import dnd.engine.sheet.GamingSet;
+import dnd.engine.sheet.OriginFeat;
+import dnd.engine.sheet.OriginFeatChoice;
 import dnd.engine.sheet.Proficiency;
 import dnd.engine.sheet.SheetAttack;
 import dnd.engine.sheet.SheetState;
@@ -15,6 +21,7 @@ import dnd.engine.sheet.Skill;
 import dnd.engine.sheet.Species;
 import dnd.engine.sheet.SpeciesChoice;
 import dnd.engine.sheet.SpeciesOption;
+import dnd.engine.sheet.SpellList;
 import dnd.engine.sheet.SpellSlots;
 import dnd.engine.sheet.SrdWeapon;
 import dnd.engine.sheet.StartingEquipment;
@@ -22,9 +29,11 @@ import dnd.engine.state.DamageType;
 
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /** Ce que les routes du module D&D reçoivent et rendent. */
@@ -61,22 +70,23 @@ public final class DndDtos {
 
     /**
      * Les valeurs saisies d'une fiche ; {@code skills} ne liste que les compétences maîtrisées, {@code speed} est en
-     * mètres. Une fiche d'avant, sans taille ni traits d'espèce, se lit avec ces textes vides.
+     * mètres. Une fiche d'avant, sans taille, traits d'espèce ni dons, se lit avec ces textes vides.
      */
     public record SheetValuesDto(String className, int level, String species, String size, String background,
                                  Map<Ability, Integer> abilities, int proficiencyBonus,
                                  Set<Ability> savingThrows, Map<Skill, Proficiency> skills,
                                  int armorClass, int hitPointMax, int hitPoints, String hitDice, double speed, int initiative,
                                  List<AttackDto> attacks,
-                                 String features, String speciesTraits, String equipment, String proficiencies,
-                                 String languages, List<SpellSlotsDto> spellSlots) {
+                                 String features, String speciesTraits, String feats, String equipment,
+                                 String proficiencies, String languages, List<SpellSlotsDto> spellSlots) {
 
         static SheetValuesDto of(CharacterSheet sheet) {
             return new SheetValuesDto(sheet.className(), sheet.level(), sheet.species(), sheet.size(), sheet.background(),
                     new EnumMap<>(sheet.abilities()), sheet.proficiencyBonus(), sheet.savingThrows(), sheet.skills(),
                     sheet.armorClass(), sheet.hitPointMax(), sheet.hitPoints(), sheet.hitDice(), sheet.speed(), sheet.initiative(),
                     sheet.attacks().stream().map(AttackDto::of).toList(),
-                    sheet.features(), sheet.speciesTraits(), sheet.equipment(), sheet.proficiencies(), sheet.languages(),
+                    sheet.features(), sheet.speciesTraits(), sheet.feats(), sheet.equipment(), sheet.proficiencies(),
+                    sheet.languages(),
                     sheet.spellSlots().stream().map(s -> new SpellSlotsDto(s.level(), s.max(), s.expended())).toList());
         }
 
@@ -90,7 +100,7 @@ public final class DndDtos {
                     savingThrows, skills == null ? Map.of() : withoutNone(skills),
                     armorClass, hitPointMax, hitPoints, hitDice, speed, initiative,
                     attacks == null ? List.of() : attacks.stream().map(AttackDto::toAttack).toList(),
-                    features, speciesTraits, equipment, proficiencies, languages,
+                    features, speciesTraits, feats, equipment, proficiencies, languages,
                     spellSlots == null ? List.of() : spellSlots.stream()
                             .map(s -> new SpellSlots(s.level(), s.max(), s.expended())).toList());
         }
@@ -121,34 +131,71 @@ public final class DndDtos {
         }
     }
 
-    /** L'espèce d'une construction et ses sous-choix, par leurs ids ; seule l'espèce est requise. */
+    /** Un don d'origines et ses sous-choix, par leurs ids ; {@code skills} (Doué) dans l'ordre des compétences. */
+    public record OriginFeatChoiceDto(OriginFeat feat, SpellList spellList, Ability spellcastingAbility, List<Skill> skills) {
+
+        static OriginFeatChoiceDto of(OriginFeatChoice choice) {
+            return choice == null ? null : new OriginFeatChoiceDto(choice.feat(), choice.spellList(),
+                    choice.spellcastingAbility(), choice.skills().stream().sorted().toList());
+        }
+
+        OriginFeatChoice toChoice() {
+            if (skills != null && skills.stream().anyMatch(Objects::isNull)) throw new IllegalArgumentException("Compétence inconnue");
+            return new OriginFeatChoice(feat, spellList, spellcastingAbility, skills == null ? Set.of() : new HashSet<>(skills));
+        }
+    }
+
+    /**
+     * L'espèce d'une construction et ses sous-choix, par leurs ids ; seule l'espèce est requise. {@code originFeat} : le don
+     * de Polyvalent (Humain), {@code null} tant qu'il n'est pas choisi.
+     */
     public record SpeciesChoiceDto(Species species, CreatureSize size, SpeciesOption option, Skill skill,
-                                   Ability spellcastingAbility) {
+                                   Ability spellcastingAbility, OriginFeatChoiceDto originFeat) {
 
         static SpeciesChoiceDto of(SpeciesChoice choice) {
             return choice == null ? null : new SpeciesChoiceDto(choice.species(), choice.size(), choice.option(),
-                    choice.skill(), choice.spellcastingAbility());
+                    choice.skill(), choice.spellcastingAbility(), OriginFeatChoiceDto.of(choice.originFeat()));
         }
 
         SpeciesChoice toChoice() {
-            return new SpeciesChoice(species, size, option, skill, spellcastingAbility);
+            return new SpeciesChoice(species, size, option, skill, spellcastingAbility,
+                    originFeat == null ? null : originFeat.toChoice());
+        }
+    }
+
+    /**
+     * L'historique d'une construction et ses choix, par leurs ids : augmentations par caractéristique, équipement A ou B,
+     * boîte de jeux (Soldat) et caractéristique d'incantation d'Initié à la magie.
+     */
+    public record BackgroundChoiceDto(Background background, Map<Ability, Integer> increases, BackgroundEquipment equipment,
+                                      GamingSet gamingSet, Ability spellcastingAbility) {
+
+        static BackgroundChoiceDto of(BackgroundChoice choice) {
+            return choice == null ? null : new BackgroundChoiceDto(choice.background(),
+                    choice.increases().isEmpty() ? Map.of() : new EnumMap<>(choice.increases()),
+                    choice.equipment(), choice.gamingSet(), choice.spellcastingAbility());
+        }
+
+        BackgroundChoice toChoice() {
+            if (increases != null && increases.keySet().stream().anyMatch(Objects::isNull)) throw new IllegalArgumentException("Caractéristique inconnue");
+            return new BackgroundChoice(background, increases, equipment, gamingSet, spellcastingAbility);
         }
     }
 
     /**
      * Les choix de la création guidée, par leurs ids ; {@code skills} et {@code masteries} dans l'ordre de leurs listes,
      * {@code masteries} par id d'arme ; {@code species} {@code null} tant qu'aucune espèce n'est choisie (et dans une
-     * construction d'avant).
+     * construction d'avant) ; {@code background} de même pour l'historique.
      */
     public record BuildDto(CharacterClass characterClass, AbilityMethod method, Map<Ability, Integer> scores,
                            List<Skill> skills, FightingStyle fightingStyle, StartingEquipment equipment,
-                           List<SrdWeapon> masteries, SpeciesChoiceDto species) {
+                           List<SrdWeapon> masteries, SpeciesChoiceDto species, BackgroundChoiceDto background) {
 
         static BuildDto of(Build build) {
             return new BuildDto(build.characterClass(), build.method(),
                     build.scores().isEmpty() ? Map.of() : new EnumMap<>(build.scores()),
                     build.skills().stream().sorted().toList(), build.fightingStyle(), build.equipment(), build.masteries(),
-                    SpeciesChoiceDto.of(build.species()));
+                    SpeciesChoiceDto.of(build.species()), BackgroundChoiceDto.of(build.background()));
         }
 
         /**
@@ -162,8 +209,8 @@ public final class DndDtos {
             if (masteries == null) throw new IllegalArgumentException("Une construction porte ses Bottes d'arme");
             if (scores.containsKey(null)) throw new IllegalArgumentException("Caractéristique inconnue");
             if (skills.contains(null)) throw new IllegalArgumentException("Compétence inconnue");
-            return new Build(characterClass, method, scores, Set.copyOf(skills), fightingStyle, equipment, masteries,
-                    species == null ? null : species.toChoice());
+            return new Build(characterClass, method, scores, new HashSet<>(skills), fightingStyle, equipment, masteries,
+                    species == null ? null : species.toChoice(), background == null ? null : background.toChoice());
         }
     }
 
@@ -192,11 +239,13 @@ public final class DndDtos {
     /**
      * Une espèce pour la création guidée : ses tailles (prise d'office s'il n'y en a qu'une), sa vitesse en mètres, le
      * trait dont on choisit une option et ses options, les compétences au choix et le trait qui les donne, les
-     * caractéristiques d'incantation au choix (vide si elle n'en choisit pas), et ses traits qui ne dépendent d'aucun choix.
+     * caractéristiques d'incantation au choix (vide si elle n'en choisit pas), si elle choisit un don d'origines
+     * (Polyvalent), et ses traits qui ne dépendent d'aucun choix.
      */
     public record SpeciesOptionsDto(String id, String label, List<ChoiceDto> sizes, double speed, String optionLabel,
                                     List<DescribedChoiceDto> options, String skillTrait, List<ChoiceDto> skillChoices,
-                                    List<ChoiceDto> spellcastingAbilities, List<String> traits) {
+                                    List<ChoiceDto> spellcastingAbilities, boolean choosesOriginFeat,
+                                    List<String> traits) {
 
         static SpeciesOptionsDto of(Species species) {
             return new SpeciesOptionsDto(species.name(), species.label(),
@@ -211,7 +260,51 @@ public final class DndDtos {
                             ? SpeciesChoice.SPELLCASTING_ABILITIES.stream()
                                     .map(ability -> new ChoiceDto(ability.name(), ability.label())).toList()
                             : List.of(),
-                    species.traits());
+                    species.choosesOriginFeat(), species.traits());
+        }
+    }
+
+    /**
+     * Un historique pour la création guidée : ses trois caractéristiques, son don (et la liste de sorts qu'il fixe), ses
+     * compétences, son outil ({@code null} : une boîte de jeux au choix, parmi {@code gamingSets}) et ses équipements A et B.
+     */
+    public record BackgroundOptionsDto(String id, String label, List<ChoiceDto> abilities, DescribedChoiceDto feat,
+                                       ChoiceDto spellList, List<ChoiceDto> skills, String tool, List<ChoiceDto> gamingSets,
+                                       List<DescribedChoiceDto> equipments) {
+
+        static BackgroundOptionsDto of(Background background) {
+            OriginFeat feat = background.feat();
+            return new BackgroundOptionsDto(background.name(), background.label(),
+                    Arrays.stream(Ability.values()).filter(background.abilities()::contains)
+                            .map(ability -> new ChoiceDto(ability.name(), ability.label())).toList(),
+                    new DescribedChoiceDto(feat.name(), feat.label(), feat.text()),
+                    background.spellList() == null ? null
+                            : new ChoiceDto(background.spellList().name(), background.spellList().label()),
+                    Arrays.stream(Skill.values()).filter(background.skills()::contains)
+                            .map(skill -> new ChoiceDto(skill.name(), skill.label())).toList(),
+                    background.tool(),
+                    background.choosesGamingSet()
+                            ? Arrays.stream(GamingSet.values()).map(set -> new ChoiceDto(set.name(), set.label())).toList()
+                            : List.of(),
+                    Arrays.stream(BackgroundEquipment.values())
+                            .map(e -> new DescribedChoiceDto(e.name(), e.label(), background.equipmentText(e))).toList());
+        }
+    }
+
+    /**
+     * Un don d'origines pour la création guidée : ce qu'il fait, les listes de sorts et caractéristiques d'incantation au
+     * choix (vides sauf Initié à la magie) et le nombre de compétences à choisir (3 pour Doué, 0 sinon).
+     */
+    public record OriginFeatOptionsDto(String id, String label, String text, List<ChoiceDto> spellLists,
+                                       List<ChoiceDto> spellcastingAbilities, int skillCount) {
+
+        static OriginFeatOptionsDto of(OriginFeat feat) {
+            boolean magic = feat == OriginFeat.MAGIC_INITIATE;
+            return new OriginFeatOptionsDto(feat.name(), feat.label(), feat.text(),
+                    magic ? Arrays.stream(SpellList.values()).map(l -> new ChoiceDto(l.name(), l.label())).toList() : List.of(),
+                    magic ? SpeciesChoice.SPELLCASTING_ABILITIES.stream()
+                            .map(ability -> new ChoiceDto(ability.name(), ability.label())).toList() : List.of(),
+                    feat == OriginFeat.SKILLED ? OriginFeat.SKILLED_COUNT : 0);
         }
     }
 

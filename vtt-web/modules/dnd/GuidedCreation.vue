@@ -5,19 +5,23 @@ import { dndApi } from './api'
 import {
   ABILITIES,
   ABILITY_LABELS,
+  SKILLS,
   pointBuyCost,
   type Ability,
   type AbilityMethod,
   type AbilityRoll,
+  type BackgroundOptions,
   type Build,
   type ClassOptions,
+  type OriginFeatChoice,
+  type OriginFeatOptions,
   type Skill,
   type SpeciesChoice,
   type SpeciesOptions,
 } from './sheet'
 
 /**
- * La création guidée d'une fiche : classe, espèce et ses sous-choix, méthode et valeurs de caractéristique, compétences,
+ * La création guidée d'une fiche : classe, espèce et ses sous-choix (don de Polyvalent compris), historique et ses choix, méthode et valeurs de caractéristique, compétences,
  * Style de combat, équipement de départ et Bottes d'arme. Chaque choix émet la construction entière, que la fiche envoie au serveur ;
  * rien n'est gardé ici que les brouillons d'un choix pas encore envoyable (achat de points, dés pas encore lancés).
  * Classe « — » : saisie libre, rien n'est envoyé ; proposée tant qu'aucune classe n'est choisie.
@@ -46,6 +50,8 @@ const METHODS: { id: AbilityMethod; label: string }[] = [
 
 const options = ref<ClassOptions[]>([])
 const speciesList = ref<SpeciesOptions[]>([])
+const backgroundList = ref<BackgroundOptions[]>([])
+const featList = ref<OriginFeatOptions[]>([])
 const loadError = ref<string | null>(null)
 /** Change à chaque refus : les listes d'espèce se remontent sur la construction gardée. */
 const revision = ref(0)
@@ -59,12 +65,21 @@ const id = useId()
 
 onMounted(async () => {
   const api = dndApi(props.campaignId)
-  const [classes, species] = await Promise.allSettled([api.classes(), api.species()])
+  const [classes, species, backgrounds, feats] = await Promise.allSettled([
+    api.classes(),
+    api.species(),
+    api.backgrounds(),
+    api.originFeats(),
+  ])
   const errors: string[] = []
   if (classes.status === 'fulfilled') options.value = classes.value
   else errors.push(`Classes illisibles : ${reasonOf(classes.reason)}`)
   if (species.status === 'fulfilled') speciesList.value = species.value
   else errors.push(`Espèces illisibles : ${reasonOf(species.reason)}`)
+  if (backgrounds.status === 'fulfilled') backgroundList.value = backgrounds.value
+  else errors.push(`Historiques illisibles : ${reasonOf(backgrounds.reason)}`)
+  if (feats.status === 'fulfilled') featList.value = feats.value
+  else errors.push(`Dons illisibles : ${reasonOf(feats.reason)}`)
   loadError.value = errors.length ? errors.join(' ; ') : null
 })
 
@@ -117,8 +132,10 @@ function send(change: Partial<Build>) {
 function chooseClass(value: string) {
   classId.value = value
   const o = current.value
-  // L'espèce ne dépend pas de la classe : elle la suit.
-  if (o && props.build?.characterClass !== o.id) emit('build', { ...defaults(o), species: props.build?.species ?? null })
+  // L'espèce et l'historique ne dépendent pas de la classe : ils la suivent.
+  if (o && props.build?.characterClass !== o.id) {
+    emit('build', { ...defaults(o), species: props.build?.species ?? null, background: props.build?.background ?? null })
+  }
 }
 
 /** Les totaux des jets, du plus haut au plus bas, sur les caractéristiques rangées par la répartition suggérée. */
@@ -203,7 +220,7 @@ const optionText = computed(() => species.value?.options.find((o) => o.id === sh
 /** Une espèce choisie part sans sous-choix : ils restent à choisir. */
 function chooseSpecies(id: string) {
   if (!id || id === shown.value?.species?.species) return
-  send({ species: { species: id, size: null, option: null, skill: null, spellcastingAbility: null } })
+  send({ species: { species: id, size: null, option: null, skill: null, spellcastingAbility: null, originFeat: null } })
 }
 
 /** Un sous-choix de l'espèce ; '' le remet à choisir. */
@@ -211,6 +228,136 @@ function setSpecies<K extends keyof Omit<SpeciesChoice, 'species'>>(key: K, valu
   const current = shown.value?.species
   if (!current) return
   send({ species: { ...current, [key]: value || null } })
+}
+
+/** Le don de Polyvalent choisi et ses options ; `null` sans don. */
+const versatile = computed(() => shown.value?.species?.originFeat ?? null)
+const versatileFeat = computed(() => featList.value.find((f) => f.id === versatile.value?.feat) ?? null)
+
+/** L'historique choisi, ses options telles que le serveur les sert ; `null` sans historique. */
+const background = computed(() => backgroundList.value.find((b) => b.id === shown.value?.background?.background) ?? null)
+/** Les caractéristiques d'incantation du don de l'historique (Initié à la magie). */
+const backgroundSpellcasting = computed(
+  () => featList.value.find((f) => f.id === background.value?.feat.id)?.spellcastingAbilities ?? [],
+)
+const backgroundSkills = computed<Skill[]>(() => background.value?.skills.map((s) => s.id) ?? [])
+/** Les compétences de Doué (Polyvalent). */
+const featSkills = computed<Skill[]>(() => versatile.value?.skills ?? [])
+
+/** Une compétence que la classe ne peut pas prendre : donnée par l'historique, l'espèce ou Doué. */
+function takenForClass(skill: Skill) {
+  return backgroundSkills.value.includes(skill) || speciesSkill.value === skill || featSkills.value.includes(skill)
+}
+/** Une compétence que l'espèce ne peut pas prendre : donnée par la classe, l'historique ou Doué. */
+function takenForSpecies(skill: Skill) {
+  return !!shown.value?.skills.includes(skill) || backgroundSkills.value.includes(skill) || featSkills.value.includes(skill)
+}
+/** Une compétence que Doué ne peut pas prendre : donnée par la classe, l'historique ou l'espèce. */
+function takenForFeat(skill: Skill) {
+  return !!shown.value?.skills.includes(skill) || backgroundSkills.value.includes(skill) || speciesSkill.value === skill
+}
+
+/** Le don de l'historique, que Polyvalent ne reprend pas (SRD « Feats ») sauf Doué, répétable. */
+function takenFeat(feat: string) {
+  return feat === background.value?.feat.id && feat !== 'SKILLED' && feat !== 'MAGIC_INITIATE'
+}
+/** La liste d'Initié à la magie de l'historique, que Polyvalent ne reprend pas. */
+function takenSpellList(list: string) {
+  return versatile.value?.feat === background.value?.feat.id && list === background.value?.spellList?.id
+}
+
+/** Un don de Polyvalent choisi part sans sous-choix ; '' le remet à choisir. */
+function chooseFeat(id: string) {
+  const current = shown.value?.species
+  if (!current) return
+  send({ species: { ...current, originFeat: id ? { feat: id, spellList: null, spellcastingAbility: null, skills: [] } : null } })
+}
+
+function setFeat<K extends 'spellList' | 'spellcastingAbility'>(key: K, value: string) {
+  const current = shown.value?.species
+  if (!current?.originFeat) return
+  send({ species: { ...current, originFeat: { ...current.originFeat, [key]: value || null } } })
+}
+
+function toggleFeatSkill(skill: Skill, checked: boolean) {
+  const current = shown.value?.species
+  if (!current?.originFeat) return
+  const chosen = new Set(current.originFeat.skills)
+  if (checked) chosen.add(skill)
+  else chosen.delete(skill)
+  send({ species: { ...current, originFeat: { ...current.originFeat, skills: SKILLS.map((s) => s.id).filter((s) => chosen.has(s)) } } })
+}
+
+/**
+ * Le don de Polyvalent sous un nouvel historique : sans les compétences qu'il donne ; le même don que le sien repasse à
+ * choisir, et Initié à la magie perd la même liste.
+ */
+function versatileAfter(feat: OriginFeatChoice | null, b: BackgroundOptions, given: Set<Skill>): OriginFeatChoice | null {
+  if (!feat) return null
+  if (feat.feat === b.feat.id && feat.feat !== 'SKILLED' && feat.feat !== 'MAGIC_INITIATE') return null
+  const spellList = feat.feat === b.feat.id && feat.spellList === b.spellList?.id ? null : feat.spellList
+  return { ...feat, spellList, skills: feat.skills.filter((s) => !given.has(s)) }
+}
+
+/**
+ * Un historique choisi part avec +1 aux trois et l'équipement A, ses autres choix à faire ; les compétences de classe,
+ * d'espèce ou de Doué qu'il donne repassent à choisir.
+ */
+function chooseBackground(id: string) {
+  const build = shown.value
+  const b = backgroundList.value.find((o) => o.id === id)
+  if (!build || !b || id === build.background?.background) return
+  const given = new Set<Skill>(b.skills.map((s) => s.id))
+  const increases = Object.fromEntries(b.abilities.map((a) => [a.id, 1]))
+  const species = build.species && {
+    ...build.species,
+    skill: build.species.skill && given.has(build.species.skill) ? null : build.species.skill,
+    originFeat: versatileAfter(build.species.originFeat, b, given),
+  }
+  send({
+    skills: build.skills.filter((s) => !given.has(s)),
+    species,
+    background: { background: id, increases, equipment: 'A', gamingSet: null, spellcastingAbility: null },
+  })
+}
+
+function setBackground<K extends 'equipment' | 'gamingSet' | 'spellcastingAbility'>(key: K, value: string) {
+  const current = shown.value?.background
+  if (!current) return
+  send({ background: { ...current, [key]: value || null } })
+}
+
+/** Augmentations : `'21'` pour +2 et +1, `'111'` pour +1 aux trois. */
+const increaseMode = computed(() => (Object.values(shown.value?.background?.increases ?? {}).includes(2) ? '21' : '111'))
+const plusTwo = computed(() => ABILITIES.find((a) => shown.value?.background?.increases[a] === 2) ?? '')
+const plusOne = computed(() =>
+  increaseMode.value === '21' ? (ABILITIES.find((a) => shown.value?.background?.increases[a] === 1) ?? '') : '',
+)
+
+function setIncreases(increases: Partial<Record<Ability, number>>) {
+  const current = shown.value?.background
+  if (current) send({ background: { ...current, increases } })
+}
+
+function chooseIncreaseMode(mode: string) {
+  const abilities = background.value?.abilities.map((a) => a.id) ?? []
+  if (mode === increaseMode.value || abilities.length < 3) return
+  if (mode === '111') setIncreases(Object.fromEntries(abilities.map((a) => [a, 1])))
+  else setIncreases({ [abilities[0]!]: 2, [abilities[1]!]: 1 })
+}
+
+/** Choisit la caractéristique à +2 ou à +1 ; prise par l'autre, elles s'échangent. */
+function chooseIncrease(rank: 2 | 1, ability: Ability) {
+  let two = plusTwo.value as Ability
+  let one = plusOne.value as Ability
+  if (rank === 2) {
+    if (ability === one) one = two
+    two = ability
+  } else {
+    if (ability === two) two = one
+    one = ability
+  }
+  setIncreases({ [two]: 2, [one]: 1 })
 }
 
 const styleText = computed(() => current.value?.fightingStyles.find((s) => s.id === shown.value?.fightingStyle)?.text)
@@ -276,11 +423,138 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
                 {{ species.skillTrait }}
                 <select :value="shown.species.skill ?? ''" @change="setSpecies('skill', ($event.target as HTMLSelectElement).value)">
                   <option value="">à choisir</option>
-                  <!-- Une compétence que la classe donne déjà ne se prend pas deux fois. -->
-                  <option v-for="k in species.skillChoices" :key="k.id" :value="k.id" :disabled="shown.skills.includes(k.id)">
+                  <!-- Une compétence déjà donnée (classe, historique, Doué) ne se prend pas deux fois. -->
+                  <option v-for="k in species.skillChoices" :key="k.id" :value="k.id" :disabled="takenForSpecies(k.id)">
                     {{ k.label }}
                   </option>
                 </select>
+              </label>
+            </div>
+            <template v-if="species.choosesOriginFeat">
+              <label class="row">
+                Polyvalent
+                <select :value="versatile?.feat ?? ''" @change="chooseFeat(($event.target as HTMLSelectElement).value)">
+                  <option value="">à choisir</option>
+                  <!-- Un don ne se prend qu'une fois : celui de l'historique est éteint, sauf Doué et Initié (autre liste). -->
+                  <option v-for="f in featList" :key="f.id" :value="f.id" :disabled="takenFeat(f.id)">{{ f.label }}</option>
+                </select>
+              </label>
+              <p v-if="versatileFeat" class="muted text">{{ versatileFeat.text }}</p>
+              <div v-if="versatile && versatileFeat?.spellLists.length" class="row">
+                <label class="row">
+                  Liste de sorts
+                  <select :value="versatile.spellList ?? ''" @change="setFeat('spellList', ($event.target as HTMLSelectElement).value)">
+                    <option value="">à choisir</option>
+                    <option v-for="l in versatileFeat.spellLists" :key="l.id" :value="l.id" :disabled="takenSpellList(l.id)">
+                      {{ l.label }}
+                    </option>
+                  </select>
+                </label>
+                <label class="row">
+                  Incantation
+                  <select
+                    :value="versatile.spellcastingAbility ?? ''"
+                    @change="setFeat('spellcastingAbility', ($event.target as HTMLSelectElement).value)"
+                  >
+                    <option value="">à choisir</option>
+                    <option v-for="a in versatileFeat.spellcastingAbilities" :key="a.id" :value="a.id">{{ a.label }}</option>
+                  </select>
+                </label>
+              </div>
+              <fieldset v-if="versatile && versatileFeat?.skillCount" class="part">
+                <legend>Compétences de {{ versatileFeat.label }} ({{ versatileFeat.skillCount }})</legend>
+                <ul class="skills">
+                  <li v-for="k in SKILLS" :key="k.id">
+                    <label>
+                      <input
+                        type="checkbox"
+                        :checked="featSkills.includes(k.id)"
+                        :disabled="
+                          (!featSkills.includes(k.id) && featSkills.length >= versatileFeat.skillCount) || takenForFeat(k.id)
+                        "
+                        @change="toggleFeatSkill(k.id, ($event.target as HTMLInputElement).checked)"
+                      />
+                      {{ k.label }}
+                    </label>
+                  </li>
+                </ul>
+              </fieldset>
+            </template>
+          </template>
+        </section>
+
+        <section :key="`b${revision}`" class="part" :aria-labelledby="`${id}-background`">
+          <h4 :id="`${id}-background`">Historique</h4>
+          <label class="row">
+            Historique
+            <select :value="shown.background?.background ?? ''" @change="chooseBackground(($event.target as HTMLSelectElement).value)">
+              <!-- Comme l'espèce : « — » ne se propose qu'avant le premier choix, l'historique saisi à la main reste. -->
+              <option v-if="!shown.background" value="">— (saisie libre)</option>
+              <option v-for="b in backgroundList" :key="b.id" :value="b.id">{{ b.label }}</option>
+            </select>
+          </label>
+          <template v-if="background && shown.background">
+            <div class="row">
+              <label class="row">
+                Augmentations
+                <select :value="increaseMode" @change="chooseIncreaseMode(($event.target as HTMLSelectElement).value)">
+                  <option value="21">+2 et +1</option>
+                  <option value="111">+1 aux trois</option>
+                </select>
+              </label>
+              <template v-if="increaseMode === '21'">
+                <label class="row">
+                  +2
+                  <select :value="plusTwo" @change="chooseIncrease(2, ($event.target as HTMLSelectElement).value as Ability)">
+                    <option v-for="a in background.abilities" :key="a.id" :value="a.id">{{ a.label }}</option>
+                  </select>
+                </label>
+                <label class="row">
+                  +1
+                  <select :value="plusOne" @change="chooseIncrease(1, ($event.target as HTMLSelectElement).value as Ability)">
+                    <option v-for="a in background.abilities" :key="a.id" :value="a.id">{{ a.label }}</option>
+                  </select>
+                </label>
+              </template>
+              <span v-else class="muted">{{ background.abilities.map((a) => a.label).join(', ') }}</span>
+            </div>
+            <p class="muted text">
+              Compétences : {{ background.skills.map((k) => k.label).join(', ') }}
+              <template v-if="background.tool"> · Outil : {{ background.tool }}</template>
+            </p>
+            <label v-if="background.gamingSets.length" class="row">
+              Boîte de jeux
+              <select
+                :value="shown.background.gamingSet ?? ''"
+                @change="setBackground('gamingSet', ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">à choisir</option>
+                <option v-for="g in background.gamingSets" :key="g.id" :value="g.id">{{ g.label }}</option>
+              </select>
+            </label>
+            <p class="muted text">
+              Don : <strong>{{ background.feat.label }}</strong
+              ><template v-if="background.spellList"> ({{ background.spellList.label }})</template> — {{ background.feat.text }}
+            </p>
+            <label v-if="background.spellList" class="row">
+              Incantation
+              <select
+                :value="shown.background.spellcastingAbility ?? ''"
+                @change="setBackground('spellcastingAbility', ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">à choisir</option>
+                <option v-for="a in backgroundSpellcasting" :key="a.id" :value="a.id">{{ a.label }}</option>
+              </select>
+            </label>
+            <div class="part">
+              <label v-for="e in background.equipments" :key="e.id" class="option">
+                <input
+                  type="radio"
+                  :name="`${id}-background-equipment`"
+                  :checked="shown.background.equipment === e.id"
+                  @change="setBackground('equipment', e.id)"
+                />
+                <span><strong>{{ e.label }}</strong> : {{ e.text }}</span>
               </label>
             </div>
           </template>
@@ -357,7 +631,7 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
                   type="checkbox"
                   :checked="shown.skills.includes(s.id)"
                   :disabled="
-                    (!shown.skills.includes(s.id) && shown.skills.length >= current.skillCount) || speciesSkill === s.id
+                    (!shown.skills.includes(s.id) && shown.skills.length >= current.skillCount) || takenForClass(s.id)
                   "
                   @change="toggleSkill(s.id, ($event.target as HTMLInputElement).checked)"
                 />

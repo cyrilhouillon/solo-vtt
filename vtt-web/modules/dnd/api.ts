@@ -1,5 +1,13 @@
 import { request } from '../../src/api'
-import type { Build, ClassOptions, Sheet, SheetValues, SpeciesOptions } from './sheet'
+import type {
+  BackgroundOptions,
+  Build,
+  ClassOptions,
+  OriginFeatOptions,
+  Sheet,
+  SheetValues,
+  SpeciesOptions,
+} from './sheet'
 
 /** Les fiches des personnages joueurs d'une campagne. */
 export function dndApi(campaignId: string) {
@@ -17,6 +25,10 @@ export function dndApi(campaignId: string) {
     classes: () => request<ClassOptions[]>(`${base}/classes`),
     /** Les espèces de la création guidée et leurs sous-choix. */
     species: () => request<SpeciesOptions[]>(`${base}/species`),
+    /** Les historiques de la création guidée et leurs choix. */
+    backgrounds: () => request<BackgroundOptions[]>(`${base}/backgrounds`),
+    /** Les dons d'origines (Polyvalent) et leurs sous-choix. */
+    originFeats: () => request<OriginFeatOptions[]>(`${base}/origin-feats`),
     /** Applique une construction guidée ; la réponse porte les valeurs qui en dérivent. */
     build: (pageId: string, build: Build) =>
       request<Sheet>(`${base}/sheets/${encodeURIComponent(pageId)}/build`, { method: 'PUT', body: JSON.stringify(build) }),

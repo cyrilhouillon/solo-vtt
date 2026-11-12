@@ -404,6 +404,7 @@ function removeAttack(index: number) {
         <section class="texts" aria-label="Textes">
           <label>Capacités <textarea v-model="values.features" rows="4" /></label>
           <label>Traits d'espèce <textarea v-model="values.speciesTraits" rows="4" /></label>
+          <label>Dons <textarea v-model="values.feats" rows="3" /></label>
           <label>Équipement <textarea v-model="values.equipment" rows="3" /></label>
           <label>Maîtrises <textarea v-model="values.proficiencies" rows="2" /></label>
           <label>Langues <textarea v-model="values.languages" rows="2" /></label>

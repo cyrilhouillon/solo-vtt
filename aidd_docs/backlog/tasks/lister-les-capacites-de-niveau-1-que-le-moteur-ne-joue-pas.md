@@ -57,7 +57,12 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1 
 | Discrétion naturelle | Halfelin | hors combat (Furtivité non modélisée) | — |
 | Compétent | Humain | portée par la fiche (compétence maîtrisée) | — |
 | Ingénieux (Inspiration héroïque) | Humain | hors combat (repos non modélisés) | — |
-| Polyvalent (don d’origine) | Humain | écrit « au choix » sur la fiche | [choisir un historique en création guidée](../stories/choisir-un-historique-en-creation-guidee.md) |
+| Polyvalent (don d’origines) | Humain | portée par la fiche (don choisi en création guidée) | — |
+| Doué | Polyvalent | portée par la fiche (trois compétences maîtrisées) | — |
+| Initié à la magie : sorts mineurs et sort du 1er niveau | Acolyte, Sage ; Polyvalent | non (sorts écrits « à choisir ») | [créer en guidé les autres lanceurs de sorts](../stories/creer-en-guide-les-autres-lanceurs-de-sorts.md) |
+| Sauvagerie martiale | Soldat ; Polyvalent | non (écrite sur la fiche) | [relancer les dégâts avec Sauvagerie martiale](../stories/relancer-les-degats-avec-sauvagerie-martiale.md) |
+| Vigilant : Maîtrise de l’Initiative | Criminel ; Polyvalent | portée par la fiche (+ bonus de maîtrise à l’initiative) | — |
+| Vigilant : Échange d’Initiative | Criminel ; Polyvalent | non | [échanger son initiative avec Vigilant](../stories/echanger-son-initiative-avec-vigilant.md) |
 | Acharnement, Poussée d’adrénaline | Orc | non | [jouer Acharnement et Poussée d'adrénaline de l'Orc](../stories/jouer-acharnement-et-poussee-d-adrenaline-de-l-orc.md) |
 | Héritage fiélon : Résistance | Tieffelin | non (écrite sur la fiche) | [appliquer les résistances d'espèce en combat](../stories/appliquer-les-resistances-d-espece-en-combat.md) |
 | Vol draconique, Forme de géant | Drakéide, Goliath | hors champ : niveau 5 | — |

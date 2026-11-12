@@ -3,7 +3,9 @@ package dnd.server;
 import dnd.engine.sheet.Ability;
 import dnd.engine.sheet.AbilityRoll;
 import dnd.engine.sheet.Build;
+import dnd.engine.sheet.Background;
 import dnd.engine.sheet.CharacterClass;
+import dnd.engine.sheet.OriginFeat;
 import dnd.engine.sheet.SheetEvent;
 import dnd.engine.sheet.SheetHistory;
 import dnd.engine.sheet.SheetState;
@@ -74,6 +76,30 @@ public class SheetResource {
     public List<DndDtos.SpeciesOptionsDto> species(@PathParam("campaignId") String campaignId) {
         known(campaignId);
         return Arrays.stream(Species.values()).map(DndDtos.SpeciesOptionsDto::of).toList();
+    }
+
+    /** Les historiques et leurs choix pour la création guidée, communs à toutes les classes. */
+    @GET
+    @Path("/backgrounds")
+    @APIResponse(responseCode = "200", description = "Les historiques et leurs choix",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = SchemaType.ARRAY, implementation = DndDtos.BackgroundOptionsDto.class)))
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public List<DndDtos.BackgroundOptionsDto> backgrounds(@PathParam("campaignId") String campaignId) {
+        known(campaignId);
+        return Arrays.stream(Background.values()).map(DndDtos.BackgroundOptionsDto::of).toList();
+    }
+
+    /** Les dons d'origines et leurs sous-choix, pour Polyvalent (Humain). */
+    @GET
+    @Path("/origin-feats")
+    @APIResponse(responseCode = "200", description = "Les dons d'origines et leurs sous-choix",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = SchemaType.ARRAY, implementation = DndDtos.OriginFeatOptionsDto.class)))
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public List<DndDtos.OriginFeatOptionsDto> originFeats(@PathParam("campaignId") String campaignId) {
+        known(campaignId);
+        return Arrays.stream(OriginFeat.values()).map(DndDtos.OriginFeatOptionsDto::of).toList();
     }
 
     /**

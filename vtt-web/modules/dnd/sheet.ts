@@ -132,6 +132,7 @@ export interface SheetValues {
   attacks: SheetAttack[]
   features: string
   speciesTraits: string
+  feats: string
   equipment: string
   proficiencies: string
   languages: string
@@ -152,6 +153,8 @@ export interface Build {
   masteries: string[]
   /** L'espèce et ses sous-choix, `null` tant qu'aucune n'est choisie. */
   species: SpeciesChoice | null
+  /** L'historique et ses choix, `null` tant qu'aucun n'est choisi. */
+  background: BackgroundChoice | null
 }
 
 /** L'espèce d'une construction et ses sous-choix, par leurs ids ; `null` : à choisir. */
@@ -161,6 +164,49 @@ export interface SpeciesChoice {
   option: string | null
   skill: Skill | null
   spellcastingAbility: Ability | null
+  /** Le don de Polyvalent (Humain), `null` tant qu'il n'est pas choisi. */
+  originFeat: OriginFeatChoice | null
+}
+
+/** Un don d'origines et ses sous-choix, par leurs ids ; `null` : à choisir ; `skills` : celles de Doué. */
+export interface OriginFeatChoice {
+  feat: string
+  spellList: string | null
+  spellcastingAbility: Ability | null
+  skills: Skill[]
+}
+
+/** L'historique d'une construction et ses choix, par leurs ids ; `increases` : +2/+1 ou +1/+1/+1. */
+export interface BackgroundChoice {
+  background: string
+  increases: Partial<Record<Ability, number>>
+  equipment: string
+  gamingSet: string | null
+  spellcastingAbility: Ability | null
+}
+
+/** Un historique pour la création guidée ; `tool` `null` : une boîte de jeux au choix parmi `gamingSets`. */
+export interface BackgroundOptions {
+  id: string
+  label: string
+  abilities: { id: Ability; label: string }[]
+  feat: DescribedChoice
+  /** La liste de sorts que fixe Initié à la magie, `null` pour un autre don. */
+  spellList: Choice | null
+  skills: { id: Skill; label: string }[]
+  tool: string | null
+  gamingSets: Choice[]
+  equipments: DescribedChoice[]
+}
+
+/** Un don d'origines pour la création guidée ; listes et incantations vides sauf Initié, `skillCount` 0 sauf Doué. */
+export interface OriginFeatOptions {
+  id: string
+  label: string
+  text: string
+  spellLists: Choice[]
+  spellcastingAbilities: { id: Ability; label: string }[]
+  skillCount: number
 }
 
 /** Une espèce pour la création guidée, telle que le serveur la sert ; `optionLabel` et `skillTrait` `null` sans. */
@@ -175,6 +221,8 @@ export interface SpeciesOptions {
   skillChoices: { id: Skill; label: string }[]
   /** Les caractéristiques d'incantation au choix, vide si l'espèce n'en choisit pas. */
   spellcastingAbilities: { id: Ability; label: string }[]
+  /** L'espèce choisit-elle un don d'origines (Polyvalent de l'Humain). */
+  choosesOriginFeat: boolean
   traits: string[]
 }
 

@@ -1,15 +1,16 @@
 package dnd.engine.sheet;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
 /**
  * L'espèce d'une construction guidée et ses sous-choix : taille, option de trait (lignage, ascendance, héritage),
- * compétence et caractéristique d'incantation. Seule l'espèce est requise ; un sous-choix absent reste à choisir. Une
- * espèce d'une seule taille la prend d'office.
+ * compétence, caractéristique d'incantation et don d'origines (Polyvalent de l'Humain). Seule l'espèce est requise ; un
+ * sous-choix absent reste à choisir. Une espèce d'une seule taille la prend d'office.
  */
 public record SpeciesChoice(Species species, CreatureSize size, SpeciesOption option, Skill skill,
-                            Ability spellcastingAbility) {
+                            Ability spellcastingAbility, OriginFeatChoice originFeat) {
 
     /** Les caractéristiques d'incantation qu'une espèce peut choisir. */
     public static final List<Ability> SPELLCASTING_ABILITIES = List.of(Ability.INTELLIGENCE, Ability.WISDOM, Ability.CHARISMA);
@@ -20,15 +21,21 @@ public record SpeciesChoice(Species species, CreatureSize size, SpeciesOption op
 
     /** Une espèce dont les sous-choix restent à faire. */
     public static SpeciesChoice of(Species species) {
-        return new SpeciesChoice(species, null, null, null, null);
+        return new SpeciesChoice(species, null, null, null, null, null);
+    }
+
+    /** Cette espèce, avec ce don d'origines. */
+    public SpeciesChoice withOriginFeat(OriginFeatChoice feat) {
+        return new SpeciesChoice(species, size, option, skill, spellcastingAbility, feat);
     }
 
     /**
      * Refuse un choix impossible, avec la raison.
      *
-     * @param classSkills les compétences que la classe donne déjà
+     * @param classSkills      les compétences que la classe donne déjà
+     * @param backgroundSkills les compétences que l'historique donne déjà
      */
-    public void validate(Set<Skill> classSkills) {
+    public void validate(Set<Skill> classSkills, Set<Skill> backgroundSkills) {
         if (species == null) throw new IllegalArgumentException("Choisir une espèce");
         String name = species.label();
         if (size != null && !species.sizes().contains(size)) {
@@ -47,6 +54,9 @@ public record SpeciesChoice(Species species, CreatureSize size, SpeciesOption op
             if (classSkills.contains(skill)) {
                 throw new IllegalArgumentException("%s déjà maîtrisée par la classe".formatted(skill.label()));
             }
+            if (backgroundSkills.contains(skill)) {
+                throw new IllegalArgumentException("%s déjà donnée par l’historique".formatted(skill.label()));
+            }
         }
         if (spellcastingAbility != null) {
             if (!species.spellcasting()) {
@@ -56,6 +66,24 @@ public record SpeciesChoice(Species species, CreatureSize size, SpeciesOption op
                 throw new IllegalArgumentException("Caractéristique d’incantation : Intelligence, Sagesse ou Charisme");
             }
         }
+        if (originFeat != null) {
+            if (!species.choosesOriginFeat()) {
+                throw new IllegalArgumentException("%s : aucun don d’origines à choisir".formatted(name));
+            }
+            Set<Skill> taken = EnumSet.noneOf(Skill.class);
+            taken.addAll(classSkills);
+            taken.addAll(backgroundSkills);
+            if (skill != null) taken.add(skill);
+            originFeat.validate(taken);
+        }
+    }
+
+    /** Les compétences que l'espèce rend maîtrisées : celle de son trait et celles de son don. */
+    public Set<Skill> grantedSkills() {
+        Set<Skill> granted = EnumSet.noneOf(Skill.class);
+        if (skill != null) granted.add(skill);
+        if (originFeat != null) granted.addAll(originFeat.grantedSkills());
+        return granted;
     }
 
     /** La taille telle qu'elle s'écrit sur la fiche. */
@@ -86,6 +114,9 @@ public record SpeciesChoice(Species species, CreatureSize size, SpeciesOption op
         if (species.skillTrait() != null) {
             line(text, species.skillTrait() + " : "
                     + (skill == null ? "une compétence au choix (à choisir)" : skill.label() + " (maîtrise)"));
+        }
+        if (species.choosesOriginFeat()) {
+            line(text, "Polyvalent : " + (originFeat == null ? "un don d’origines au choix (à choisir)" : originFeat.feat().label()));
         }
         return text.toString();
     }

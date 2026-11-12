@@ -10,12 +10,12 @@ import java.util.Set;
 
 /**
  * Les choix de la création guidée d'un personnage : classe, méthode et valeurs de caractéristique, compétences, Style de
- * combat, équipement de départ, Bottes d'arme et espèce ({@code null} tant qu'elle n'est pas choisie). Le record n'impose
- * rien : {@link #validate} dit ce qui est impossible.
+ * combat, équipement de départ, Bottes d'arme, espèce et historique ({@code null} tant qu'ils ne sont pas choisis). Le
+ * record n'impose rien : {@link #validate} dit ce qui est impossible.
  */
 public record Build(CharacterClass characterClass, AbilityMethod method, Map<Ability, Integer> scores,
                     Set<Skill> skills, FightingStyle fightingStyle, StartingEquipment equipment,
-                    List<SrdWeapon> masteries, SpeciesChoice species) {
+                    List<SrdWeapon> masteries, SpeciesChoice species, BackgroundChoice background) {
 
     public Build {
         scores = scores == null || scores.isEmpty() ? Map.of() : Collections.unmodifiableMap(new EnumMap<>(scores));
@@ -28,12 +28,30 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
         CharacterClass fighter = CharacterClass.FIGHTER;
         StartingEquipment equipment = StartingEquipment.FIGHTER_A;
         return new Build(fighter, AbilityMethod.STANDARD_ARRAY, fighter.suggestedScores(), Set.of(),
-                FightingStyle.DEFENSE, equipment, equipment.weapons(), null);
+                FightingStyle.DEFENSE, equipment, equipment.weapons(), null, null);
     }
 
     /** Cette construction, avec cette espèce. */
     public Build withSpecies(SpeciesChoice species) {
-        return new Build(characterClass, method, scores, skills, fightingStyle, equipment, masteries, species);
+        return new Build(characterClass, method, scores, skills, fightingStyle, equipment, masteries, species, background);
+    }
+
+    /** Cette construction, avec cet historique. */
+    public Build withBackground(BackgroundChoice background) {
+        return new Build(characterClass, method, scores, skills, fightingStyle, equipment, masteries, species, background);
+    }
+
+    /** Les valeurs de caractéristique, augmentations de l'historique comprises. */
+    public Map<Ability, Integer> abilities() {
+        if (background == null || scores.isEmpty()) return scores;
+        Map<Ability, Integer> abilities = new EnumMap<>(scores);
+        background.increases().forEach((ability, increase) -> abilities.merge(ability, increase, Integer::sum));
+        return Collections.unmodifiableMap(abilities);
+    }
+
+    /** Les compétences que l'historique rend maîtrisées, aucune sans historique. */
+    public Set<Skill> backgroundSkills() {
+        return background == null || background.background() == null ? Set.of() : background.background().skills();
     }
 
     /** La construction d'où part une classe quand le joueur la choisit. */
@@ -53,12 +71,17 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
         if (method == null) throw new IllegalArgumentException("Choisir une méthode de caractéristiques");
         method.validate(scores, rolls);
         if (skills.contains(null)) throw new IllegalArgumentException("Compétence inconnue");
+        // Aucune méthode ne dépasse 18 : une augmentation de 2 ne porte jamais une valeur au-dessus de 20.
+        if (background != null) background.validate();
         if (skills.size() > characterClass.skillCount()) {
             throw new IllegalArgumentException("%s : %d compétences au plus".formatted(characterClass.label(), characterClass.skillCount()));
         }
         for (Skill skill : skills) {
             if (!characterClass.skillChoices().contains(skill)) {
                 throw new IllegalArgumentException("%s hors des compétences du %s".formatted(skill.label(), characterClass.label()));
+            }
+            if (backgroundSkills().contains(skill)) {
+                throw new IllegalArgumentException("%s déjà donnée par l’historique".formatted(skill.label()));
             }
         }
         if (fightingStyle == null) throw new IllegalArgumentException("Choisir un Style de combat");
@@ -69,6 +92,25 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
         if (masteries.size() != characterClass.masteryCount() || Set.copyOf(masteries).size() != masteries.size()) {
             throw new IllegalArgumentException("Bottes d'arme : %d types d'arme différents".formatted(characterClass.masteryCount()));
         }
-        if (species != null) species.validate(skills);
+        if (species != null) species.validate(skills, backgroundSkills());
+        if (species != null && species.originFeat() != null && background != null) {
+            checkDistinctFeats(background.feat(), species.originFeat());
+        }
+    }
+
+    /**
+     * Un don ne se prend qu'une fois (SRD 5.2.1, « Feats ») : Polyvalent ne reprend pas celui de l'historique. Doué est
+     * répétable ; Initié à la magie aussi, avec une autre liste de sorts.
+     */
+    private static void checkDistinctFeats(OriginFeatChoice fromBackground, OriginFeatChoice versatile) {
+        OriginFeat feat = versatile.feat();
+        if (feat != fromBackground.feat() || feat == OriginFeat.SKILLED) return;
+        if (feat != OriginFeat.MAGIC_INITIATE) {
+            throw new IllegalArgumentException("Polyvalent : %s déjà donné par l’historique".formatted(feat.label()));
+        }
+        if (versatile.spellList() == fromBackground.spellList()) {
+            throw new IllegalArgumentException("Polyvalent : %s (%s) déjà donné par l’historique ; choisir une autre liste"
+                    .formatted(feat.label(), fromBackground.spellList().label()));
+        }
     }
 }

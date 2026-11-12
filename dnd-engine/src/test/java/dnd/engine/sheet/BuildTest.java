@@ -30,19 +30,19 @@ class BuildTest {
     private static Build avec(AbilityMethod method, Map<Ability, Integer> scores) {
         Build guerrier = Build.fighter();
         return new Build(guerrier.characterClass(), method, scores, guerrier.skills(), guerrier.fightingStyle(),
-                guerrier.equipment(), guerrier.masteries(), null);
+                guerrier.equipment(), guerrier.masteries(), null, null);
     }
 
     private static Build avecCompetences(Skill... skills) {
         Build guerrier = Build.fighter();
         return new Build(guerrier.characterClass(), guerrier.method(), guerrier.scores(), Set.of(skills),
-                guerrier.fightingStyle(), guerrier.equipment(), guerrier.masteries(), null);
+                guerrier.fightingStyle(), guerrier.equipment(), guerrier.masteries(), null, null);
     }
 
     private static Build avecBottes(SrdWeapon... armes) {
         Build guerrier = Build.fighter();
         return new Build(guerrier.characterClass(), guerrier.method(), guerrier.scores(), guerrier.skills(),
-                guerrier.fightingStyle(), guerrier.equipment(), List.of(armes), null);
+                guerrier.fightingStyle(), guerrier.equipment(), List.of(armes), null, null);
     }
 
     private static String raison(Build build, List<AbilityRoll> jets) {
@@ -134,7 +134,7 @@ class BuildTest {
     void uneEspeceImpossible_refuseLaConstruction() {
         Build guerrier = avecCompetences(Skill.ATHLETICS, Skill.PERCEPTION);
         assertDoesNotThrow(() -> guerrier.withSpecies(SpeciesChoice.of(Species.ELF)).validate(List.of()));
-        String raison = raison(guerrier.withSpecies(new SpeciesChoice(Species.ELF, null, null, Skill.PERCEPTION, null)), List.of());
+        String raison = raison(guerrier.withSpecies(new SpeciesChoice(Species.ELF, null, null, Skill.PERCEPTION, null, null)), List.of());
         assertEquals("Perception déjà maîtrisée par la classe", raison);
     }
 }
