@@ -191,12 +191,12 @@ public final class DndDtos {
 
     /**
      * Une espèce pour la création guidée : ses tailles (prise d'office s'il n'y en a qu'une), sa vitesse en mètres, le
-     * trait dont on choisit une option et ses options, les compétences au choix et le trait qui les donne, si elle choisit
-     * sa caractéristique d'incantation, et ses traits qui ne dépendent d'aucun choix.
+     * trait dont on choisit une option et ses options, les compétences au choix et le trait qui les donne, les
+     * caractéristiques d'incantation au choix (vide si elle n'en choisit pas), et ses traits qui ne dépendent d'aucun choix.
      */
     public record SpeciesOptionsDto(String id, String label, List<ChoiceDto> sizes, double speed, String optionLabel,
                                     List<DescribedChoiceDto> options, String skillTrait, List<ChoiceDto> skillChoices,
-                                    boolean spellcasting, List<String> traits) {
+                                    List<ChoiceDto> spellcastingAbilities, List<String> traits) {
 
         static SpeciesOptionsDto of(Species species) {
             return new SpeciesOptionsDto(species.name(), species.label(),
@@ -207,7 +207,11 @@ public final class DndDtos {
                     species.skillTrait(),
                     Arrays.stream(Skill.values()).filter(species.skillChoices()::contains)
                             .map(skill -> new ChoiceDto(skill.name(), skill.label())).toList(),
-                    species.spellcasting(), species.traits());
+                    species.spellcasting()
+                            ? SpeciesChoice.SPELLCASTING_ABILITIES.stream()
+                                    .map(ability -> new ChoiceDto(ability.name(), ability.label())).toList()
+                            : List.of(),
+                    species.traits());
         }
     }
 

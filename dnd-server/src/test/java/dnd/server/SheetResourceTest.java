@@ -608,11 +608,13 @@ class SheetResourceTest {
                 SpeciesOption.WOOD_ELF.text())));
         assertEquals("Sens aiguisés", elfe.skillTrait());
         assertEquals(List.of("INSIGHT", "PERCEPTION", "SURVIVAL"), elfe.skillChoices().stream().map(DndDtos.ChoiceDto::id).toList());
-        assertTrue(elfe.spellcasting());
+        assertEquals(List.of("INTELLIGENCE", "WISDOM", "CHARISMA"),
+                elfe.spellcastingAbilities().stream().map(DndDtos.ChoiceDto::id).toList());
         DndDtos.SpeciesOptionsDto humain = especes.stream().filter(e -> e.id().equals("HUMAN")).findFirst().orElseThrow();
         assertEquals(2, humain.sizes().size());
         assertEquals(18, humain.skillChoices().size());
         assertNull(humain.optionLabel());
+        assertEquals(List.of(), humain.spellcastingAbilities());
         assertThrows(NotFoundException.class, () -> dnd().species("inconnue"));
     }
 

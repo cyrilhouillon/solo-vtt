@@ -163,9 +163,6 @@ export interface SpeciesChoice {
   spellcastingAbility: Ability | null
 }
 
-/** Les caractéristiques d'incantation qu'une espèce peut choisir. */
-export const SPELLCASTING_ABILITIES = ['INTELLIGENCE', 'WISDOM', 'CHARISMA'] as const satisfies readonly Ability[]
-
 /** Une espèce pour la création guidée, telle que le serveur la sert ; `optionLabel` et `skillTrait` `null` sans. */
 export interface SpeciesOptions {
   id: string
@@ -176,7 +173,8 @@ export interface SpeciesOptions {
   options: DescribedChoice[]
   skillTrait: string | null
   skillChoices: { id: Skill; label: string }[]
-  spellcasting: boolean
+  /** Les caractéristiques d'incantation au choix, vide si l'espèce n'en choisit pas. */
+  spellcastingAbilities: { id: Ability; label: string }[]
   traits: string[]
 }
 

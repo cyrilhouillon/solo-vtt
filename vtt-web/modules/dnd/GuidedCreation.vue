@@ -14,7 +14,6 @@ import {
   type Skill,
   type SpeciesChoice,
   type SpeciesOptions,
-  SPELLCASTING_ABILITIES,
 } from './sheet'
 
 /**
@@ -59,17 +58,19 @@ const scores = ref<Record<Ability, number>>(scoresOf(props.build))
 const id = useId()
 
 onMounted(async () => {
-  try {
-    options.value = await dndApi(props.campaignId).classes()
-  } catch (e) {
-    loadError.value = `Classes illisibles : ${e instanceof Error ? e.message : String(e)}`
-  }
-  try {
-    speciesList.value = await dndApi(props.campaignId).species()
-  } catch (e) {
-    loadError.value = `Espèces illisibles : ${e instanceof Error ? e.message : String(e)}`
-  }
+  const api = dndApi(props.campaignId)
+  const [classes, species] = await Promise.allSettled([api.classes(), api.species()])
+  const errors: string[] = []
+  if (classes.status === 'fulfilled') options.value = classes.value
+  else errors.push(`Classes illisibles : ${reasonOf(classes.reason)}`)
+  if (species.status === 'fulfilled') speciesList.value = species.value
+  else errors.push(`Espèces illisibles : ${reasonOf(species.reason)}`)
+  loadError.value = errors.length ? errors.join(' ; ') : null
 })
+
+function reasonOf(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
+}
 
 function scoresOf(build: Build | null): Record<Ability, number> {
   return Object.fromEntries(ABILITIES.map((a) => [a, build?.scores[a] ?? 10])) as Record<Ability, number>
@@ -260,15 +261,15 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
               </select>
             </label>
             <p v-if="optionText" class="muted text">{{ optionText }}</p>
-            <div v-if="species.spellcasting || species.skillTrait" class="row">
-              <label v-if="species.spellcasting" class="row">
+            <div v-if="species.spellcastingAbilities.length || species.skillTrait" class="row">
+              <label v-if="species.spellcastingAbilities.length" class="row">
                 Incantation
                 <select
                   :value="shown.species.spellcastingAbility ?? ''"
                   @change="setSpecies('spellcastingAbility', ($event.target as HTMLSelectElement).value)"
                 >
                   <option value="">à choisir</option>
-                  <option v-for="a in SPELLCASTING_ABILITIES" :key="a" :value="a">{{ ABILITY_LABELS[a].label }}</option>
+                  <option v-for="a in species.spellcastingAbilities" :key="a.id" :value="a.id">{{ a.label }}</option>
                 </select>
               </label>
               <label v-if="species.skillTrait" class="row">

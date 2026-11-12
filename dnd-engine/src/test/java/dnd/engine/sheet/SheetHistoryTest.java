@@ -116,4 +116,17 @@ class SheetHistoryTest {
                 FightingStyle.DEFENSE, archer.equipment(), archer.masteries(), null);
         assertEquals(16, apresB.rebuild(defense).armorClass(), "12 + Dex 3 + Défense 1");
     }
+
+    @Test
+    void uneEspeceChoisie_neSeRetirePas() {
+        Build nain = Build.fighter().withSpecies(SpeciesChoice.of(Species.DWARF));
+        SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
+                new SheetEvent.SheetBuilt(nain, SheetState.blank().rebuild(nain))));
+
+        var refus = assertThrows(IllegalArgumentException.class, () -> etat.rebuild(Build.fighter()));
+
+        assertEquals("Espèce : elle se change, mais ne se retire pas", refus.getMessage());
+        assertEquals(11, etat.rebuild(Build.fighter().withSpecies(SpeciesChoice.of(Species.ELF))).hitPointMax(),
+                "changer d'espèce reste permis : Nain → Elfe, PV 12 → 11");
+    }
 }

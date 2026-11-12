@@ -1,6 +1,6 @@
 package dnd.engine.sheet;
 
-import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -11,7 +11,8 @@ import java.util.Set;
 public record SpeciesChoice(Species species, CreatureSize size, SpeciesOption option, Skill skill,
                             Ability spellcastingAbility) {
 
-    private static final Set<Ability> SPELLCASTING = EnumSet.of(Ability.INTELLIGENCE, Ability.WISDOM, Ability.CHARISMA);
+    /** Les caractéristiques d'incantation qu'une espèce peut choisir. */
+    public static final List<Ability> SPELLCASTING_ABILITIES = List.of(Ability.INTELLIGENCE, Ability.WISDOM, Ability.CHARISMA);
 
     public SpeciesChoice {
         if (size == null && species != null && species.sizes().size() == 1) size = species.sizes().getFirst();
@@ -51,7 +52,7 @@ public record SpeciesChoice(Species species, CreatureSize size, SpeciesOption op
             if (!species.spellcasting()) {
                 throw new IllegalArgumentException("%s : aucune caractéristique d’incantation à choisir".formatted(name));
             }
-            if (!SPELLCASTING.contains(spellcastingAbility)) {
+            if (!SPELLCASTING_ABILITIES.contains(spellcastingAbility)) {
                 throw new IllegalArgumentException("Caractéristique d’incantation : Intelligence, Sagesse ou Charisme");
             }
         }
