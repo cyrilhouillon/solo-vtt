@@ -172,6 +172,28 @@ export interface Damage {
   type: string
 }
 
+/** Ce que la piste à dés montre : la dernière attaque tranchée par le moteur. */
+export interface TrayResult {
+  /** Numéro de l'action : chaque attaque tranchée en a un nouveau, et les dés roulent à chacune. */
+  action: number
+  /** L'annonce de l'attaque (qui, avec quoi, sur qui). */
+  title: string
+  /** L'issue et son calcul, tels que le moteur les a tranchés. */
+  roll: AttackRoll
+  /** Les dégâts subis, dans l'ordre du journal. */
+  damage: Damage[]
+  /** Les réactions qui ont changé le coup, dans le texte du journal. */
+  reactions: string[]
+  /** Les dés du jet d'attaque (d20, puis dés bonus), tirés avant l'issue. */
+  attackDice: RolledDice[]
+  /** Les dés de dégâts, tirés après l'issue ; aucun sur un raté. */
+  damageDice: RolledDice[]
+  /** L'attaque vient d'être tranchée : ses dés roulent. Faux quand elle est relue du journal (rechargement). */
+  live: boolean
+  /** Absent quand le résultat est relu du journal (rechargement) : la piste n'a alors pas la jauge. */
+  target?: { id: string; name: string; hitPoints: number; maxHitPoints: number }
+}
+
 /** Une question du moteur au milieu d'une action ; le joueur y répond pour toute créature. */
 export interface Decision {
   id: string
@@ -221,7 +243,7 @@ export interface CombatEntry {
 
 /**
  * Un pas du rejeu : une action entière, ce qu'elle a ajouté au journal, sa cible et ses PV après coup (`null` sans
- * cible), puis l'état après le pas. Le pas 0 est l'état au lancement, sans entrée.
+ * cible), puis l'état après le pas. Le pas 0 est le départ, l'état juste avant le lancement, sans entrée.
  */
 export interface ReplayStep {
   entries: JournalEntry[]

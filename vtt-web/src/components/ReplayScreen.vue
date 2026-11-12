@@ -6,13 +6,21 @@ import AppIcon from './AppIcon.vue'
 import ThemeButton from './ThemeButton.vue'
 import CampaignColumn from './CampaignColumn.vue'
 import CreatureSheet from './CreatureSheet.vue'
-import DiceTray, { type TrayResult } from './DiceTray.vue'
+import DiceTray from './DiceTray.vue'
 import JournalPanel from './JournalPanel.vue'
 import MapView from './MapView.vue'
 import TokenBoard from './TokenBoard.vue'
-import { throwsOf, trayFromJournal } from '../dice/tray'
+import { impactLabel, throwsOf, trayFromJournal } from '../dice/tray'
 import { theme } from '../theme'
-import { formatLength, type CampaignView, type CombatReplay, type PageSummary, type ReplayStep, type SceneView } from '../types'
+import {
+  formatLength,
+  type CampaignView,
+  type CombatReplay,
+  type PageSummary,
+  type ReplayStep,
+  type SceneView,
+  type TrayResult,
+} from '../types'
 
 /**
  * Le rejeu d'un combat terminé, en lecture seule : la même table qu'en direct (carte, tableau, feuilles, journal, dés),
@@ -30,7 +38,7 @@ const replay = ref<CombatReplay | null>(null)
 /** L'entrée du Carnet du combat, pour son nom et le retour au Carnet. */
 const entry = ref<PageSummary | null>(null)
 const error = ref<string | null>(null)
-/** Le pas montré : 0 est l'état au lancement. */
+/** Le pas montré : 0 est le départ, l'état juste avant le lancement. */
 const index = ref(0)
 /** La carte du pas montré ; ses PV baissent à l'arrêt des dés, comme en direct. */
 const scene = ref<SceneView | null>(null)
@@ -73,9 +81,10 @@ function copyScene(view: SceneView): SceneView {
   return { ...view, tokens: view.tokens.map((t) => ({ ...t })) }
 }
 
-/** Pose l'état du pas d'emblée : carte, PV, piste relue du journal, sans dés. */
+/** Pose l'état du pas d'emblée : carte, PV, piste relue du journal ; les dés d'un pas abandonné s'effacent. */
 function show(at: number) {
   const id = ++gesture
+  mapView.value?.cancelDice()
   rolling.value = false
   index.value = Math.min(Math.max(at, 0), last.value)
   if (step.value) scene.value = copyScene(step.value.scene)
@@ -107,13 +116,16 @@ async function forward(): Promise<void> {
   if (thrown.damage.length && id === gesture) await mapView.value?.rollDice([], thrown.damage)
   if (id !== gesture) return
   if (target) target.hitPoints = current.targetHitPoints
-  const total = tray.damage.reduce((sum, d) => sum + d.amount, 0)
-  mapView.value?.showImpact(current.targetId, tray.roll.outcome === 'MISS' ? 'Raté' : `−${total}`)
+  mapView.value?.showImpact(current.targetId, impactLabel(tray))
   rolling.value = false
 }
 
+/** Numéro de la lecture en cours : une lecture mise en pause ne repart pas, même relancée pendant son animation. */
+let playRun = 0
+
 /** Tout geste du joueur met la lecture en pause. */
 function stop() {
+  playRun++
   playing.value = false
   if (pause) {
     clearTimeout(pause.timer)
@@ -135,14 +147,15 @@ async function play() {
     stop()
     return
   }
+  const run = ++playRun
   if (index.value >= last.value) show(0)
   playing.value = true
-  while (playing.value && index.value < last.value) {
+  while (run === playRun && index.value < last.value) {
     await forward()
-    if (!playing.value || index.value >= last.value) break
+    if (run !== playRun || index.value >= last.value) break
     await wait(PLAY_DELAY_MS)
   }
-  playing.value = false
+  if (run === playRun) playing.value = false
 }
 
 function manual(action: () => unknown) {
@@ -193,8 +206,9 @@ function onKey(e: KeyboardEvent) {
 onMounted(async () => {
   window.addEventListener('keydown', onKey)
   try {
-    const [loaded, notebook] = await Promise.all([api.combatReplay(props.combatId), api.notebook()])
-    entry.value = notebook.pages.find((p) => p.combatId === props.combatId) ?? null
+    // Le Carnet ne donne que le nom du combat : sans lui, le rejeu s'ouvre sous le titre « Combat ».
+    const [loaded, notebook] = await Promise.all([api.combatReplay(props.combatId), api.notebook().catch(() => null)])
+    entry.value = notebook?.pages.find((p) => p.combatId === props.combatId) ?? null
     replay.value = loaded
     // Le rejeu s'ouvre sur l'état final, comme l'entrée du Carnet.
     show(loaded.steps.length - 1)
@@ -209,7 +223,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="layout">
+  <div class="game-table">
     <CampaignColumn class="column" :campaign-name="campaign.name" current="combat" compact @navigate="navigate">
       <template #foot>
         <ThemeButton />
@@ -281,7 +295,7 @@ onBeforeUnmount(() => {
           <button type="button" class="icon-button" aria-label="Fin du combat" title="Fin (Fin)" :disabled="index >= last" @click="manual(() => show(last))">
             <AppIcon name="last" />
           </button>
-          <span class="position" aria-live="polite">{{ index === 0 ? 'Lancement' : `Pas ${index} / ${last}` }}</span>
+          <span class="position" aria-live="polite">{{ index === 0 ? 'Départ' : `Pas ${index} / ${last}` }}</span>
           <span v-if="measure" class="measure">
             Distance {{ measure.from }} – {{ measure.to }} : <strong>{{ formatLength(measure.value, scene.unitSymbol) }}</strong>
           </span>
@@ -326,22 +340,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* La même table qu'en direct : colonne en rail, barre, carte au centre, panneau à droite. */
-.layout {
-  height: 100vh;
-  display: grid;
-  grid-template-columns: 3.5rem 1fr 24rem;
-  grid-template-rows: auto minmax(0, 1fr);
-  grid-template-areas:
-    'column bar bar'
-    'column table side';
-}
-.column {
-  grid-area: column;
-}
-.bar {
-  grid-area: bar;
-}
+/* La même table qu'en direct (`.game-table`, `style.css`) ; la colonne reste en rail. */
 .map-info,
 .round {
   margin: 0;
@@ -352,22 +351,6 @@ onBeforeUnmount(() => {
 .round {
   color: var(--ink);
   font-weight: 700;
-}
-.table {
-  grid-area: table;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  background: var(--felt);
-}
-.map-frame {
-  flex: 1;
-  min-height: 0;
-  border: 6px solid var(--wood);
-  border-top: 0;
-  border-bottom: 0;
 }
 /* Les commandes du rejeu prennent la place de la consigne, sous la carte. */
 .controls {
@@ -413,73 +396,5 @@ onBeforeUnmount(() => {
   color: var(--map-label);
   font-family: var(--font-title);
   font-size: 1.15rem;
-}
-.side {
-  grid-area: side;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  background: var(--wood);
-  border-left: 2px solid var(--page);
-}
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0.6rem 0.9rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-.tab {
-  padding: 0.4rem 0.9rem 0.35rem;
-  border: 0;
-  border-radius: 4px 4px 0 0;
-  background: transparent;
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: 0.04em;
-  color: var(--ink-muted);
-  box-shadow: inset 0 -3px 0 transparent;
-}
-.tab:hover:not(:disabled) {
-  background: var(--wood-raised);
-  color: var(--ink);
-}
-.tab[aria-selected='true'] {
-  color: var(--ink);
-  box-shadow: inset 0 -3px 0 var(--ink);
-}
-.tab-panel {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 1rem 1.1rem 1.5rem;
-}
-@media (max-width: 1100px) {
-  .layout {
-    grid-template-columns: 3.5rem 1fr 20rem;
-  }
-}
-@media (max-width: 900px) {
-  .layout {
-    height: auto;
-    min-height: 100vh;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
-    grid-template-areas:
-      'column'
-      'bar'
-      'table'
-      'side';
-  }
-  .side {
-    border-left: 0;
-    min-height: 24rem;
-  }
-  .map-frame {
-    flex: none;
-    aspect-ratio: var(--map-ratio, 3 / 2);
-    min-height: 14rem;
-    max-height: 70svh;
-  }
 }
 </style>

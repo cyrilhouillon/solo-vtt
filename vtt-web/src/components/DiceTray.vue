@@ -1,34 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { AttackRoll, Damage, RolledDice } from '../types'
+import type { AttackRoll, RolledDice, TrayResult } from '../types'
 
 /**
  * La piste à dés, sous la carte : la dernière attaque tranchée par le moteur. Les tours de combat ne l'effacent pas
  * (la barre dit qui joue). Ses dés y sont posés, valeurs du serveur, une fois que les dés 3D se sont arrêtés sur la
  * carte ; le verdict se pose alors. Muette pour les lecteurs d'écran : l'issue leur est annoncée à part.
+ *
+ * `rolling` : les dés 3D roulent sur la carte ; verdict, dés posés et cible attendent leur arrêt, à leur place.
  */
-export interface TrayResult {
-  /** Numéro de l'action : chaque attaque tranchée en a un nouveau, et les dés roulent à chacune. */
-  action: number
-  /** L'annonce de l'attaque (qui, avec quoi, sur qui). */
-  title: string
-  /** L'issue et son calcul, tels que le moteur les a tranchés. */
-  roll: AttackRoll
-  /** Les dégâts subis, dans l'ordre du journal. */
-  damage: Damage[]
-  /** Les réactions qui ont changé le coup, dans le texte du journal. */
-  reactions: string[]
-  /** Les dés du jet d'attaque (d20, puis dés bonus), tirés avant l'issue. */
-  attackDice: RolledDice[]
-  /** Les dés de dégâts, tirés après l'issue ; aucun sur un raté. */
-  damageDice: RolledDice[]
-  /** L'attaque vient d'être tranchée : ses dés roulent. Faux quand elle est relue du journal (rechargement). */
-  live: boolean
-  /** Absent quand le résultat est relu du journal (rechargement) : la piste n'a alors pas la jauge. */
-  target?: { id: string; name: string; hitPoints: number; maxHitPoints: number }
-}
-
-/** `rolling` : les dés 3D roulent sur la carte ; verdict, dés posés et cible attendent leur arrêt, à leur place. */
 const props = defineProps<{ result: TrayResult | null; rolling: boolean }>()
 
 /** L'issue de l'attaque, pas son intérêt pour le joueur : elle se lit à la forme (voir les styles). */

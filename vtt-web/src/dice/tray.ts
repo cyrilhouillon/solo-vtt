@@ -1,5 +1,4 @@
-import type { TrayResult } from '../components/DiceTray.vue'
-import type { JournalEntry, RolledDice } from '../types'
+import type { JournalEntry, RolledDice, TrayResult } from '../types'
 
 /**
  * Les dés que des entrées du journal ont tirés, en deux lancers comme à la table : le jet d'attaque (avant l'issue, ou
@@ -32,4 +31,9 @@ export function trayFromJournal(journal: readonly JournalEntry[], target?: TrayR
     live: target !== undefined,
     target,
   }
+}
+
+/** Ce que la cible porte à l'arrêt des dés : « Raté », ou le total des dégâts (« −11 »). */
+export function impactLabel(result: TrayResult): string {
+  return result.roll.outcome === 'MISS' ? 'Raté' : `−${result.damage.reduce((sum, d) => sum + d.amount, 0)}`
 }

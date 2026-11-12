@@ -9,7 +9,7 @@ import CatalogPanel from './CatalogPanel.vue'
 import CombatControl from './CombatControl.vue'
 import CreatureSheet from './CreatureSheet.vue'
 import DecisionDialog from './DecisionDialog.vue'
-import DiceTray, { type TrayResult } from './DiceTray.vue'
+import DiceTray from './DiceTray.vue'
 import GridAlignPanel from './GridAlignPanel.vue'
 import JournalPanel from './JournalPanel.vue'
 import MapView from './MapView.vue'
@@ -23,7 +23,7 @@ import { checkMove, type MoveLimit } from '../map/move'
 import { rangeVerdict, type RangeVerdict } from '../map/range'
 import type { Targeting } from '../map/SceneCanvas'
 import { theme } from '../theme'
-import { throwsOf, trayFromJournal as trayOf } from '../dice/tray'
+import { impactLabel, throwsOf, trayFromJournal } from '../dice/tray'
 import {
   formatLength,
   type Attack,
@@ -39,6 +39,7 @@ import {
   type SavedMapView,
   type SceneView,
   type TokenView,
+  type TrayResult,
 } from '../types'
 
 const props = defineProps<{ campaign: CampaignView }>()
@@ -128,11 +129,6 @@ function toggleGrid() {
     const updated = await api.showGrid(visible)
     if (scene.value) scene.value = { ...scene.value, gridVisible: updated.gridVisible }
   })
-}
-
-/** La dernière attaque tranchée du journal, pour la piste ; `target` pour une attaque qui vient d'être tranchée. */
-function trayFromJournal(target?: TrayResult['target']): TrayResult | null {
-  return trayOf(journal.value, target)
 }
 
 /** Le catalogue s'ouvre tant que la carte est vide ; ensuite, c'est le joueur qui le replie. */
@@ -334,7 +330,7 @@ async function resync(): Promise<string> {
   journal.value = await api.journal()
   decision.value = await api.pendingDecision()
   combat.value = await api.combat()
-  lastResult.value = trayFromJournal()
+  lastResult.value = trayFromJournal(journal.value)
   const ids = new Set(fresh.tokens.map((t) => t.id))
   selected.value = selected.value.filter((id) => ids.has(id))
   if (sheet.value && !ids.has(sheet.value.id)) sheet.value = null
@@ -367,7 +363,7 @@ onMounted(() =>
     journal.value = await api.journal()
     decision.value = await api.pendingDecision()
     combat.value = await api.combat()
-    lastResult.value = trayFromJournal()
+    lastResult.value = trayFromJournal(journal.value)
     openDefaultDrawer()
   }),
 )
@@ -720,7 +716,7 @@ async function settleAction(result: ActionResult) {
   if (result.decision || result.targetId === null) return
   if (result.targetHitPoints === null || result.targetMaxHitPoints === null) return
   const target = scene.value?.tokens.find((token) => token.id === result.targetId)
-  const tray = trayFromJournal({
+  const tray = trayFromJournal(journal.value, {
     id: result.targetId,
     name: target?.name ?? result.targetId,
     hitPoints: result.targetHitPoints,
@@ -769,8 +765,7 @@ function showImpact(result: TrayResult) {
   if (!targetId) return
   const token = scene.value?.tokens.find((t) => t.id === targetId)
   if (token) token.hitPoints = result.target!.hitPoints
-  const total = result.damage.reduce((sum, d) => sum + d.amount, 0)
-  mapView.value?.showImpact(targetId, result.roll.outcome === 'MISS' ? 'Raté' : `−${total}`)
+  mapView.value?.showImpact(targetId, impactLabel(result))
 }
 
 function endMoving() {
@@ -1058,7 +1053,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="layout" :class="{ 'with-drawer': drawer }">
+  <div class="game-table" :class="{ 'with-drawer': drawer }">
     <!-- La colonne de la campagne, comme au Carnet ; repliée en rail tant qu'aucun outil n'est ouvert, pour la carte. -->
     <CampaignColumn class="column" :campaign-name="campaign.name" current="combat" :compact="!drawer" @navigate="navigate">
       <div class="tools" :class="{ open: drawer }" role="group" aria-label="Outils">
@@ -1291,26 +1286,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /*
- * Comme au Carnet : la colonne de la campagne sur toute la hauteur, à gauche ; la barre de la carte au-dessus de la
- * table et du panneau. Repliée en rail (3.5rem) tant qu'aucun outil n'est ouvert, la colonne laisse la place à la carte.
+ * La table de jeu (`.game-table`, `style.css`) : la colonne de la campagne, repliée en rail (3.5rem) tant qu'aucun
+ * outil n'est ouvert, laisse la place à la carte.
  */
-.layout {
-  height: 100vh;
-  display: grid;
-  grid-template-columns: 3.5rem 1fr 24rem;
-  grid-template-rows: auto minmax(0, 1fr);
-  grid-template-areas:
-    'column bar bar'
-    'column table side';
-}
-.layout.with-drawer {
+.game-table.with-drawer {
   grid-template-columns: 17.5rem 1fr 24rem;
-}
-.column {
-  grid-area: column;
-}
-.bar {
-  grid-area: bar;
 }
 .map-info {
   margin: 0;
@@ -1406,23 +1386,6 @@ onBeforeUnmount(() => {
   padding: 0.3rem 0.9rem 0.5rem;
   overflow-y: auto;
 }
-.table {
-  grid-area: table;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  background: var(--felt);
-}
-/* Le plateau est bordé de bois. */
-.map-frame {
-  flex: 1;
-  min-height: 0;
-  border: 6px solid var(--wood);
-  border-top: 0;
-  border-bottom: 0;
-}
 /*
  * Deux lignes réservées : la consigne de ciblage d'une attaque à distance passe à la ligne sous 1500 px environ,
  * et la carte au-dessus ne doit pas rétrécir au moment de viser.
@@ -1461,46 +1424,6 @@ onBeforeUnmount(() => {
   box-shadow: inset 0 2px 0 var(--danger);
   color: var(--danger);
 }
-.side {
-  grid-area: side;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  background: var(--wood);
-  border-left: 2px solid var(--page);
-}
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0.6rem 0.9rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-.tab {
-  padding: 0.4rem 0.9rem 0.35rem;
-  border: 0;
-  border-radius: 4px 4px 0 0;
-  background: transparent;
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: 0.04em;
-  color: var(--ink-muted);
-  box-shadow: inset 0 -3px 0 transparent;
-}
-.tab:hover:not(:disabled) {
-  background: var(--wood-raised);
-  color: var(--ink);
-}
-.tab[aria-selected='true'] {
-  color: var(--ink);
-  box-shadow: inset 0 -3px 0 var(--ink);
-}
-.tab-panel {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 1rem 1.1rem 1.5rem;
-}
 /* Ce que montre l'onglet Cible, au-dessus de la feuille : une ligne discrète, pas un titre. */
 .tab-note {
   margin: 0 0 0.6rem;
@@ -1508,64 +1431,37 @@ onBeforeUnmount(() => {
   font-style: italic;
   color: var(--ink-muted);
 }
-.tab-panel:focus-visible {
-  outline-offset: -2px;
-}
-@media (max-width: 1100px) {
-  .layout {
-    grid-template-columns: 3.5rem 1fr 20rem;
-  }
-}
 /* Tiroir ouvert sous 1280 px : le panneau latéral se replie en bande d'onglets verticaux. */
 @media (min-width: 901px) and (max-width: 1280px) {
-  .layout.with-drawer {
+  .game-table.with-drawer {
     grid-template-columns: 17.5rem 1fr 3rem;
   }
-  .side.folded .tabs {
+  /* Préfixés par la table : ils l'emportent sur les onglets communs de `style.css`. */
+  .game-table .side.folded .tabs {
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 0;
     border-bottom: 0;
   }
-  .side.folded .tab {
+  .game-table .side.folded .tab {
     writing-mode: vertical-rl;
     padding: 0.9rem 0.4rem;
     border-radius: 4px;
   }
-  .side.folded .tab[aria-selected='true'] {
+  .game-table .side.folded .tab[aria-selected='true'] {
     box-shadow: inset 3px 0 0 var(--ink);
   }
 }
 @media (max-width: 900px) {
-  .layout,
-  .layout.with-drawer {
-    height: auto;
-    min-height: 100vh;
+  .game-table.with-drawer {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
-    grid-template-areas:
-      'column'
-      'bar'
-      'table'
-      'side';
   }
   .tools:not(.open) {
     flex-direction: row;
   }
   .drawer {
     overflow: visible;
-  }
-  .side {
-    border-left: 0;
-    min-height: 24rem;
-  }
-  /* La carte prend sa propre forme : pas de bande de feutre vide au-dessus ni en dessous. */
-  .map-frame {
-    flex: none;
-    aspect-ratio: var(--map-ratio, 3 / 2);
-    min-height: 14rem;
-    max-height: 70svh;
   }
 }
 </style>
