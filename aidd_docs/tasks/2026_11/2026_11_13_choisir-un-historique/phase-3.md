@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: choix de l'historique et de Polyvalent sur la fiche
