@@ -68,6 +68,8 @@ final class SheetStore {
             return switch (event) {
                 case SheetEvent.SheetCreated created -> new EventFile(CREATED, null);
                 case SheetEvent.SheetEdited edited -> new EventFile(EDITED, DndDtos.SheetValuesDto.of(edited.values()));
+                case SheetEvent.SheetBuilt built -> throw new UnsupportedOperationException("Construction pas encore gardée");
+                case SheetEvent.AbilitiesRolled rolled -> throw new UnsupportedOperationException("Jets pas encore gardés");
             };
         }
 

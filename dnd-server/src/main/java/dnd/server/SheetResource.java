@@ -70,7 +70,7 @@ public class SheetResource {
         String pageId = pages.createEntry(campaignId, MODULE_ID, parent, title).id();
         SheetEvent created = new SheetEvent.SheetCreated();
         store.write(campaignId, store.read(campaignId).withEvent(pageId, created));
-        return DndDtos.SheetDto.of(pageId, SheetHistory.replay(List.of(created)));
+        return DndDtos.SheetDto.of(pageId, SheetHistory.replay(List.of(created)).values());
     }
 
     @GET
@@ -110,7 +110,7 @@ public class SheetResource {
     private CharacterSheet sheet(String campaignId, SheetStore.State state, String pageId) {
         if (!pages.isEntry(campaignId, MODULE_ID, pageId)) throw new NotFoundException("Fiche inconnue : " + pageId);
         try {
-            return SheetHistory.replay(state.history(pageId).orElse(List.of(new SheetEvent.SheetCreated())));
+            return SheetHistory.replay(state.history(pageId).orElse(List.of(new SheetEvent.SheetCreated()))).values();
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw SheetStore.unreadable();
         }

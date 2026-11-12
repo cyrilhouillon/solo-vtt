@@ -34,7 +34,7 @@ class CharacterSheetTest {
 
     @Test
     void uneFicheCreee_estVide_niveau1_valeursA10_maitrisePlus2() {
-        CharacterSheet fiche = SheetHistory.replay(List.of(new SheetEvent.SheetCreated()));
+        CharacterSheet fiche = SheetHistory.replay(List.of(new SheetEvent.SheetCreated())).values();
 
         assertEquals(CharacterSheet.blank(), fiche);
         assertEquals(1, fiche.level());
@@ -79,8 +79,8 @@ class CharacterSheetTest {
         CharacterSheet seconde = CharacterSheet.blank();
 
         assertEquals(seconde, SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
-                new SheetEvent.SheetEdited(premiere), new SheetEvent.SheetEdited(seconde))));
-        assertEquals(premiere, SheetHistory.replay(List.of(new SheetEvent.SheetCreated(), new SheetEvent.SheetEdited(premiere))));
+                new SheetEvent.SheetEdited(premiere), new SheetEvent.SheetEdited(seconde))).values());
+        assertEquals(premiere, SheetHistory.replay(List.of(new SheetEvent.SheetCreated(), new SheetEvent.SheetEdited(premiere))).values());
     }
 
     @Test
