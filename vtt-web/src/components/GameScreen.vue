@@ -65,6 +65,8 @@ const armed = ref<string | null>(null)
 const selected = ref<string[]>([])
 const sheet = ref<Sheet | null>(null)
 const error = ref<string | null>(null)
+/** Ce qui n'a pas suivi la dernière action sans la défaire (une fiche) : à part de `error`, que chaque geste vide. */
+const warning = ref<string | null>(null)
 const journal = ref<JournalEntry[]>([])
 /** Tiroir ouvert depuis le rail : catalogue, nouvelle carte (et calage de la grille), cartes enregistrées, ou aucun. */
 const drawer = ref<'catalog' | 'map' | 'maps' | null>(null)
@@ -705,8 +707,7 @@ async function settleAction(result: ActionResult) {
   combat.value = result.combat
   notice.value = ''
   // L'action est faite : ce qui n'a pas suivi (une fiche) se dit au bandeau, avant toute sortie anticipée.
-  const warning = result.warnings.join(' ')
-  if (warning) error.value = warning
+  warning.value = result.warnings.join(' ') || null
   const thrown = throwsOf(result.entries)
   if (result.decision && thrown.attack.length) {
     // Le jet d'attaque roule avant la question : la réaction (Bouclier) se décide sur un dé arrêté.
@@ -734,8 +735,6 @@ async function settleAction(result: ActionResult) {
     : 'Attaque résolue.'
   // Une réaction peut changer la feuille de la cible comme de l'attaquant (emplacement, CA), et la CA du tableau.
   if (sheet.value) showSheet(sheet.value.id)
-  // `showSheet` passe par `attempt`, qui vide le bandeau : l'avertissement y revient.
-  if (warning) error.value = warning
   const fresh = await api.sheet(result.targetId)
   targetSheet.value = fresh
   if (target) target.armorClass = fresh.armorClass
@@ -1200,9 +1199,9 @@ onBeforeUnmount(() => {
           />
         </div>
         <!-- L'erreur prend la place de la consigne, sous la carte où l'on vient d'agir : rien ne couvre le tableau. -->
-        <div v-if="error" class="status error" role="alert">
-          <p>{{ error }}</p>
-          <button type="button" @click="error = null">Fermer</button>
+        <div v-if="error || warning" class="status error" role="alert">
+          <p>{{ error ?? warning }}</p>
+          <button type="button" @click="error ? (error = null) : (warning = null)">Fermer</button>
         </div>
         <p v-else class="status">
           <strong v-if="notice" class="notice">{{ notice }}</strong>
