@@ -23,3 +23,19 @@
 
 - [pass] Task 1 — `npm run build` passe ; une action avec avertissement l'affiche dans le bandeau, l'action restant résolue — `npm run build` : `✓ built in 1.28s`, aucune erreur. Premier passage (0b1eea2) en échec : le serveur rendait l'avertissement (journal 15:55:11, « fiche introuvable ou module inactif »), mais le bandeau restait vide, car `settleAction` relance `showSheet`, dont `attempt` efface `error`. Corrigé en 0ee4656 (l'avertissement est reposé après `showSheet`), puis tout le parcours a été repris sur une campagne neuve. Chrome, 5174 → 8081, module D&D désactivé : le Gobelin attaque Aria hors combat ; deux ratés sans bandeau ; touché à 3 dégâts puis à 5 dégâts : le bandeau dit « Fiche « Aria » non mise à jour : fiche introuvable ou module inactif », avec « Fermer » ; le verdict « Touché · 5 dégâts tranchants » s'affiche et Aria passe à 0/11, « À terre »
 - [pass] Task 2 — Les quatre critères de la story s'observent dans le navigateur ; le module désactivé donne l'avertissement — campagne neuve « Test PV fiche 2 », Aria (Guerrier par défaut) à 11/11 ; « Lancer le combat » dans l'écran, fin du tour d'Aria, Gobelin → Cimeterre → Aria : « Touché · 8 dégâts tranchants », 3/11 sur la carte, sans bandeau. (1) Carnet, fiche d'Aria : « PV actuels = 3 ». (2) Combat terminé, serveur 8081 arrêté puis relancé (« Listening on: http://localhost:8081 ») : fiche toujours à 3. (3) Rejeu du combat lu de « Début » au « Pas 4 / 4 » : fiche à 3 (`GET …/dnd/sheets/{id}`). (4) Nouvelle carte, Aria reposée : tableau « Aria 3 / 11 ». Module désactivé : voir la tâche 1 ; la fiche reste à 3 après réactivation. Démarrage CDI : `SheetCharacters` reçoit `SheetResource` sans erreur (trois démarrages de 8081). Serveurs 8081 et 5174 arrêtés ; 8080 et 5173 jamais touchés. Mise en place (campagne, fiche, carte, poses, fin du combat, modules) par l'API 8081 ; coups et rejeu par l'écran
+
+## Phase 4 · Mémoire et backlog
+
+- Date: 2026-11-13
+- Validated on: 34f2c40
+
+- [pass] Task 1 — La mémoire nomme le port, l'événement et ses limites ; la story est `done` — `architecture.md` : puce du catalogue de préparation complétée (envoi après la garde, hors rejeu, `CharacterSheetFollower`, `CampaignCatalog.sustained`, `PlayerCharacters.sustained`, `HitPointsLost` écrit `lost`, verrou de `SheetResource`, `ActionResultDto.warnings`, tout coup compté) et nouveau piège (coup perdu si arrêt entre les deux écritures, saisie périmée, PJ posé deux fois, combat repris avec la copie d'avant). `codebase-map.md` : `PlayerCharacters.sustained`, `CharacterSheetFollower`. `project-brief.md` : les coups baissent la fiche, la phrase sur la retouche est gardée. Chaque nom cité se trouve dans le code (`grep` : `PlayerCharacters.java`, `SheetCharacters.java`, `SheetEvent.java`, `SheetStore.java`, `CharacterSheetFollower.java`, `Dtos.java`, `SceneSession.java`, `SheetResource.java`). Story `voir-sur-la-fiche-les-pv-perdus-en-combat.md` : `status: done`
+
+## Final
+
+- Date: 2026-11-13
+- Validated on: 0ee4656 (dernier commit de code ; seuls des fichiers Markdown ont changé depuis)
+
+- [pass] `mvn -q compile` — exit 0, aucune erreur
+- [pass] `mvn verify` — `BUILD SUCCESS` ; dnd-engine `Tests run: 138, Failures: 0`, dnd-server `Tests run: 39, Failures: 0`, vtt-server `Tests run: 292, Failures: 0`, autres modules 27, 65, 43 et 10, sans échec
+- [pass] `npm run build` dans `vtt-web/` — vue-tsc et vite : `✓ built in 932ms`, aucune erreur

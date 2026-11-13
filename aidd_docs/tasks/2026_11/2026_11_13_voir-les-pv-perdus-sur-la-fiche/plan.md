@@ -1,6 +1,6 @@
 ---
 objective: "Chaque coup reçu par un PJ posé, en combat ou non, baisse les PV actuels de sa fiche du même montant, une seule fois : gardé après la fin du combat et un redémarrage, jamais réémis par une reprise ou un rejeu, repris par la pose suivante ; un échec de suivi s'affiche au joueur sans défaire le coup."
-status: in-progress
+status: implemented
 ---
 
 # Plan: voir sur la fiche les PV perdus en combat
