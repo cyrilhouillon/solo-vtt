@@ -245,10 +245,10 @@ final class Dtos {
     /**
      * Ce qu'une action (attaque, combat) ou sa reprise a produit : les entrées ajoutées au journal, la cible et ses PV
      * après coup ({@code null} sans cible), la décision qui suspend l'action ({@code null} si elle est finie),
-     * et le combat ({@code null} hors combat).
+     * le combat ({@code null} hors combat) et ce qui n'a pas suivi sans défaire l'action (une fiche non mise à jour).
      */
     record ActionResultDto(List<JournalEntryDto> entries, String targetId, Integer targetHitPoints, Integer targetMaxHitPoints,
-                           DecisionDto decision, CombatDto combat) {
+                           DecisionDto decision, CombatDto combat, List<String> warnings) {
         static ActionResultDto of(SceneSession.ActionOutcome outcome, SceneSession session) {
             var target = Optional.ofNullable(outcome.targetId()).flatMap(session::creature);
             return new ActionResultDto(outcome.entries().stream().map(JournalEntryDto::of).toList(),
@@ -256,7 +256,8 @@ final class Dtos {
                     target.map(Creature::hitPoints).orElse(null),
                     target.map(Creature::maxHitPoints).orElse(null),
                     outcome.decision().map(d -> DecisionDto.of(d, session)).orElse(null),
-                    session.combat().map(c -> CombatDto.of(c, session)).orElse(null));
+                    session.combat().map(c -> CombatDto.of(c, session)).orElse(null),
+                    outcome.warnings());
         }
     }
 

@@ -138,6 +138,55 @@ class PlayerCharacterApiTest {
         assertEquals("Aria", reprise.creature(aria + "-1").orElseThrow().name());
     }
 
+    private static io.restassured.response.ValidatableResponse gobelinFrappe(String targetId) {
+        return given().contentType(ContentType.JSON)
+                .body("{\"attackerId\":\"gobelin-1\",\"attackId\":\"melee:Cimeterre\",\"targetId\":\"%s\"}".formatted(targetId))
+                .post(campagne() + "/attacks").then().statusCode(200);
+    }
+
+    @Test
+    void unCoupRecuParLePJ_baisseSaFiche_unefois_etLaPoseSuivanteEnPart() {
+        int pleins = (int) valeurs().get("hitPoints");
+        poser(aria, 1.5, 1.5).statusCode(201);
+        poser("gobelin", 3, 1.5).statusCode(201);
+
+        dice.script(18, 4);
+        int degats = gobelinFrappe(aria + "-1").body("warnings", equalTo(List.of()))
+                .extract().path("entries.find { it.damage != null }.damage.amount");
+
+        assertEquals(pleins - degats, valeurs().get("hitPoints"));
+        new SceneSession(Dice.scripted(), campaigns.games(campaignId));
+        assertEquals(pleins - degats, valeurs().get("hitPoints"), "la reprise ne rejoue pas le coup sur la fiche");
+        poser(aria, 6, 6).statusCode(201);
+        when().get(campagne() + "/creatures/" + aria + "-2").then().body("hitPoints", equalTo(pleins - degats));
+    }
+
+    @Test
+    void sansLeModuleDnd_leCoupEstResolu_maisLaFicheNeSuitPas_etLeJoueurEstAverti() {
+        int pleins = (int) valeurs().get("hitPoints");
+        poser(aria, 1.5, 1.5).statusCode(201);
+        poser("gobelin", 3, 1.5).statusCode(201);
+        given().contentType(ContentType.JSON).body(Map.of("modules", List.of()))
+                .put(campagne() + "/modules").then().statusCode(200);
+
+        dice.script(18, 4);
+        gobelinFrappe(aria + "-1")
+                .body("warnings", equalTo(List.of("Fiche « Aria » non mise à jour : fiche introuvable ou module inactif")));
+
+        given().contentType(ContentType.JSON).body(Map.of("modules", List.of("dnd")))
+                .put(campagne() + "/modules").then().statusCode(200);
+        assertEquals(pleins, valeurs().get("hitPoints"));
+    }
+
+    @Test
+    void unCoupSurUnPersonnageDeTest_nAvertitPas() {
+        poser("guerriere", 1.5, 1.5).statusCode(201);
+        poser("gobelin", 3, 1.5).statusCode(201);
+
+        dice.script(18, 4);
+        gobelinFrappe("guerriere-1").body("warnings", equalTo(List.of()));
+    }
+
     @Test
     void uneFicheAZeroPVMax_neSePosePas() {
         Map<String, Object> vide = valeurs();

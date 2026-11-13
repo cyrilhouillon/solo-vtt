@@ -3,6 +3,7 @@ package solovtt.server;
 import dnd.engine.catalog.CatalogEntry;
 import dnd.engine.catalog.PlayerCharacters;
 import dnd.engine.catalog.SrdCatalog;
+import dnd.engine.events.GameEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -62,6 +63,20 @@ public class CampaignCatalog {
             if (taken.isPresent()) return Optional.of(CatalogEntry.character(id, taken.get().name(), taken.get().profile()));
         }
         return Optional.empty();
+    }
+
+    /**
+     * Fait suivre à la fiche du personnage {@code id} ce que sa copie posée vient de subir, par la première source active
+     * qui le reconnaît.
+     *
+     * @throws IllegalStateException si aucune source active ne le reconnaît (fiche supprimée, module inactif)
+     * @throws RuntimeException      si sa fiche n'a pas pu suivre, avec la raison
+     */
+    public void sustained(String campaignId, String id, List<GameEvent> events) {
+        for (PlayerCharacters source : active(campaignId)) {
+            if (source.sustained(campaignId, id, events)) return;
+        }
+        throw new IllegalStateException("fiche introuvable ou module inactif");
     }
 
     /** Le catalogue d'une campagne, pour une ressource qui pose ou charge une carte. */
