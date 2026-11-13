@@ -13,3 +13,5 @@ vtt-web/.impeccable/live/
 
 # Livre de Mythic GME et autres documents commerciaux de l'utilisateur : jamais dans le dépôt
 documents/
+
+.mcp.json
