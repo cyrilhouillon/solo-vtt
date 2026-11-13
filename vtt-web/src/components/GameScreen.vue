@@ -704,6 +704,8 @@ async function settleAction(result: ActionResult) {
   journal.value.push(...result.entries)
   combat.value = result.combat
   notice.value = ''
+  // L'action est faite : ce qui n'a pas suivi (une fiche) se dit au bandeau, avant toute sortie anticipée.
+  if (result.warnings.length) error.value = result.warnings.join(' ')
   const thrown = throwsOf(result.entries)
   if (result.decision && thrown.attack.length) {
     // Le jet d'attaque roule avant la question : la réaction (Bouclier) se décide sur un dé arrêté.
