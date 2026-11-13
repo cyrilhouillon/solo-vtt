@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: avertissement à l'écran de combat et parcours navigateur
