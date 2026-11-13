@@ -79,6 +79,13 @@ public record CharacterSheet(String className, int level, String species, String
                 10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of());
     }
 
+    /** Cette fiche, avec ces PV actuels. */
+    public CharacterSheet withHitPoints(int hitPoints) {
+        return new CharacterSheet(className, level, species, size, background, abilities, proficiencyBonus, savingThrows,
+                skills, armorClass, hitPointMax, hitPoints, hitDice, speed, initiative, attacks, features, speciesTraits,
+                feats, equipment, proficiencies, languages, spellSlots);
+    }
+
     /** Le modificateur d'une caractéristique : (valeur − 10) / 2, arrondi à l'inférieur. */
     public int modifier(Ability ability) {
         return Math.floorDiv(abilities.get(ability) - 10, 2);

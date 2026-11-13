@@ -10,7 +10,7 @@ public final class SheetHistory {
 
     /**
      * La fiche après ces événements. Une saisie remplace les valeurs et garde construction et jets ; une construction
-     * remplace construction et valeurs.
+     * remplace construction et valeurs ; des PV perdus baissent les PV actuels, jamais sous 0.
      *
      * @throws IllegalArgumentException si l'histoire ne commence pas par {@link SheetEvent.SheetCreated}, en contient un
      *     second, ou lance deux fois les dés de caractéristique
@@ -28,6 +28,9 @@ public final class SheetHistory {
                 }
                 case SheetEvent.SheetEdited edited -> new SheetState(edited.values(), state.build(), state.builtAbilities(), state.rolls());
                 case SheetEvent.SheetBuilt built -> new SheetState(built.values(), built.build(), built.values().abilities(), state.rolls());
+                case SheetEvent.HitPointsLost lost -> new SheetState(
+                        state.values().withHitPoints(Math.max(0, state.values().hitPoints() - lost.amount())),
+                        state.build(), state.builtAbilities(), state.rolls());
                 case SheetEvent.AbilitiesRolled rolled -> {
                     if (state.rolls() != null) {
                         throw new IllegalArgumentException("Les dés de caractéristique ne se lancent qu'une fois");

@@ -35,4 +35,14 @@ public sealed interface SheetEvent {
             rolls = List.copyOf(rolls);
         }
     }
+
+    /**
+     * Le personnage, posé sur une carte, a perdu ces PV : un delta, pas une valeur, si bien qu'une retouche de la fiche
+     * entre deux coups se compose avec eux.
+     */
+    record HitPointsLost(int amount) implements SheetEvent {
+        public HitPointsLost {
+            if (amount <= 0) throw new IllegalArgumentException("Des PV perdus sont positifs : " + amount);
+        }
+    }
 }

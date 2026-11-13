@@ -10,6 +10,7 @@ import dnd.engine.sheet.SheetEvent;
 import dnd.engine.sheet.SheetHistory;
 import dnd.engine.sheet.SheetState;
 import dnd.engine.sheet.Species;
+import jakarta.inject.Singleton;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -35,6 +36,7 @@ import java.util.stream.Stream;
  * page « Personnages joueurs », racine de la section du module : le nom du personnage est le titre de sa page, et sa
  * fiche est l'histoire de ses événements ({@link SheetEvent}), gardée sous l'id de la page.
  */
+@Singleton
 @Path("/api/campaigns/{campaignId}/dnd")
 public class SheetResource {
 
@@ -208,6 +210,23 @@ public class SheetResource {
         SheetState sheet = SheetHistory.replay(next.history(pageId).orElseThrow());
         store.write(campaignId, next);
         return DndDtos.SheetDto.of(pageId, sheet);
+    }
+
+    /**
+     * La fiche de cette page a perdu ces PV sur une carte : un {@link SheetEvent.HitPointsLost} par montant positif, écrits
+     * ensemble, sous le verrou des saisies. Rien n'est écrit sans montant positif.
+     *
+     * @throws NotFoundException si la page n'est pas une fiche vivante du module
+     * @throws ClientErrorException (409) si les fiches ne se relisent pas ; rien n'est écrit
+     */
+    synchronized void sustained(String campaignId, String pageId, List<Integer> amounts) {
+        SheetStore.State state = store.read(campaignId);
+        sheet(campaignId, state, pageId);
+        SheetStore.State next = state;
+        for (int amount : amounts) {
+            if (amount > 0) next = next.withEvent(pageId, new SheetEvent.HitPointsLost(amount));
+        }
+        if (next != state) store.write(campaignId, next);
     }
 
     /**

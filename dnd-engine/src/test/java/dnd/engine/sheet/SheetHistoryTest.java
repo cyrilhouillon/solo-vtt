@@ -129,4 +129,44 @@ class SheetHistoryTest {
         assertEquals(11, etat.rebuild(Build.fighter().withSpecies(SpeciesChoice.of(Species.ELF))).hitPointMax(),
                 "changer d'espèce reste permis : Nain → Elfe, PV 12 → 11");
     }
+
+    @Test
+    void desPvPerdus_baissentLesPvActuels_etGardentConstructionEtJets() {
+        Build guerrier = Build.fighter();
+        CharacterSheet construction = construite(guerrier);
+        List<AbilityRoll> jets = sixJets();
+
+        SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
+                new SheetEvent.AbilitiesRolled(jets),
+                new SheetEvent.SheetBuilt(guerrier, construction),
+                new SheetEvent.HitPointsLost(5)));
+
+        assertEquals(construction.hitPoints() - 5, etat.values().hitPoints());
+        assertEquals(construction.withHitPoints(construction.hitPoints() - 5), etat.values(), "seuls les PV actuels changent");
+        assertEquals(guerrier, etat.build());
+        assertEquals(jets, etat.rolls());
+    }
+
+    @Test
+    void desPvPerdus_seComposentAvecUneRetouche_etNeDescendentPasSous0() {
+        CharacterSheet construction = construite(Build.fighter());
+
+        SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
+                new SheetEvent.SheetBuilt(Build.fighter(), construction),
+                new SheetEvent.HitPointsLost(5),
+                new SheetEvent.SheetEdited(construction.withHitPoints(10)),
+                new SheetEvent.HitPointsLost(3)));
+        assertEquals(7, etat.values().hitPoints(), "retouche à 10, puis 3 de perdus");
+
+        SheetState aTerre = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
+                new SheetEvent.SheetEdited(construction.withHitPoints(7)),
+                new SheetEvent.HitPointsLost(20)));
+        assertEquals(0, aTerre.values().hitPoints());
+    }
+
+    @Test
+    void desPvPerdus_sontPositifs() {
+        assertThrows(IllegalArgumentException.class, () -> new SheetEvent.HitPointsLost(0));
+        assertThrows(IllegalArgumentException.class, () -> new SheetEvent.HitPointsLost(-2));
+    }
 }

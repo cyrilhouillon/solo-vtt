@@ -1,5 +1,6 @@
 package dnd.engine.catalog;
 
+import dnd.engine.events.GameEvent;
 import dnd.engine.state.CreatureProfile;
 
 import java.util.List;
@@ -25,6 +26,17 @@ public interface PlayerCharacters {
      * @throws IllegalArgumentException si sa fiche ne peut pas jouer, avec la raison
      */
     Optional<Taken> take(String campaignId, String id);
+
+    /**
+     * Ce qui vient d'arriver, sur une carte, à la copie posée du personnage {@code id} (dégâts subis…), pour que sa fiche
+     * le suive. Appelé une fois par commande vécue, jamais au rejeu d'une partie ou d'un combat.
+     *
+     * @return {@code false} si {@code id} n'est pas l'un de ses personnages ; {@code true} si sa fiche a suivi
+     * @throws RuntimeException si sa fiche n'a pas pu suivre, avec la raison
+     */
+    default boolean sustained(String campaignId, String id, List<GameEvent> events) {
+        return false;
+    }
 
     /** Un personnage proposé : l'id de son entrée au catalogue et son nom. */
     record Listed(String id, String name) {}
