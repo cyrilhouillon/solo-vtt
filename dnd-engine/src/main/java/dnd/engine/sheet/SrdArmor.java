@@ -1,7 +1,8 @@
 package dnd.engine.sheet;
 
-/** Les armures de départ du Guerrier (SRD 5.2.1, « Armor ») et ce qu'elles donnent à la CA. */
+/** Les armures des équipements de départ (SRD 5.2.1, « Armor ») et ce qu'elles donnent à la CA. */
 public enum SrdArmor {
+    LEATHER("Armure de cuir", Category.LIGHT, 11),
     CHAIN_MAIL("Cotte de mailles", Category.HEAVY, 16),
     STUDDED_LEATHER("Armure de cuir clouté", Category.LIGHT, 12),
     SHIELD("Bouclier", Category.SHIELD, 2);

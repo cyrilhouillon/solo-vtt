@@ -210,7 +210,7 @@ public final class DndDtos {
             if (scores.containsKey(null)) throw new IllegalArgumentException("Caractéristique inconnue");
             if (skills.contains(null)) throw new IllegalArgumentException("Compétence inconnue");
             return new Build(characterClass, method, scores, new HashSet<>(skills), fightingStyle, equipment, masteries,
-                    species == null ? null : species.toChoice(), background == null ? null : background.toChoice());
+                    species == null ? null : species.toChoice(), background == null ? null : background.toChoice(), Set.of(), null);
         }
     }
 
@@ -282,7 +282,7 @@ public final class DndDtos {
                             : new ChoiceDto(background.spellList().name(), background.spellList().label()),
                     Arrays.stream(Skill.values()).filter(background.skills()::contains)
                             .map(skill -> new ChoiceDto(skill.name(), skill.label())).toList(),
-                    background.tool(),
+                    background.tool() == null ? null : background.tool().label(),
                     background.choosesGamingSet()
                             ? Arrays.stream(GamingSet.values()).map(set -> new ChoiceDto(set.name(), set.label())).toList()
                             : List.of(),

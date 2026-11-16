@@ -163,7 +163,7 @@ class SheetResourceTest {
     private static DndDtos.BuildDto guerrier(Set<Skill> skills, StartingEquipment equipment, FightingStyle style) {
         Build base = Build.fighter();
         return DndDtos.BuildDto.of(new Build(base.characterClass(), base.method(), base.scores(), skills, style,
-                equipment, equipment.weapons(), null, null));
+                equipment, equipment.weapons(), null, null, Set.of(), null));
     }
 
     private static DndDtos.SheetValuesDto avecCA(DndDtos.SheetValuesDto v, int armorClass) {
@@ -316,7 +316,7 @@ class SheetResourceTest {
     void lesOptionsDuGuerrier_disentSesChoix() {
         List<DndDtos.ClassOptionsDto> classes = dnd().classes(STRAHD);
 
-        assertEquals(1, classes.size());
+        assertEquals(List.of("FIGHTER", "BARBARIAN", "MONK", "ROGUE"), classes.stream().map(DndDtos.ClassOptionsDto::id).toList());
         DndDtos.ClassOptionsDto guerrier = classes.getFirst();
         assertEquals("FIGHTER", guerrier.id());
         assertEquals("Guerrier", guerrier.label());
@@ -329,7 +329,8 @@ class SheetResourceTest {
                 new DndDtos.DescribedChoiceDto("DEFENSE", "Défense", FightingStyle.DEFENSE.text())));
         assertEquals(List.of(
                         new DndDtos.DescribedChoiceDto("FIGHTER_A", "Équipement A", StartingEquipment.FIGHTER_A.text()),
-                        new DndDtos.DescribedChoiceDto("FIGHTER_B", "Équipement B", StartingEquipment.FIGHTER_B.text())),
+                        new DndDtos.DescribedChoiceDto("FIGHTER_B", "Équipement B", StartingEquipment.FIGHTER_B.text()),
+                        new DndDtos.DescribedChoiceDto("FIGHTER_C", "Équipement C", "155 po")),
                 guerrier.equipments());
         assertTrue(guerrier.equipments().getFirst().text().endsWith(", 4 po"));
         assertEquals(38, guerrier.weapons().size());
@@ -359,7 +360,7 @@ class SheetResourceTest {
         assertEquals(15, construite.values().abilities().get(Ability.STRENGTH));
         assertEquals(17, construite.values().armorClass(), "cotte de mailles 16, Défense +1");
         assertEquals(11, construite.values().hitPointMax(), "d10 + Con +1");
-        assertEquals(3, construite.values().attacks().size());
+        assertEquals(4, construite.values().attacks().size(), "trois armes et les mains nues");
         assertEquals(StartingEquipment.FIGHTER_A.text(), construite.values().equipment());
         // Relue par une ressource neuve : seule l'histoire gardée compte.
         assertEquals(construite, dnd().read(STRAHD, creee.pageId()));
@@ -413,7 +414,7 @@ class SheetResourceTest {
         scores.put(Ability.CHARISMA, 12);
         Build base = Build.fighter();
         DndDtos.SheetDto construite = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(new Build(CharacterClass.FIGHTER,
-                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries(), null, null)));
+                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries(), null, null, Set.of(), null)));
         assertEquals(scores, construite.values().abilities());
         assertEquals(AbilityMethod.ROLLED, construite.build().method());
         assertEquals(lancee.rolls(), construite.rolls(), "la construction garde les jets");
@@ -596,7 +597,7 @@ class SheetResourceTest {
     private static DndDtos.BuildDto guerrierDeLEspece(SpeciesChoice espece) {
         Build base = Build.fighter();
         return DndDtos.BuildDto.of(new Build(base.characterClass(), base.method(), base.scores(),
-                Set.of(Skill.ATHLETICS, Skill.PERCEPTION), base.fightingStyle(), base.equipment(), base.masteries(), espece, null));
+                Set.of(Skill.ATHLETICS, Skill.PERCEPTION), base.fightingStyle(), base.equipment(), base.masteries(), espece, null, Set.of(), null));
     }
 
     @Test
@@ -692,7 +693,7 @@ class SheetResourceTest {
         return new Build(base.characterClass(), base.method(), base.scores(), Set.of(Skill.ACROBATICS, Skill.PERCEPTION),
                 base.fightingStyle(), base.equipment(), base.masteries(), null,
                 new BackgroundChoice(Background.SOLDIER, Map.of(Ability.STRENGTH, 2, Ability.CONSTITUTION, 1),
-                        BackgroundEquipment.A, GamingSet.DICE, null));
+                        BackgroundEquipment.A, GamingSet.DICE, null), Set.of(), null);
     }
 
     @Test
@@ -733,7 +734,7 @@ class SheetResourceTest {
         assertEquals("Soldat", soldat.values().background());
         assertEquals(17, soldat.values().abilities().get(Ability.STRENGTH));
         assertEquals(Proficiency.PROFICIENT, soldat.values().skills().get(Skill.ATHLETICS));
-        assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Arc court", "Lance"),
+        assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Arc court", "Lance", "Attaque à mains nues"),
                 soldat.values().attacks().stream().map(DndDtos.AttackDto::name).toList());
         assertTrue(soldat.values().feats().startsWith("Sauvagerie martiale"), soldat.values().feats());
         assertEquals(DndDtos.BackgroundChoiceDto.of(guerrierSoldat().background()), soldat.build().background());
@@ -756,7 +757,7 @@ class SheetResourceTest {
 
         var doublon = assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, DndDtos.BuildDto.of(
                 new Build(base.characterClass(), base.method(), base.scores(), Set.of(Skill.ATHLETICS), base.fightingStyle(),
-                        base.equipment(), base.masteries(), null, base.background()))));
+                        base.equipment(), base.masteries(), null, base.background(), Set.of(), null))));
         assertEquals("Athlétisme déjà donnée par l’historique", doublon.getMessage());
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, DndDtos.BuildDto.of(base.withBackground(
                 new BackgroundChoice(Background.SOLDIER, Map.of(Ability.STRENGTH, 3), BackgroundEquipment.A, null, null)))));
