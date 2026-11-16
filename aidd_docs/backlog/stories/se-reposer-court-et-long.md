@@ -19,5 +19,6 @@ order: 27
 - Repos long (au moins 1 PV) : tous les PV et tous les dés de vie dépensés reviennent, ainsi que les emplacements de sort et les capacités qui se rechargent au repos long (SRD 5.2.1, Glossaire, « Repos long »).
 - Chaque capacité limitée de la fiche dit ce qui la recharge, et le repos la recharge : Rage (1 au repos court, toutes au repos long), Second souffle (1 au repos court, toutes au repos long), Acharnement (repos long), Poussée d'adrénaline (bonus de maîtrise utilisations, toutes au repos court ou long), Inspiration héroïque d'Ingénieux (reçue au repos long).
 - Au repos long, le joueur peut changer une de ses Bottes d'arme (Guerrier, Barbare, Roublard).
+- Restauration magique (Magicien) : au repos court, une fois par repos long, le joueur récupère des emplacements dépensés dont la somme des niveaux ne dépasse pas la moitié de son niveau de Magicien, arrondie au supérieur. Au repos long, il peut changer ses sorts préparés parmi son grimoire.
 - Le repos est un événement de la fiche : il se rejoue, et le rejeu d'un combat ne le touche pas.
 - Hors combat seulement : un personnage posé dans un combat en cours ne se repose pas (jouer l'Initiative interrompt un repos).

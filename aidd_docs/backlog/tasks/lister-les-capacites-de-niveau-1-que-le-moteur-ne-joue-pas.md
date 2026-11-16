@@ -83,3 +83,18 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1,
 | Maîtrise d'arme (pas de bonus de maîtrise sans elle) | règle, toute classe | portée par la fiche (attaque calculée) | — |
 | Propriétés Polyvalente et Deux mains, mains libres | armes du SRD | non (« tenue » sans compter les mains) | [manier une arme à une ou deux mains](../stories/manier-une-arme-a-une-ou-deux-mains.md) |
 | Propriété Légère : attaque de la seconde main en action Bonus | armes du SRD | non (deux armes identiques tenues : une seule attaque) | [attaquer avec une seconde arme Légère](../stories/attaquer-avec-une-seconde-arme-legere.md) |
+| Sorts : sorts mineurs, grimoire, sorts préparés, caractéristique d'incantation, DD et attaque de sort, emplacements | Magicien, niveau 1 | portée par la fiche (choisis en création guidée, retouchables ; DD et attaque calculés) | — |
+| Emplacements de sort dépensés en combat | Magicien, niveau 1 | oui (Bouclier ; la fiche les suit comme les PV) | — |
+| Changer de sorts préparés au repos long | Magicien, niveau 1 | non (retouche à la main) | [se reposer, court et long](../stories/se-reposer-court-et-long.md) |
+| Savoir rituel, rituels | Magicien, niveau 1 | hors combat (Alarme, Appel de familier, Compréhension des langues, Détection de la magie, Disque flottant, Identification, Serviteur invisible, Texte illusoire) | — |
+| Restauration magique | Magicien, niveau 1 | non (repos non modélisés) | [se reposer, court et long](../stories/se-reposer-court-et-long.md) |
+| Bouclier : +5 CA en réaction | sort, Magicien | oui | — |
+| Bouclier : durée jusqu'au début du tour suivant | sort, Magicien | non (le +5 n'est jamais retiré) | [tenir les effets à durée et la Concentration](../stories/tenir-les-effets-a-duree-et-la-concentration.md) |
+| Bouclier contre Projectile magique | sort, Magicien | non | [lancer Projectile magique](../stories/lancer-projectile-magique.md) |
+| Sorts à jet d'attaque : Trait de feu, Rayon de givre, Poigne électrique, Contact glacial, Rayon empoisonné, Orbe chromatique, Couteau de glace ; Coup au but | sorts, Magicien | non (une autre attaque saisie peut les approcher) | [lancer un sort d'attaque](../stories/lancer-un-sort-d-attaque.md) |
+| Sorts à jet de sauvegarde : Aspersion acide, Bouffée de poison, Mains brûlantes, Vague tonnante, Couteau de glace, Couleurs dansantes, Sommeil, Fou rire, Graisse, Charme-personne | sorts, Magicien | non (pas de sauvegarde au moteur) | [lancer un sort à jet de sauvegarde](../stories/lancer-un-sort-a-jet-de-sauvegarde.md) |
+| Projectile magique | sort, Magicien | non | [lancer Projectile magique](../stories/lancer-projectile-magique.md) |
+| Effets à durée : Armure du mage, Simulacre de vie, Grande foulée, Repli expéditif, Protection contre le mal et le bien | sorts, Magicien | non (pas d'effet à durée) | [tenir les effets à durée et la Concentration](../stories/tenir-les-effets-a-duree-et-la-concentration.md) |
+| Concentration | règle, sorts | non | [tenir les effets à durée et la Concentration](../stories/tenir-les-effets-a-duree-et-la-concentration.md) |
+| Sorts utilitaires : Élémentalisme, Illusion mineure, Lumière, Lumières dansantes, Main du mage, Message, Prestidigitation, Réparation, Déguisement, Image silencieuse, Feuille morte, Saut, Nappe de brouillard | sorts, Magicien | hors combat (ni éclairage, ni vision, ni chute au moteur) | — |
+| Composantes (V, S, M) et focaliseur d'incantation | règle, sorts | hors moteur (ni mains ni composantes suivies) | — |
