@@ -4,7 +4,7 @@ status: proposed
 parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/poser-un-pj-en-combat-depuis-le-catalogue.md
-order: 11
+order: 12
 ---
 
 # Story : utiliser Second souffle en combat

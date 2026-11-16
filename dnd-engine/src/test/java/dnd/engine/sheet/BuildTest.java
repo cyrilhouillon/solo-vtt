@@ -30,19 +30,19 @@ class BuildTest {
     private static Build avec(AbilityMethod method, Map<Ability, Integer> scores) {
         Build guerrier = Build.fighter();
         return new Build(guerrier.characterClass(), method, scores, guerrier.skills(), guerrier.fightingStyle(),
-                guerrier.equipment(), guerrier.masteries(), null, null);
+                guerrier.equipment(), guerrier.masteries(), null, null, Set.of(), null);
     }
 
     private static Build avecCompetences(Skill... skills) {
         Build guerrier = Build.fighter();
         return new Build(guerrier.characterClass(), guerrier.method(), guerrier.scores(), Set.of(skills),
-                guerrier.fightingStyle(), guerrier.equipment(), guerrier.masteries(), null, null);
+                guerrier.fightingStyle(), guerrier.equipment(), guerrier.masteries(), null, null, Set.of(), null);
     }
 
     private static Build avecBottes(SrdWeapon... armes) {
         Build guerrier = Build.fighter();
         return new Build(guerrier.characterClass(), guerrier.method(), guerrier.scores(), guerrier.skills(),
-                guerrier.fightingStyle(), guerrier.equipment(), List.of(armes), null, null);
+                guerrier.fightingStyle(), guerrier.equipment(), List.of(armes), null, null, Set.of(), null);
     }
 
     private static String raison(Build build, List<AbilityRoll> jets) {
@@ -136,5 +136,98 @@ class BuildTest {
         assertDoesNotThrow(() -> guerrier.withSpecies(SpeciesChoice.of(Species.ELF)).validate(List.of()));
         String raison = raison(guerrier.withSpecies(new SpeciesChoice(Species.ELF, null, null, Skill.PERCEPTION, null, null)), List.of());
         assertEquals("Perception déjà maîtrisée par la classe", raison);
+    }
+
+    private static Build de(CharacterClass classe, FightingStyle style, List<SrdWeapon> bottes, Set<Skill> competences,
+                            Set<Skill> expertise, Tool outil) {
+        Build base = Build.suggested(classe);
+        return new Build(classe, base.method(), base.scores(), competences, style, base.equipment(), bottes, null, null,
+                expertise, outil);
+    }
+
+    private static Build suggeree(CharacterClass classe) {
+        Build base = Build.suggested(classe);
+        return de(classe, base.fightingStyle(), base.masteries(), Set.of(), Set.of(), null);
+    }
+
+    @Test
+    void lesConstructionsSuggerees_sontValides() {
+        for (CharacterClass classe : CharacterClass.values()) {
+            assertDoesNotThrow(() -> Build.suggested(classe).validate(List.of()), classe.label());
+        }
+        assertEquals(List.of(SrdWeapon.GREATAXE, SrdWeapon.HANDAXE), Build.suggested(CharacterClass.BARBARIAN).masteries());
+        assertEquals(List.of(), Build.suggested(CharacterClass.MONK).masteries());
+        assertEquals(null, Build.suggested(CharacterClass.ROGUE).fightingStyle());
+    }
+
+    @Test
+    void unStylePourUnBarbare_ouAucunPourUnGuerrier_sontRefuses() {
+        Build barbare = suggeree(CharacterClass.BARBARIAN);
+        assertEquals("Barbare : aucun Style de combat au niveau 1",
+                raison(de(CharacterClass.BARBARIAN, FightingStyle.DEFENSE, barbare.masteries(), Set.of(), Set.of(), null), List.of()));
+        Build guerrier = Build.fighter();
+        assertEquals("Choisir un Style de combat",
+                raison(de(CharacterClass.FIGHTER, null, guerrier.masteries(), Set.of(), Set.of(), null), List.of()));
+    }
+
+    @Test
+    void uneBotteHorsDesArmesDeLaClasse_estRefusee() {
+        assertEquals("Barbare : pas de Botte d'arme pour Arc long", raison(de(CharacterClass.BARBARIAN, null,
+                List.of(SrdWeapon.GREATAXE, SrdWeapon.LONGBOW), Set.of(), Set.of(), null), List.of()));
+        assertEquals("Roublard : pas de Botte d'arme pour Hache à deux mains", raison(de(CharacterClass.ROGUE, null,
+                List.of(SrdWeapon.DAGGER, SrdWeapon.GREATAXE), Set.of(), Set.of(), null), List.of()));
+        assertEquals("Bottes d'arme : 0 types d'arme différents", raison(de(CharacterClass.MONK, null,
+                List.of(SrdWeapon.DAGGER), Set.of(), Set.of(), null), List.of()));
+        assertDoesNotThrow(() -> de(CharacterClass.ROGUE, null, List.of(SrdWeapon.RAPIER, SrdWeapon.HAND_CROSSBOW),
+                Set.of(), Set.of(), null).validate(List.of()));
+    }
+
+    @Test
+    void uneExpertiseImpossible_estRefusee() {
+        Build guerrier = Build.fighter();
+        assertEquals("Guerrier : aucune Expertise au niveau 1", raison(de(CharacterClass.FIGHTER, FightingStyle.DEFENSE,
+                guerrier.masteries(), Set.of(Skill.ATHLETICS), Set.of(Skill.ATHLETICS), null), List.of()));
+
+        List<SrdWeapon> bottes = suggeree(CharacterClass.ROGUE).masteries();
+        Set<Skill> quatre = Set.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND, Skill.PERCEPTION, Skill.DECEPTION);
+        assertEquals("Roublard : 2 Expertises au plus", raison(de(CharacterClass.ROGUE, null, bottes, quatre,
+                Set.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND, Skill.PERCEPTION), null), List.of()));
+        assertEquals("Expertise : Athlétisme n’est pas maîtrisée", raison(de(CharacterClass.ROGUE, null, bottes, quatre,
+                Set.of(Skill.ATHLETICS), null), List.of()));
+    }
+
+    @Test
+    void uneExpertiseSurUneCompetenceDeLHistorique_estAcceptee() {
+        Build roublard = de(CharacterClass.ROGUE, null, suggeree(CharacterClass.ROGUE).masteries(), Set.of(Skill.PERCEPTION),
+                Set.of(Skill.STEALTH, Skill.PERCEPTION), null).withBackground(BackgroundChoice.of(Background.CRIMINAL));
+
+        assertDoesNotThrow(() -> roublard.validate(List.of()));
+    }
+
+    @Test
+    void unOutilHorsDesChoixDeLaClasse_estRefuse() {
+        assertEquals("Roublard : aucun outil à choisir", raison(de(CharacterClass.ROGUE, null,
+                suggeree(CharacterClass.ROGUE).masteries(), Set.of(), Set.of(), Tool.LUTE), List.of()));
+        assertEquals("Moine : outils de voleur hors des outils au choix", raison(de(CharacterClass.MONK, null, List.of(),
+                Set.of(), Set.of(), Tool.THIEVES_TOOLS), List.of()));
+        assertDoesNotThrow(() -> de(CharacterClass.MONK, null, List.of(), Set.of(), Set.of(), Tool.SMITHS_TOOLS).validate(List.of()));
+    }
+
+    @Test
+    void unOutilDejaDonneParLHistorique_estRefuse() {
+        Build moine = de(CharacterClass.MONK, null, List.of(), Set.of(), Set.of(), Tool.CALLIGRAPHERS_SUPPLIES)
+                .withBackground(BackgroundChoice.of(Background.ACOLYTE));
+
+        assertEquals("matériel de calligraphe déjà donné par l’historique", raison(moine, List.of()));
+        assertDoesNotThrow(() -> moine.withTool(Tool.LUTE).validate(List.of()));
+    }
+
+    @Test
+    void desChoixAbsents_seValidentSansNullPointerException() {
+        Build base = Build.suggested(CharacterClass.MONK);
+        Build sansListes = new Build(base.characterClass(), base.method(), base.scores(), null, null, base.equipment(), null,
+                null, null, null, null);
+
+        assertDoesNotThrow(() -> sansListes.validate(List.of()));
     }
 }

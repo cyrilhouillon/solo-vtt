@@ -5,7 +5,7 @@ parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/poser-un-pj-en-combat-depuis-le-catalogue.md
   - aidd_docs/backlog/stories/choisir-une-espece-en-creation-guidee.md
-order: 15
+order: 16
 ---
 
 # Story : utiliser le Souffle du Drakéide en combat

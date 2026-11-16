@@ -7,13 +7,13 @@ import java.util.Set;
 /** Les quatre historiques du SRD 5.2.1 (« Character Backgrounds »). */
 public enum Background {
     ACOLYTE("Acolyte", EnumSet.of(Ability.INTELLIGENCE, Ability.WISDOM, Ability.CHARISMA),
-            OriginFeat.MAGIC_INITIATE, SpellList.CLERIC, EnumSet.of(Skill.INSIGHT, Skill.RELIGION), "matériel de calligraphe",
+            OriginFeat.MAGIC_INITIATE, SpellList.CLERIC, EnumSet.of(Skill.INSIGHT, Skill.RELIGION), Tool.CALLIGRAPHERS_SUPPLIES,
             "Matériel de calligraphe, livre (de prières), symbole sacré, parchemin (10 feuilles), robe", List.of(), 8),
     CRIMINAL("Criminel", EnumSet.of(Ability.DEXTERITY, Ability.CONSTITUTION, Ability.INTELLIGENCE),
-            OriginFeat.ALERT, null, EnumSet.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND), "outils de voleur",
+            OriginFeat.ALERT, null, EnumSet.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND), Tool.THIEVES_TOOLS,
             "2 dagues, outils de voleur, 2 bourses, pied-de-biche, tenue de voyage", List.of(SrdWeapon.DAGGER), 16),
     SAGE("Sage", EnumSet.of(Ability.CONSTITUTION, Ability.INTELLIGENCE, Ability.WISDOM),
-            OriginFeat.MAGIC_INITIATE, SpellList.WIZARD, EnumSet.of(Skill.ARCANA, Skill.HISTORY), "matériel de calligraphe",
+            OriginFeat.MAGIC_INITIATE, SpellList.WIZARD, EnumSet.of(Skill.ARCANA, Skill.HISTORY), Tool.CALLIGRAPHERS_SUPPLIES,
             "Bâton de combat, matériel de calligraphe, livre (d’histoire), parchemin (8 feuilles), robe",
             List.of(SrdWeapon.QUARTERSTAFF), 8),
     SOLDIER("Soldat", EnumSet.of(Ability.STRENGTH, Ability.DEXTERITY, Ability.CONSTITUTION),
@@ -26,12 +26,12 @@ public enum Background {
     private final OriginFeat feat;
     private final SpellList spellList;
     private final Set<Skill> skills;
-    private final String tool;
+    private final Tool tool;
     private final String items;
     private final List<SrdWeapon> weapons;
     private final int gold;
 
-    Background(String label, Set<Ability> abilities, OriginFeat feat, SpellList spellList, Set<Skill> skills, String tool,
+    Background(String label, Set<Ability> abilities, OriginFeat feat, SpellList spellList, Set<Skill> skills, Tool tool,
                String items, List<SrdWeapon> weapons, int gold) {
         this.label = label;
         this.abilities = Set.copyOf(abilities);
@@ -69,7 +69,7 @@ public enum Background {
     }
 
     /** L'outil maîtrisé, {@code null} quand il se choisit (boîte de jeux du Soldat). */
-    public String tool() {
+    public Tool tool() {
         return tool;
     }
 

@@ -148,13 +148,18 @@ export interface Build {
   method: AbilityMethod
   scores: Record<Ability, number>
   skills: Skill[]
-  fightingStyle: string
+  /** `null` pour une classe sans Style de combat. */
+  fightingStyle: string | null
   equipment: string
   masteries: string[]
   /** L'espèce et ses sous-choix, `null` tant qu'aucune n'est choisie. */
   species: SpeciesChoice | null
   /** L'historique et ses choix, `null` tant qu'aucun n'est choisi. */
   background: BackgroundChoice | null
+  /** Les compétences maîtrisées en Expertise, dans l'ordre des compétences. */
+  expertise: Skill[]
+  /** L'outil choisi pour la maîtrise de la classe, `null` sans choix ou à choisir. */
+  tool: string | null
 }
 
 /** L'espèce d'une construction et ses sous-choix, par leurs ids ; `null` : à choisir. */
@@ -245,6 +250,11 @@ export interface WeaponChoice extends Choice {
   mastery: string
 }
 
+/** Un outil au choix et sa catégorie (outils d'artisan, instruments de musique…). */
+export interface ToolChoice extends Choice {
+  category: string
+}
+
 /** Les options d'une classe pour la création guidée, telles que le serveur les sert ; `pointBuyCosts` par valeur. */
 export interface ClassOptions {
   id: string
@@ -261,6 +271,10 @@ export interface ClassOptions {
   pointBuyBudget: number
   /** La construction d'où part la classe quand le joueur la choisit. */
   defaultBuild: Build
+  /** Le nombre d'Expertises, 0 sans. */
+  expertiseCount: number
+  /** Les outils au choix pour la maîtrise de la classe, vides sans choix. */
+  tools: ToolChoice[]
 }
 
 /**

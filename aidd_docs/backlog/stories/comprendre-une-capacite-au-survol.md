@@ -4,7 +4,7 @@ status: ready
 parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/creer-en-guide-un-guerrier-de-niveau-1.md
-order: 10
+order: 11
 ---
 
 # Story : comprendre une capacité au survol

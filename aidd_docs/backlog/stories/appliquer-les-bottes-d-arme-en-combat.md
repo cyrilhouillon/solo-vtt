@@ -4,14 +4,14 @@ status: proposed
 parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/poser-un-pj-en-combat-depuis-le-catalogue.md
-order: 12
+order: 13
 ---
 
 # Story : appliquer les Bottes d'arme en combat
 
 **En tant que** joueur solo
 **Je veux** que la botte de chaque arme maîtrisée joue en combat
-**Afin de** profiter des Bottes d'arme de mon Guerrier sans les arbitrer moi-même
+**Afin de** profiter des Bottes d'arme de mon Guerrier, Barbare ou Roublard sans les arbitrer moi-même
 
 ## Acceptance
 

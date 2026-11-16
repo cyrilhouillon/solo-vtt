@@ -21,7 +21,7 @@ class BackgroundChoiceTest {
     private static Build guerrier(Set<Skill> competences) {
         Build base = Build.fighter();
         return new Build(base.characterClass(), base.method(), base.scores(), competences, base.fightingStyle(),
-                base.equipment(), base.masteries(), null, null);
+                base.equipment(), base.masteries(), null, null, Set.of(), null);
     }
 
     private static Map<Ability, Integer> augmentations(Object... paires) {
@@ -55,7 +55,7 @@ class BackgroundChoiceTest {
         assertEquals(SpellList.CLERIC, Background.ACOLYTE.spellList());
         assertEquals(Set.of(Skill.INSIGHT, Skill.RELIGION), Background.ACOLYTE.skills());
         assertEquals(OriginFeat.ALERT, Background.CRIMINAL.feat());
-        assertEquals("outils de voleur", Background.CRIMINAL.tool());
+        assertEquals(Tool.THIEVES_TOOLS, Background.CRIMINAL.tool());
         assertEquals(SpellList.WIZARD, Background.SAGE.spellList());
         assertEquals(Set.of(Skill.ARCANA, Skill.HISTORY), Background.SAGE.skills());
         assertEquals(OriginFeat.SAVAGE_ATTACKER, Background.SOLDIER.feat());
@@ -77,7 +77,7 @@ class BackgroundChoiceTest {
         assertTrue(fiche.proficiencies().endsWith("\nOutils : boîte de jeux (dés)"), fiche.proficiencies());
         assertTrue(fiche.equipment().endsWith("\nArc court, 20 flèches, carquois, lance, boîte de jeux (même type), "
                 + "trousse de soins, tenue de voyage, 14 po"), fiche.equipment());
-        assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Arc court", "Lance"), attaques(fiche));
+        assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Arc court", "Lance", "Attaque à mains nues"), attaques(fiche));
         assertEquals(5, fiche.attacks().get(0).bonus(), "maîtrise 2 + For 3");
         assertTrue(fiche.feats().startsWith("Sauvagerie martiale — "), fiche.feats());
         assertEquals(2, fiche.initiative());
@@ -105,7 +105,7 @@ class BackgroundChoiceTest {
         assertEquals("Initié à la magie (Clerc) — incantation Sagesse ; 2 sorts mineurs et 1 sort du 1er niveau (à choisir)",
                 fiche.feats());
         assertTrue(fiche.equipment().endsWith("\n50 po"), fiche.equipment());
-        assertEquals(3, fiche.attacks().size());
+        assertEquals(4, fiche.attacks().size(), "les armes de la classe et les mains nues");
         assertEquals(12, fiche.abilities().get(Ability.WISDOM));
     }
 
@@ -160,7 +160,7 @@ class BackgroundChoiceTest {
         assertEquals(Proficiency.NONE, recalculee.proficiency(Skill.ATHLETICS));
         assertEquals(Proficiency.PROFICIENT, recalculee.proficiency(Skill.ARCANA));
         assertEquals(Proficiency.PROFICIENT, recalculee.proficiency(Skill.HISTORY));
-        assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Bâton de combat"), attaques(recalculee));
+        assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Bâton de combat", "Attaque à mains nues"), attaques(recalculee));
         assertTrue(recalculee.feats().startsWith("Initié à la magie (Magicien) — incantation Intelligence"), recalculee.feats());
         assertEquals(19, recalculee.armorClass(), "CA dérivée 17 → 17 : la retouche reste");
     }

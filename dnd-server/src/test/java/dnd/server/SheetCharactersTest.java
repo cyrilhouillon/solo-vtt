@@ -55,7 +55,7 @@ class SheetCharactersTest {
         assertEquals("Aria la Brave", copie.name());
         assertEquals(dnd.read(STRAHD, aria).values().armorClass(), creature.armorClass());
         assertEquals(dnd.read(STRAHD, aria).values().hitPointMax(), creature.maxHitPoints());
-        assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Javeline (lancer)"),
+        assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Attaque à mains nues", "Javeline (lancer)"),
                 creature.attacks().stream().map(a -> a.label()).toList());
     }
 

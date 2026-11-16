@@ -4,7 +4,7 @@ status: ready
 parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/creer-en-guide-un-magicien.md
-order: 9
+order: 10
 ---
 
 # Story : créer en guidé les autres lanceurs de sorts
@@ -17,4 +17,4 @@ order: 9
 
 - Chacune applique ses choix de niveau 1 (Ordre divin, Ordre primitif, Manifestations occultes, Ennemi juré…), ses sorts et ses emplacements, y compris la Magie de pacte de l'Occultiste.
 - Le don Initié à la magie (historique Acolyte ou Sage, ou Polyvalent de l'Humain) fait choisir ses deux sorts mineurs et son sort du 1er niveau dans sa liste ; aujourd'hui la fiche les écrit « à choisir ».
-- Chaque sort ou capacité que le moteur ne joue pas a sa story.
+- Chaque sort, capacité ou règle rencontrée (recharge, repos, Concentration…) que le moteur ne joue pas entre dans la [liste de la tâche](../tasks/lister-les-capacites-de-niveau-1-que-le-moteur-ne-joue-pas.md) avec sa story, même si l'epic l'exclut.

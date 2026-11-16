@@ -25,6 +25,7 @@ import dnd.engine.sheet.SpellList;
 import dnd.engine.sheet.SpellSlots;
 import dnd.engine.sheet.SrdWeapon;
 import dnd.engine.sheet.StartingEquipment;
+import dnd.engine.sheet.Tool;
 import dnd.engine.state.DamageType;
 
 import java.util.Arrays;
@@ -185,17 +186,21 @@ public final class DndDtos {
     /**
      * Les choix de la création guidée, par leurs ids ; {@code skills} et {@code masteries} dans l'ordre de leurs listes,
      * {@code masteries} par id d'arme ; {@code species} {@code null} tant qu'aucune espèce n'est choisie (et dans une
-     * construction d'avant) ; {@code background} de même pour l'historique.
+     * construction d'avant) ; {@code background} de même pour l'historique ; {@code fightingStyle} {@code null} pour une
+     * classe sans Style ; {@code expertise} dans l'ordre des compétences ({@code null} dans une construction d'avant : aucune) ;
+     * {@code tool} l'outil choisi pour la maîtrise de la classe, {@code null} sans choix ou à choisir.
      */
     public record BuildDto(CharacterClass characterClass, AbilityMethod method, Map<Ability, Integer> scores,
                            List<Skill> skills, FightingStyle fightingStyle, StartingEquipment equipment,
-                           List<SrdWeapon> masteries, SpeciesChoiceDto species, BackgroundChoiceDto background) {
+                           List<SrdWeapon> masteries, SpeciesChoiceDto species, BackgroundChoiceDto background,
+                           List<Skill> expertise, Tool tool) {
 
         static BuildDto of(Build build) {
             return new BuildDto(build.characterClass(), build.method(),
                     build.scores().isEmpty() ? Map.of() : new EnumMap<>(build.scores()),
                     build.skills().stream().sorted().toList(), build.fightingStyle(), build.equipment(), build.masteries(),
-                    SpeciesChoiceDto.of(build.species()), BackgroundChoiceDto.of(build.background()));
+                    SpeciesChoiceDto.of(build.species()), BackgroundChoiceDto.of(build.background()),
+                    build.expertise().stream().sorted().toList(), build.tool());
         }
 
         /**
@@ -209,8 +214,10 @@ public final class DndDtos {
             if (masteries == null) throw new IllegalArgumentException("Une construction porte ses Bottes d'arme");
             if (scores.containsKey(null)) throw new IllegalArgumentException("Caractéristique inconnue");
             if (skills.contains(null)) throw new IllegalArgumentException("Compétence inconnue");
+            if (expertise != null && expertise.contains(null)) throw new IllegalArgumentException("Expertise inconnue");
             return new Build(characterClass, method, scores, new HashSet<>(skills), fightingStyle, equipment, masteries,
-                    species == null ? null : species.toChoice(), background == null ? null : background.toChoice());
+                    species == null ? null : species.toChoice(), background == null ? null : background.toChoice(),
+                    expertise == null ? Set.of() : new HashSet<>(expertise), tool);
         }
     }
 
@@ -282,7 +289,7 @@ public final class DndDtos {
                             : new ChoiceDto(background.spellList().name(), background.spellList().label()),
                     Arrays.stream(Skill.values()).filter(background.skills()::contains)
                             .map(skill -> new ChoiceDto(skill.name(), skill.label())).toList(),
-                    background.tool(),
+                    background.tool() == null ? null : background.tool().label(),
                     background.choosesGamingSet()
                             ? Arrays.stream(GamingSet.values()).map(set -> new ChoiceDto(set.name(), set.label())).toList()
                             : List.of(),
@@ -317,16 +324,20 @@ public final class DndDtos {
     /** Une arme qu'une Botte d'arme peut viser, et sa botte. */
     public record WeaponChoiceDto(String id, String label, String mastery) {}
 
+    /** Un outil au choix, avec sa catégorie (outils d'artisan, instruments de musique…) pour les grouper. */
+    public record ToolChoiceDto(String id, String label, String category) {}
+
     /**
      * Les options d'une classe pour la création guidée : compétences au choix et combien, Styles de combat, équipements
      * de départ (leurs objets et pièces d'or), armes pour les Bottes et combien, répartition suggérée, valeurs standard et
-     * coûts de l'achat de points (par valeur).
+     * coûts de l'achat de points (par valeur), nombre d'Expertises et outils au choix. Une classe sans Style de combat n'en
+     * sert aucun, une classe sans Botte aucune arme.
      */
     public record ClassOptionsDto(String id, String label, List<ChoiceDto> skillChoices, int skillCount,
                                   List<DescribedChoiceDto> fightingStyles, List<DescribedChoiceDto> equipments,
                                   List<WeaponChoiceDto> weapons, int masteryCount, Map<Ability, Integer> suggestedScores,
                                   List<Integer> standardScores, Map<String, Integer> pointBuyCosts, int pointBuyBudget,
-                                  BuildDto defaultBuild) {
+                                  BuildDto defaultBuild, int expertiseCount, List<ToolChoiceDto> tools) {
 
         static ClassOptionsDto of(CharacterClass characterClass) {
             Map<String, Integer> costs = new LinkedHashMap<>();
@@ -337,15 +348,19 @@ public final class DndDtos {
                     Arrays.stream(Skill.values()).filter(characterClass.skillChoices()::contains)
                             .map(skill -> new ChoiceDto(skill.name(), skill.label())).toList(),
                     characterClass.skillCount(),
-                    Arrays.stream(FightingStyle.values())
-                            .map(style -> new DescribedChoiceDto(style.name(), style.label(), style.text())).toList(),
+                    characterClass.takesFightingStyle()
+                            ? Arrays.stream(FightingStyle.values())
+                                    .map(style -> new DescribedChoiceDto(style.name(), style.label(), style.text())).toList()
+                            : List.of(),
                     characterClass.equipments().stream()
                             .map(equipment -> new DescribedChoiceDto(equipment.name(), equipment.label(), equipment.text())).toList(),
-                    Arrays.stream(SrdWeapon.values())
+                    characterClass.masteryWeapons().stream()
                             .map(weapon -> new WeaponChoiceDto(weapon.name(), weapon.label(), weapon.mastery())).toList(),
                     characterClass.masteryCount(), new EnumMap<>(characterClass.suggestedScores()),
                     AbilityMethod.STANDARD_SCORES, costs, AbilityMethod.POINT_BUY_BUDGET,
-                    BuildDto.of(Build.suggested(characterClass)));
+                    BuildDto.of(Build.suggested(characterClass)), characterClass.expertiseCount(),
+                    characterClass.toolOptions().stream()
+                            .map(tool -> new ToolChoiceDto(tool.name(), tool.label(), tool.category().label())).toList());
         }
     }
 }

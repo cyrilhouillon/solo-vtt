@@ -29,11 +29,11 @@ Le joueur crée ses personnages D&D 2024 de niveau 1, dans n'importe quelle clas
   - les PJ de la campagne, dans le catalogue de préparation, à la place de la Guerrière et de la Magicienne ;
   - l'aide au survol, façon BG3, sur les termes de la fiche : une infobulle donne la règle du SRD français. T la fige, et un terme dans l'infobulle ouvre la sienne ;
   - le texte des règles que montre une fiche niveau 1, tiré du SRD 5.2.1 français (CC-BY 4.0, avec attribution) ;
-  - la liste des capacités niveau 1 que le moteur ne sait pas jouer (sorts, Rage…), chacune devenant sa propre story.
+  - la liste des capacités et des règles niveau 1 que le moteur ne sait pas jouer (sorts, Rage, repos…), tenue au fil des stories : chacune devient sa propre story. Chaque story de l'epic le rappelle dans son acceptance.
 - **Exclut :**
   - les niveaux au-delà de 1 et les sous-classes ;
   - la section Règles du Carnet (parcourir tout le SRD) : chantier à part ;
-  - les repos court et long ;
+  - mettre en œuvre les repos court et long : story à part ([se reposer, court et long](../stories/se-reposer-court-et-long.md)) ;
   - mettre en œuvre dans le moteur les capacités listées : elles ont leurs stories, hors de cet epic ;
   - réserver le combat aux campagnes où D&D est actif : ce chantier attend un deuxième système ;
   - empêcher un même personnage d'être dans deux combats en cours.
@@ -44,7 +44,7 @@ Le joueur crée ses personnages D&D 2024 de niveau 1, dans n'importe quelle clas
 - Chaque fiche est complète et lisible dans « Personnages joueurs », et ses capacités ouvrent leur règle au survol.
 - Il pose un de ces personnages en combat, l'attaque avec son arme, et ses PV baissent sur sa fiche, même après un redémarrage.
 - Le rejeu de ce combat ne change pas la fiche.
-- Chaque capacité niveau 1 que le moteur ne joue pas a sa story.
+- Chaque capacité ou règle niveau 1 que le moteur ne joue pas a sa story.
 - Une campagne sans module D&D n'a ni la section, ni les fiches.
 
 ## Dependencies and Unknowns

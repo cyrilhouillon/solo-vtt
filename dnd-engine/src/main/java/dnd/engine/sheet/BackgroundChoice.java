@@ -61,7 +61,7 @@ public record BackgroundChoice(Background background, Map<Ability, Integer> incr
 
     /** L'outil maîtrisé tel qu'il s'écrit sur la fiche. */
     public String toolText() {
-        if (!background.choosesGamingSet()) return background.tool();
+        if (!background.choosesGamingSet()) return background.tool().label();
         return "boîte de jeux (" + (gamingSet == null ? "à choisir" : gamingSet.label()) + ")";
     }
 

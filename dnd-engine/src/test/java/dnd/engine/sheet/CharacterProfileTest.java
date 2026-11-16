@@ -86,7 +86,7 @@ class CharacterProfileTest {
 
     @Test
     void laSarbacaneGuidee_neDonnePasSonModificateurAuxDegatsFixes() {
-        SheetAttack sarbacane = GuidedValues.attack(SrdWeapon.BLOWGUN, 0, 3, FightingStyle.ARCHERY);
+        SheetAttack sarbacane = GuidedValues.attack(SrdWeapon.BLOWGUN, 0, 3, FightingStyle.ARCHERY, CharacterClass.FIGHTER);
 
         assertEquals(0, sarbacane.diceCount());
         assertEquals(1, sarbacane.damageBonus());

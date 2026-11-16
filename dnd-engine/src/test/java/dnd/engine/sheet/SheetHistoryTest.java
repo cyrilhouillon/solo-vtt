@@ -5,6 +5,7 @@ import solovtt.engine.Dice;
 
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -54,7 +55,7 @@ class SheetHistoryTest {
     void uneConstruction_remplaceLesValeursEtLaConstructionPrecedente() {
         Build premiere = Build.fighter();
         Build seconde = new Build(premiere.characterClass(), premiere.method(), premiere.scores(), premiere.skills(),
-                FightingStyle.ARCHERY, StartingEquipment.FIGHTER_B, StartingEquipment.FIGHTER_B.weapons(), null, null);
+                FightingStyle.ARCHERY, StartingEquipment.FIGHTER_B, StartingEquipment.FIGHTER_B.weapons(), null, null, Set.of(), null);
 
         SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
                 new SheetEvent.SheetBuilt(premiere, construite(premiere)),
@@ -93,7 +94,7 @@ class SheetHistoryTest {
     void uneDexteriteRetouchee_compteAuChoixSuivant_etSurvitAuChoix() {
         Build premiere = Build.fighter();
         Build archer = new Build(premiere.characterClass(), premiere.method(), premiere.scores(), premiere.skills(),
-                FightingStyle.ARCHERY, StartingEquipment.FIGHTER_B, premiere.masteries(), null, null);
+                FightingStyle.ARCHERY, StartingEquipment.FIGHTER_B, premiere.masteries(), null, null, Set.of(), null);
         SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
                 new SheetEvent.SheetBuilt(premiere, SheetState.blank().rebuild(premiere))));
         SheetState retouchee = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
@@ -113,7 +114,7 @@ class SheetHistoryTest {
                 new SheetEvent.SheetEdited(avecDex(etat.values(), 16)),
                 new SheetEvent.SheetBuilt(archer, archerie)));
         Build defense = new Build(archer.characterClass(), archer.method(), archer.scores(), archer.skills(),
-                FightingStyle.DEFENSE, archer.equipment(), archer.masteries(), null, null);
+                FightingStyle.DEFENSE, archer.equipment(), archer.masteries(), null, null, Set.of(), null);
         assertEquals(16, apresB.rebuild(defense).armorClass(), "12 + Dex 3 + Défense 1");
     }
 

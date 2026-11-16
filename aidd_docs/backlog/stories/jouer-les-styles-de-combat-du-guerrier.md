@@ -4,7 +4,7 @@ status: proposed
 parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/poser-un-pj-en-combat-depuis-le-catalogue.md
-order: 13
+order: 14
 ---
 
 # Story : jouer les styles de combat du Guerrier
