@@ -212,4 +212,22 @@ class BuildTest {
                 Set.of(), Set.of(), Tool.THIEVES_TOOLS), List.of()));
         assertDoesNotThrow(() -> de(CharacterClass.MONK, null, List.of(), Set.of(), Set.of(), Tool.SMITHS_TOOLS).validate(List.of()));
     }
+
+    @Test
+    void unOutilDejaDonneParLHistorique_estRefuse() {
+        Build moine = de(CharacterClass.MONK, null, List.of(), Set.of(), Set.of(), Tool.CALLIGRAPHERS_SUPPLIES)
+                .withBackground(BackgroundChoice.of(Background.ACOLYTE));
+
+        assertEquals("matériel de calligraphe déjà donné par l’historique", raison(moine, List.of()));
+        assertDoesNotThrow(() -> moine.withTool(Tool.LUTE).validate(List.of()));
+    }
+
+    @Test
+    void desChoixAbsents_seValidentSansNullPointerException() {
+        Build base = Build.suggested(CharacterClass.MONK);
+        Build sansListes = new Build(base.characterClass(), base.method(), base.scores(), null, null, base.equipment(), null,
+                null, null, null, null);
+
+        assertDoesNotThrow(() -> sansListes.validate(List.of()));
+    }
 }

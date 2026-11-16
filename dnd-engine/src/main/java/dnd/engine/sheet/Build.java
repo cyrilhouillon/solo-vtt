@@ -21,9 +21,11 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
 
     public Build {
         scores = scores == null || scores.isEmpty() ? Map.of() : Collections.unmodifiableMap(new EnumMap<>(scores));
-        skills = skills == null ? Set.of() : Collections.unmodifiableSet(new HashSet<>(skills));
-        masteries = masteries == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(masteries));
-        expertise = expertise == null ? Set.of() : Collections.unmodifiableSet(new HashSet<>(expertise));
+        // Des copies modifiables enveloppées, jamais Set.of() ni List.of() : leur contains(null) lève une
+        // NullPointerException, alors que validate y cherche null pour refuser un id inconnu (400).
+        skills = Collections.unmodifiableSet(skills == null ? new HashSet<>() : new HashSet<>(skills));
+        masteries = Collections.unmodifiableList(masteries == null ? new ArrayList<>() : new ArrayList<>(masteries));
+        expertise = Collections.unmodifiableSet(expertise == null ? new HashSet<>() : new HashSet<>(expertise));
     }
 
     /** Un Guerrier jouable d'emblée : répartition standard suggérée, Défense, équipement A et ses trois armes en Bottes. */
@@ -157,13 +159,19 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
         }
     }
 
-    /** L'outil de classe se choisit seulement si la classe en choisit un, dans ses catégories. */
+    /**
+     * L'outil de classe se choisit seulement si la classe en choisit un, dans ses catégories, et pas celui que l'historique
+     * donne déjà : il ne donnerait aucune maîtrise de plus (comme une compétence déjà donnée par l'historique).
+     */
     private void checkTool() {
         if (tool == null) return;
         if (!characterClass.toolChoices().contains(tool.category())) {
             throw new IllegalArgumentException(characterClass.toolChoices().isEmpty()
                     ? characterClass.label() + " : aucun outil à choisir"
                     : "%s : %s hors des outils au choix".formatted(characterClass.label(), tool.label()));
+        }
+        if (background != null && background.background() != null && background.background().tool() == tool) {
+            throw new IllegalArgumentException("%s déjà donné par l’historique".formatted(tool.label()));
         }
     }
 

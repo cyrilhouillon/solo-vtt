@@ -114,12 +114,15 @@ final class SheetStore {
             };
         }
 
-        /** La construction écrite, entière : une construction tronquée (fichier édité à la main) ne se relit pas. */
+        /**
+         * La construction écrite, entière : une construction tronquée ou incohérente (fichier édité à la main), comme un
+         * Style de combat manquant au Guerrier ou porté par une autre classe, ne se relit pas.
+         */
         private Build storedBuild() {
             if (build == null) throw new IllegalStateException("Construction de fiche sans choix");
             Build stored = build.toBuild();
             boolean complete = stored.characterClass() != null && stored.method() != null
-                    && (stored.fightingStyle() != null || !stored.characterClass().takesFightingStyle())
+                    && (stored.fightingStyle() != null) == stored.characterClass().takesFightingStyle()
                     && stored.equipment() != null
                     && stored.scores().keySet().containsAll(EnumSet.allOf(Ability.class))
                     && !stored.masteries().contains(null)

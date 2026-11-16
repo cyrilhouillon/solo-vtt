@@ -27,7 +27,10 @@ public enum StartingEquipment {
             "Armure de cuir, 2 dagues, épée courte, arc court, 20 flèches, carquois, outils de voleur, paquetage de cambrioleur", 8),
     ROGUE_B("Équipement B", CharacterClass.ROGUE, null, false, List.of(), "", 100);
 
-    private static final String TOOL_TO_CHOOSE = "outil d’artisan ou instrument de musique (à choisir)";
+    /** L'outil du Moine sur la fiche tant qu'il n'est pas choisi, dans l'Équipement comme dans les Maîtrises. */
+    static final String TOOL_TO_CHOOSE = "outil d’artisan ou instrument de musique (à choisir)";
+    /** L'outil du Moine dans l'option proposée, qui vaut pour tout outil choisi. */
+    private static final String CHOSEN_TOOL = "l’outil d’artisan ou l’instrument de musique choisi";
 
     private final String label;
     private final CharacterClass characterClass;
@@ -80,9 +83,9 @@ public enum StartingEquipment {
         return gold;
     }
 
-    /** Les objets puis les pièces d'or, tels qu'ils s'écrivent sur la fiche, l'outil de classe « à choisir ». */
+    /** Les objets puis les pièces d'or, tels que l'option se propose : l'outil de classe désigné sans être nommé. */
     public String text() {
-        return text(null);
+        return format(CHOSEN_TOOL);
     }
 
     /**
@@ -91,8 +94,12 @@ public enum StartingEquipment {
      * @param tool l'outil choisi pour la maîtrise de la classe, s'il fait partie de l'équipement ; {@code null} : à choisir
      */
     public String text(Tool tool) {
+        return format(tool == null ? TOOL_TO_CHOOSE : tool.label());
+    }
+
+    private String format(String tool) {
         if (items.isEmpty()) return gold + " po";
-        String objects = items.contains("%s") ? items.formatted(tool == null ? TOOL_TO_CHOOSE : tool.label()) : items;
+        String objects = items.contains("%s") ? items.formatted(tool) : items;
         return objects + ", " + gold + " po";
     }
 }

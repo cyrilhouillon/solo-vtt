@@ -40,7 +40,6 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
     private static final double MELEE_REACH = 1.5;
     private static final double REACH_WEAPON = 3;
     private static final String UNARMED_STRIKE = "Attaque à mains nues";
-    private static final String TOOL_TO_CHOOSE = "outil d’artisan ou instrument de musique (à choisir)";
 
     public GuidedValues {
         abilities = Map.copyOf(abilities);
@@ -93,7 +92,7 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
         // Chaque outil une fois : celui de la classe, puis celui de l'historique.
         List<String> tools = new ArrayList<>();
         if (characterClass.tool() != null) tools.add(characterClass.tool().label());
-        if (!characterClass.toolChoices().isEmpty()) tools.add(build.tool() == null ? TOOL_TO_CHOOSE : build.tool().label());
+        if (!characterClass.toolChoices().isEmpty()) tools.add(build.tool() == null ? StartingEquipment.TOOL_TO_CHOOSE : build.tool().label());
         if (background != null && !tools.contains(background.toolText())) tools.add(background.toolText());
 
         int unarmoredBonus = characterClass.unarmoredDefense() == null ? 0
@@ -217,6 +216,10 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
      * Maîtrise + Force, Dextérité à distance, la meilleure en Finesse ; + 2 en Archerie avec une arme à distance. Une arme de
      * Moine, avec Arts martiaux, prend la meilleure de Force et Dextérité, et le dé d'Arts martiaux s'il est plus fort que le
      * sien. Allonge 1,5 m (3 m pour Allonge) au corps à corps, aucune à distance ; portée pour Lancer et Munitions.
+     * <p>
+     * Arts martiaux ne tient que sans armure ni bouclier (SRD 5.2.1, « Martial Arts ») ; il n'est pas vérifié ici, car aucun
+     * équipement de départ du Moine n'en porte. L'inventaire (story « tenir l'inventaire du personnage ») devra passer ce
+     * qui est porté et couper Arts martiaux avec une armure ou un bouclier, ici et dans {@link #unarmedStrike}.
      */
     static SheetAttack attack(SrdWeapon weapon, int str, int dex, FightingStyle style, CharacterClass characterClass) {
         boolean ranged = weapon.category().ranged();
@@ -240,7 +243,8 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
 
     /**
      * L'attaque à mains nues de toute créature (SRD 5.2.1, « Unarmed Strike ») : Force + maîtrise, 1 + Force contondants ;
-     * avec Arts martiaux, la meilleure de Force et Dextérité au toucher et aux dégâts, et le dé d'Arts martiaux.
+     * avec Arts martiaux, la meilleure de Force et Dextérité au toucher et aux dégâts, et le dé d'Arts martiaux. Comme pour
+     * {@link #attack}, Arts martiaux s'applique sans vérifier armure ni bouclier, que l'équipement de départ du Moine n'a pas.
      */
     static SheetAttack unarmedStrike(int str, int dex, CharacterClass characterClass) {
         if (characterClass.martialArts()) {
@@ -267,7 +271,7 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
                 lines.add("Style de combat : %s — %s".formatted(build.fightingStyle().label(), build.fightingStyle().text()));
             }
             case BARBARIAN -> {
-                lines.add("Rage (2 par jour, dégâts +2) : action Bonus, sans armure lourde ; Résistance aux dégâts "
+                lines.add("Rage (2 utilisations, 1 au repos court, toutes au repos long ; dégâts +2) : action Bonus, sans armure lourde ; Résistance aux dégâts "
                         + "contondants, perforants et tranchants, +2 aux dégâts des attaques de Force, Avantage aux tests "
                         + "et jets de sauvegarde de Force ; ni Concentration ni sorts");
                 lines.add("Défense sans armure : sans armure, CA 10 + Dex + Con ; bouclier permis");

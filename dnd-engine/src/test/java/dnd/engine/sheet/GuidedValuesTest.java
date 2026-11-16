@@ -248,7 +248,7 @@ class GuidedValuesTest {
                 new SheetAttack("Hachette", 4, 1, 6, 2, DamageType.SLASHING, 1.5, 6.0, 18.0),
                 new SheetAttack("Attaque à mains nues", 4, 0, 4, 3, DamageType.BLUDGEONING, 1.5, null, null)), fiche.attacks());
         assertTrue(fiche.features().startsWith(
-                "Bottes d’arme : Hache à deux mains (Enchaînement), Hachette (Ouverture)\nRage (2 par jour, dégâts +2)"), fiche.features());
+                "Bottes d’arme : Hache à deux mains (Enchaînement), Hachette (Ouverture)\nRage (2 utilisations, 1 au repos court, toutes au repos long ; dégâts +2)"), fiche.features());
         assertTrue(fiche.features().contains("Défense sans armure : sans armure, CA 10 + Dex + Con ; bouclier permis"), fiche.features());
         assertFalse(fiche.features().contains("Style de combat"), fiche.features());
         assertEquals("Hache à deux mains, 4 hachettes, paquetage d’explorateur, 15 po", fiche.equipment());

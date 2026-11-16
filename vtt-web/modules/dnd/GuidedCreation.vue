@@ -136,12 +136,26 @@ function proficientIn(build: Build): Set<Skill> {
   ])
 }
 
-/** Émet la construction changée, sans les Expertises dont la compétence n'est plus maîtrisée. */
+/** Le libellé de l'outil que donne l'historique de la construction, `null` sans. */
+function backgroundToolOf(build: Build): string | null {
+  return backgroundList.value.find((b) => b.id === build.background?.background)?.tool ?? null
+}
+
+/** Le libellé d'un outil au choix de la classe. */
+function toolLabel(id: string | null): string | null {
+  return current.value?.tools.find((t) => t.id === id)?.label ?? null
+}
+
+/**
+ * Émet la construction changée, sans les Expertises dont la compétence n'est plus maîtrisée, et avec l'outil de classe
+ * « à choisir » s'il est celui que l'historique donne déjà (refusé par le serveur).
+ */
 function send(change: Partial<Build>) {
   if (!shown.value) return
   const next = { ...shown.value, ...change }
   const proficient = proficientIn(next)
-  emit('build', { ...next, expertise: (next.expertise ?? []).filter((s) => proficient.has(s)) })
+  const tool = next.tool && toolLabel(next.tool) === backgroundToolOf(next) ? null : next.tool
+  emit('build', { ...next, tool, expertise: (next.expertise ?? []).filter((s) => proficient.has(s)) })
 }
 
 function chooseClass(value: string) {
@@ -707,7 +721,9 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
             <select :value="shown.tool ?? ''" @change="send({ tool: ($event.target as HTMLSelectElement).value || null })">
               <option value="">à choisir</option>
               <optgroup v-for="g in toolGroups" :key="g.category" :label="g.category">
-                <option v-for="t in g.tools" :key="t.id" :value="t.id">{{ t.label }}</option>
+                <option v-for="t in g.tools" :key="t.id" :value="t.id" :disabled="t.label === backgroundToolOf(shown)">
+                  {{ t.label }}
+                </option>
               </optgroup>
             </select>
           </label>

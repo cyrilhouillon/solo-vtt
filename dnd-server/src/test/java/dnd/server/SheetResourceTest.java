@@ -899,4 +899,26 @@ class SheetResourceTest {
         assertEquals(409, refus.getResponse().getStatus());
         assertEquals(tronquee, donnees.fichiers.get(STRAHD + "/dnd"));
     }
+
+    @Test
+    void uneConstructionDeRoublardAvecUnStyle_estRefuseeEn409() {
+        String kael = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Kael")).pageId();
+        dnd().build(STRAHD, kael, DndDtos.BuildDto.of(Build.suggested(CharacterClass.ROGUE)));
+        String valide = donnees.fichiers.get(STRAHD + "/dnd");
+        String sansStyle = "\"fightingStyle\":null";
+        assertTrue(valide.contains(sansStyle), valide);
+        String editee = valide.replace(sansStyle, "\"fightingStyle\":\"DEFENSE\"");
+        donnees.fichiers.put(STRAHD + "/dnd", editee);
+
+        var refus = assertThrows(ClientErrorException.class, () -> dnd().read(STRAHD, kael));
+        assertEquals(409, refus.getResponse().getStatus());
+        assertEquals(editee, donnees.fichiers.get(STRAHD + "/dnd"));
+    }
+
+    @Test
+    void lEquipementADuMoine_seProposeSansOutilAChoisir() {
+        assertEquals("Lance, 5 dagues, l’outil d’artisan ou l’instrument de musique choisi, paquetage d’explorateur, 11 po",
+                StartingEquipment.MONK_A.text());
+        assertEquals("Lance, 5 dagues, luth, paquetage d’explorateur, 11 po", StartingEquipment.MONK_A.text(Tool.LUTE));
+    }
 }
