@@ -33,3 +33,11 @@
 
 - [pass] Task 1 — Chaque sort de `Spell` et chaque règle du Magicien est dans la liste ; chaque ligne non jouée renvoie à une story existante du backlog — script de contrôle : les 45 libellés de `Spell.java` apparaissent dans `lister-les-capacites-de-niveau-1-que-le-moteur-ne-joue-pas.md` (manquants : `[]`) ; 15 lignes ajoutées (sorts, emplacements, préparés au repos long, Savoir rituel, Restauration magique, Bouclier et sa durée, sorts d'attaque, de sauvegarde, Projectile magique, effets à durée, Concentration, utilitaires, composantes) ; stories créées `lancer-un-sort-d-attaque` (31), `lancer-un-sort-a-jet-de-sauvegarde` (32), `lancer-projectile-magique` (33), `tenir-les-effets-a-duree-et-la-concentration` (34), chacune avec son epic, `depends_on` le Magicien et le rappel de la liste ; `se-reposer-court-et-long` complétée (Restauration magique, sorts préparés) ; story du Magicien `done`.
 - [pass] Task 2 — La mémoire nomme `Spell`, les champs de sort, `GET …/dnd/spells` et le suivi des emplacements ; le piège « aucune créature ne connaît Bouclier » est corrigé — `architecture.md` : paragraphe Magicien (`Spellcasting`, `Spell`, `Build`, champs de fiche, DD et attaque, `profile`, `GET …/dnd/spells`, `SpellsPanel.vue`), suivi `SpellSlotExpended` / `expended`, création guidée et saisie libre avec le Magicien, piège Bouclier réécrit ; `codebase-map.md` : `Spell`, `CharacterClass` (cinq classes), `SpellsPanel.vue` ; `project-brief.md` : Magicien guidé, emplacements suivis ; `testing.md` inchangé (`TestCharacters` n'a pas changé).
+
+## Final
+
+- Date: 2026-11-17
+- Validated on: 8b29583
+
+- [pass] `mvn -q verify` à la racine — exit 0 ; rapports surefire : 684 tests, 0 échec, 0 erreur
+- [pass] `npm run build` dans `vtt-web/` — `✓ built`

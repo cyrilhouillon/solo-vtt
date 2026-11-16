@@ -1,6 +1,6 @@
 ---
 objective: "En création guidée, le joueur choisit un Magicien de niveau 1 : trois sorts mineurs, six sorts de grimoire et quatre préparés parmi eux, dans la liste du Magicien du SRD 5.2.1 ; la fiche porte sa caractéristique d'incantation, ses sorts (retouchables), son DD et son bonus d'attaque de sort, ses deux emplacements du 1er niveau ; un Bouclier lancé en combat dépense un emplacement qui baisse aussi sur la fiche, jamais au rejeu ; chaque sort ou règle que le moteur ne joue pas a sa story."
-status: in-progress
+status: implemented
 ---
 
 # Plan: créer en guidé un Magicien
