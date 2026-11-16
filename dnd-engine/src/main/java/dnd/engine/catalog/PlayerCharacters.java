@@ -28,7 +28,7 @@ public interface PlayerCharacters {
     Optional<Taken> take(String campaignId, String id);
 
     /**
-     * Ce qui vient d'arriver, sur une carte, à la copie posée du personnage {@code id} (dégâts subis…), pour que sa fiche
+     * Ce qui vient d'arriver, sur une carte, à la copie posée du personnage {@code id} (dégâts subis, emplacements dépensés…), pour que sa fiche
      * le suive. Appelé une fois par commande vécue, jamais au rejeu d'une partie ou d'un combat.
      *
      * @return {@code false} si {@code id} n'est pas l'un de ses personnages ; {@code true} si sa fiche a suivi

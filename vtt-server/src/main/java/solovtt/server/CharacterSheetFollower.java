@@ -5,7 +5,7 @@ import dnd.engine.events.GameEvent;
 import java.util.List;
 
 /**
- * Fait suivre à la fiche d'un personnage joueur ce qui arrive à sa copie posée sur la carte (dégâts subis). La session
+ * Fait suivre à la fiche d'un personnage joueur ce qui arrive à sa copie posée sur la carte (dégâts subis, emplacements de sort dépensés). La session
  * l'appelle une fois par commande vécue, après l'avoir gardée, jamais au rejeu.
  */
 @FunctionalInterface
