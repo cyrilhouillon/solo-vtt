@@ -250,13 +250,13 @@ function setClass(id: string) {
   if (!classes.value.find((c) => c.id === id)?.fightingStyles.length) values.value.fightingStyle = null
 }
 
-/** Un geste d'inventaire part aussitôt : la CA et les attaques en dépendent. */
 /** Un geste sur les sorts : une frappe comme une autre, enregistrée une seconde après. */
 function onSpells(patch: Partial<SheetValues>) {
   if (!values.value) return
   Object.assign(values.value, patch)
 }
 
+/** Un geste d'inventaire part aussitôt : la CA et les attaques en dépendent. */
 function onInventory(next: Inventory) {
   if (!values.value) return
   values.value.inventory = next

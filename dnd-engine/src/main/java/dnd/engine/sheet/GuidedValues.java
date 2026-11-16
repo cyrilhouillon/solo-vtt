@@ -223,7 +223,7 @@ public record GuidedValues(CharacterClass characterClass, FightingStyle fighting
             }
             case WIZARD -> {
                 CharacterClass.Spellcasting casting = characterClass.spellcasting();
-                lines.add("Sorts (Intelligence) : sorts mineurs " + spellsText(build.cantrips(), casting.cantrips())
+                lines.add("Sorts (" + casting.ability().label() + ") : sorts mineurs " + spellsText(build.cantrips(), casting.cantrips())
                         + " ; grimoire " + spellsText(build.spellbook(), casting.spellbook())
                         + " ; préparés " + spellsText(build.prepared(), casting.prepared())
                         + " ; changer de sorts préparés au repos long");
