@@ -99,7 +99,7 @@ function add() {
               min="1"
               class="small"
               :aria-label="`Quantité de ${label(item)}`"
-              @change="update(index, { quantity: numberOf(($event.target as HTMLInputElement).value) })"
+              @change="update(index, { quantity: numberOf(($event.target as HTMLInputElement).valueAsNumber) })"
             />
           </td>
           <td>
@@ -150,7 +150,7 @@ function add() {
         type="number"
         min="0"
         class="small"
-        @change="send(inventory.items, numberOf(($event.target as HTMLInputElement).value))"
+        @change="send(inventory.items, numberOf(($event.target as HTMLInputElement).valueAsNumber))"
       />
       po
     </label>
