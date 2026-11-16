@@ -4,7 +4,7 @@ status: ready
 parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/creer-en-guide-un-magicien.md
-order: 9
+order: 10
 ---
 
 # Story : créer en guidé les autres lanceurs de sorts

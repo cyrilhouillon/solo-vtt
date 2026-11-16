@@ -30,7 +30,7 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1 
 | Capacité | Source | Jouée | Story |
 | --- | --- | --- | --- |
 | Second souffle | Guerrier, niveau 1 | non | [utiliser Second souffle en combat](../stories/utiliser-second-souffle-en-combat.md) |
-| Bottes d'arme (8 bottes) | Guerrier, niveau 1 | non | [appliquer les Bottes d'arme en combat](../stories/appliquer-les-bottes-d-arme-en-combat.md) |
+| Bottes d'arme (8 bottes) | Guerrier, Barbare, Roublard, niveau 1 | non | [appliquer les Bottes d'arme en combat](../stories/appliquer-les-bottes-d-arme-en-combat.md) |
 | Style de combat : Archerie | Guerrier, niveau 1 | non (le +2 est écrit sur la fiche) | [jouer les styles de combat du Guerrier](../stories/jouer-les-styles-de-combat-du-guerrier.md) |
 | Style de combat : Armes à deux mains | Guerrier, niveau 1 | non | [jouer les styles de combat du Guerrier](../stories/jouer-les-styles-de-combat-du-guerrier.md) |
 | Style de combat : Combat à deux armes | Guerrier, niveau 1 | non | [jouer les styles de combat du Guerrier](../stories/jouer-les-styles-de-combat-du-guerrier.md) |
@@ -66,3 +66,12 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1 
 | Acharnement, Poussée d’adrénaline | Orc | non | [jouer Acharnement et Poussée d'adrénaline de l'Orc](../stories/jouer-acharnement-et-poussee-d-adrenaline-de-l-orc.md) |
 | Héritage fiélon : Résistance | Tieffelin | non (écrite sur la fiche) | [appliquer les résistances d'espèce en combat](../stories/appliquer-les-resistances-d-espece-en-combat.md) |
 | Vol draconique, Forme de géant | Drakéide, Goliath | hors champ : niveau 5 | — |
+| Rage | Barbare, niveau 1 | non (écrite sur la fiche) | [entrer en Rage en combat](../stories/entrer-en-rage-en-combat.md) |
+| Défense sans armure | Barbare, Moine, niveau 1 | portée par la fiche (CA 10 + Dex + Con ou Sag, sans armure) | — |
+| Arts martiaux : dé d'Arts martiaux, Attaques lestes | Moine, niveau 1 | portée par la fiche (1d6, meilleure de For et Dex, armes de Moine et mains nues) | — |
+| Arts martiaux : attaque à mains nues supplémentaire | Moine, niveau 1 | non | [frapper à mains nues en action Bonus avec Arts martiaux](../stories/frapper-a-mains-nues-en-action-bonus-avec-arts-martiaux.md) |
+| Attaque à mains nues | toute classe | portée par la fiche (attaque « Attaque à mains nues ») | — |
+| Expertise | Roublard, niveau 1 | portée par la fiche (deux compétences en expertise) | — |
+| Attaque sournoise | Roublard, niveau 1 | non (écrite sur la fiche) | [porter une Attaque sournoise](../stories/porter-une-attaque-sournoise.md) |
+| Argot des voleurs | Roublard, niveau 1 | hors combat (langue, écrite dans Capacités) | — |
+| Doué : maîtrises d'outils | Polyvalent | non (Doué ne donne que des compétences) | [choisir des outils avec Doué](../stories/choisir-des-outils-avec-doue.md) |

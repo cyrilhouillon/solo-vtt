@@ -5,7 +5,7 @@ parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/poser-un-pj-en-combat-depuis-le-catalogue.md
   - aidd_docs/backlog/stories/choisir-une-espece-en-creation-guidee.md
-order: 18
+order: 19
 ---
 
 # Story : jouer Acharnement et Poussée d'adrénaline de l'Orc

@@ -5,7 +5,7 @@ parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/creer-en-guide-un-guerrier-de-niveau-1.md
   - aidd_docs/backlog/stories/voir-sur-la-fiche-les-pv-perdus-en-combat.md
-order: 8
+order: 9
 ---
 
 # Story : créer en guidé un Magicien
