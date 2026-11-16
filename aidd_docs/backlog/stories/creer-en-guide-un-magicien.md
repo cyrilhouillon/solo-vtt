@@ -18,4 +18,4 @@ order: 9
 
 - Le joueur choisit ses sorts mineurs et ses sorts préparés de niveau 1 dans la liste du Magicien. La fiche montre leur DD, leur bonus d'attaque et ses emplacements.
 - Les emplacements dépensés en combat (Bouclier) baissent sur la fiche, comme les PV.
-- Chaque sort ou capacité que le moteur ne joue pas a sa story.
+- Chaque sort, capacité ou règle rencontrée (recharge, repos, Concentration…) que le moteur ne joue pas entre dans la [liste de la tâche](../tasks/lister-les-capacites-de-niveau-1-que-le-moteur-ne-joue-pas.md) avec sa story, même si l'epic l'exclut.

@@ -8,13 +8,13 @@ parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 
 ## Outcome
 
-Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1 et que le moteur ne sait pas jouer a sa propre story dans le backlog.
+Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1, et chaque règle qu'ils supposent (repos, recharge, Concentration…), que le moteur ne sait pas jouer a sa propre story dans le backlog.
 
 ## Scope
 
 - **Inclut :**
   - les capacités de niveau 1 des 12 classes du SRD 5.2.1, les traits des 9 espèces, les dons d'origine des 4 historiques, les sorts mineurs et de niveau 1 des listes de classe ;
-  - une liste tenue au fil des stories de création guidée (Guerrier ; espèce ; historique ; Barbare, Moine, Roublard ; Magicien ; autres lanceurs de sorts) ;
+  - une liste tenue au fil des stories de création guidée (Guerrier ; espèce ; historique ; Barbare, Moine, Roublard ; Magicien ; autres lanceurs de sorts) : toute règle rencontrée en chemin y entre, même si l'epic l'exclut, avec la story qui la portera ; chaque story de l'epic le rappelle dans son acceptance ;
   - une story par capacité, ou par groupe de capacités au comportement commun, rattachée à son propre epic.
 - **Exclut :**
   - mettre en œuvre ces capacités dans le moteur ;
@@ -44,7 +44,7 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1 
 | Ténacité naine | Nain | portée par la fiche (+1 PV max) | — |
 | Ascendance féerique | Elfe | non (pas de sauvegarde au moteur) | [avoir l'Avantage aux sauvegardes d'espèce](../stories/avoir-l-avantage-aux-sauvegardes-d-espece.md) |
 | Sens aiguisés | Elfe | portée par la fiche (compétence maîtrisée) | — |
-| Transe | Elfe | hors combat (repos non modélisés) | — |
+| Transe | Elfe | hors combat (repos non modélisés) | [se reposer, court et long](../stories/se-reposer-court-et-long.md) |
 | Lignage elfique : Elfe sylvestre (vitesse 10,50 m) | Elfe | portée par la fiche (vitesse) | — |
 | Lignages elfiques et gnomes, héritages fiélons, Présence d’outre-monde : sorts mineurs et sorts d’espèce | Elfe, Gnome, Tieffelin | non (aucun sort joué) | [créer en guidé les autres lanceurs de sorts](../stories/creer-en-guide-les-autres-lanceurs-de-sorts.md) |
 | Ruse gnome | Gnome | non (pas de sauvegarde au moteur) | [avoir l'Avantage aux sauvegardes d'espèce](../stories/avoir-l-avantage-aux-sauvegardes-d-espece.md) |
@@ -56,7 +56,7 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1 
 | Chance | Halfelin | non | [relancer un 1 avec la Chance du Halfelin](../stories/relancer-un-1-avec-la-chance-du-halfelin.md) |
 | Discrétion naturelle | Halfelin | hors combat (Furtivité non modélisée) | — |
 | Compétent | Humain | portée par la fiche (compétence maîtrisée) | — |
-| Ingénieux (Inspiration héroïque) | Humain | hors combat (repos non modélisés) | — |
+| Ingénieux (Inspiration héroïque) | Humain | hors combat (repos non modélisés) | [se reposer, court et long](../stories/se-reposer-court-et-long.md) |
 | Polyvalent (don d’origines) | Humain | portée par la fiche (don choisi en création guidée) | — |
 | Doué | Polyvalent | portée par la fiche (trois compétences maîtrisées) | — |
 | Initié à la magie : sorts mineurs et sort du 1er niveau | Acolyte, Sage ; Polyvalent | non (sorts écrits « à choisir ») | [créer en guidé les autres lanceurs de sorts](../stories/creer-en-guide-les-autres-lanceurs-de-sorts.md) |
@@ -75,3 +75,4 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1 
 | Attaque sournoise | Roublard, niveau 1 | non (écrite sur la fiche) | [porter une Attaque sournoise](../stories/porter-une-attaque-sournoise.md) |
 | Argot des voleurs | Roublard, niveau 1 | hors combat (langue, écrite dans Capacités) | — |
 | Doué : maîtrises d'outils | Polyvalent | non (Doué ne donne que des compétences) | [choisir des outils avec Doué](../stories/choisir-des-outils-avec-doue.md) |
+| Repos court et long : dés de vie, PV, recharge des capacités limitées (Rage, Second souffle, Acharnement, Poussée d'adrénaline) et des emplacements, changement d'une Botte d'arme | règle, toute classe | non (PV et utilisations remis à la main) | [se reposer, court et long](../stories/se-reposer-court-et-long.md) |
