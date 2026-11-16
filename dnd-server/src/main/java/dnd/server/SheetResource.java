@@ -92,6 +92,17 @@ public class SheetResource {
         return Arrays.stream(Background.values()).map(DndDtos.BackgroundOptionsDto::of).toList();
     }
 
+    /** Les armes et armures du SRD, à ajouter à l'inventaire d'une fiche. */
+    @GET
+    @Path("/equipment")
+    @APIResponse(responseCode = "200", description = "Les armes et armures du SRD, bouclier compris",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DndDtos.EquipmentOptionsDto.class)))
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public DndDtos.EquipmentOptionsDto equipment(@PathParam("campaignId") String campaignId) {
+        known(campaignId);
+        return DndDtos.EquipmentOptionsDto.of();
+    }
+
     /** Les dons d'origines et leurs sous-choix, pour Polyvalent (Humain). */
     @GET
     @Path("/origin-feats")

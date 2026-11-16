@@ -1,7 +1,5 @@
 package dnd.engine.sheet;
 
-import dnd.engine.state.DamageType;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -15,37 +13,33 @@ import java.util.stream.Collectors;
 
 /**
  * Ce qu'une construction guidée écrit sur la fiche, champ par champ (SRD 5.2.1, niveau 1). Langues et emplacements de
- * sort n'en dérivent pas : ils restent au joueur. Espèce, taille, vitesse et traits d'espèce valent {@code null} tant que
- * la construction n'a pas d'espèce, historique tant qu'elle n'a pas d'historique, dons tant qu'elle n'a ni historique ni
- * Polyvalent : la fiche garde alors ce que le joueur y a saisi.
+ * sort n'en dérivent pas : ils restent au joueur. CA et attaques non plus : la fiche les calcule ({@link CombatStats}) de
+ * la classe, du Style et de l'inventaire que la construction écrit. Espèce, taille, vitesse et traits d'espèce valent
+ * {@code null} tant que la construction n'a pas d'espèce, historique tant qu'elle n'a pas d'historique, dons tant qu'elle
+ * n'a ni historique ni Polyvalent : la fiche garde alors ce que le joueur y a saisi.
  *
  * <p>{@link #rebuild} ne réécrit que les champs dont la valeur dérivée a changé depuis la construction précédente : une
- * retouche du joueur survit tant que le choix dont elle dépend ne change pas.</p>
+ * retouche du joueur survit tant que le choix dont elle dépend ne change pas. L'inventaire est celui de départ : un choix
+ * qui le change le remplace en entier.</p>
  */
-public record GuidedValues(String className, int level, int proficiencyBonus, Map<Ability, Integer> abilities,
-                           Set<Ability> savingThrows, Map<Skill, Proficiency> skills,
-                           int armorClass, int hitPointMax, int hitPoints, String hitDice, int initiative,
-                           List<SheetAttack> attacks, String features, String equipment, String proficiencies,
+public record GuidedValues(CharacterClass characterClass, FightingStyle fightingStyle, int level, int proficiencyBonus,
+                           Map<Ability, Integer> abilities, Set<Ability> savingThrows, Map<Skill, Proficiency> skills,
+                           int hitPointMax, int hitPoints, String hitDice, int initiative,
+                           String features, Inventory inventory, String proficiencies,
                            String species, String size, Double speed, String speciesTraits,
                            String background, String feats) {
 
     /** Aucune construction précédente : {@link #rebuild} réécrit tous les champs dérivés. */
-    public static final GuidedValues NONE = new GuidedValues("", 0, 0, Map.of(), Set.of(), Map.of(),
-            0, 0, 0, "", 0, List.of(), "", "", "", null, null, null, null, null, null);
+    public static final GuidedValues NONE = new GuidedValues(null, null, 0, 0, Map.of(), Set.of(), Map.of(),
+            0, 0, "", 0, "", Inventory.EMPTY, "", null, null, null, null, null, null);
 
     private static final int LEVEL = 1;
     private static final int PROFICIENCY_BONUS = 2;
-    private static final int DEFENSE_BONUS = 1;
-    private static final int ARCHERY_BONUS = 2;
-    private static final double MELEE_REACH = 1.5;
-    private static final double REACH_WEAPON = 3;
-    private static final String UNARMED_STRIKE = "Attaque à mains nues";
 
     public GuidedValues {
         abilities = Map.copyOf(abilities);
         savingThrows = Set.copyOf(savingThrows);
         skills = Map.copyOf(skills);
-        attacks = List.copyOf(attacks);
     }
 
     /** Les valeurs qu'une construction donne à une fiche qui porte ses valeurs de caractéristique, augmentations comprises. */
@@ -54,14 +48,13 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
     }
 
     /**
-     * Les valeurs qu'une construction donne à la fiche ; la construction est supposée valide. CA, attaques, initiative et
-     * PV suivent les caractéristiques de la fiche ({@code abilities}), retouches comprises (hausses de l'historique…).
+     * Les valeurs qu'une construction donne à la fiche ; la construction est supposée valide. Initiative et PV suivent les
+     * caractéristiques de la fiche ({@code abilities}), retouches comprises (hausses de l'historique…).
      *
      * @param abilities les valeurs de caractéristique de la fiche, une fois la construction appliquée
      */
     public static GuidedValues of(Build build, Map<Ability, Integer> abilities) {
         CharacterClass characterClass = build.characterClass();
-        int str = modifier(abilities.get(Ability.STRENGTH));
         int dex = modifier(abilities.get(Ability.DEXTERITY));
         int con = modifier(abilities.get(Ability.CONSTITUTION));
 
@@ -76,14 +69,6 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
         }
         int hitPoints = characterClass.hitDie() + con + (species == null ? 0 : species.species().hitPointsPerLevel() * LEVEL);
 
-        // Les armes de l'historique suivent celles de la classe, sans doublon ; l'attaque à mains nues vient en dernier.
-        StartingEquipment equipment = build.equipment();
-        List<SrdWeapon> weapons = new ArrayList<>(equipment.weapons());
-        if (background != null) background.weapons().stream().filter(w -> !weapons.contains(w)).forEach(weapons::add);
-        List<SheetAttack> attacks = new ArrayList<>(weapons.stream()
-                .map(weapon -> attack(weapon, str, dex, build.fightingStyle(), characterClass)).toList());
-        attacks.add(unarmedStrike(str, dex, characterClass));
-
         List<OriginFeatChoice> feats = new ArrayList<>();
         if (background != null) feats.add(background.feat());
         if (species != null && species.originFeat() != null) feats.add(species.originFeat());
@@ -95,16 +80,11 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
         if (!characterClass.toolChoices().isEmpty()) tools.add(build.tool() == null ? StartingEquipment.TOOL_TO_CHOOSE : build.tool().label());
         if (background != null && !tools.contains(background.toolText())) tools.add(background.toolText());
 
-        int unarmoredBonus = characterClass.unarmoredDefense() == null ? 0
-                : modifier(abilities.get(characterClass.unarmoredDefense()));
-        String equipmentText = equipment.text(build.tool());
-        return new GuidedValues(characterClass.label(), LEVEL, PROFICIENCY_BONUS, build.abilities(),
+        return new GuidedValues(characterClass, build.fightingStyle(), LEVEL, PROFICIENCY_BONUS, build.abilities(),
                 EnumSet.copyOf(characterClass.savingThrows()), skills,
-                armorClass(characterClass, equipment.armor(), equipment.shield(), dex, unarmoredBonus, build.fightingStyle()),
                 hitPoints, hitPoints,
-                "1d" + characterClass.hitDie(), dex + (alert ? PROFICIENCY_BONUS : 0), attacks,
-                features(build),
-                background == null ? equipmentText : equipmentText + "\n" + background.equipmentText(),
+                "1d" + characterClass.hitDie(), dex + (alert ? PROFICIENCY_BONUS : 0),
+                features(build), build.startingInventory(),
                 tools.isEmpty() ? characterClass.proficiencies()
                         : characterClass.proficiencies() + "\nOutils : " + String.join(", ", tools),
                 species == null ? null : species.species().label(),
@@ -143,25 +123,28 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
             }
         }
 
+        // Le Style suit la classe : une classe sans Style le retire de la fiche.
+        boolean styleChanged = changed(previous, GuidedValues::fightingStyle) || changed(previous, GuidedValues::characterClass);
         return new CharacterSheet(
-                pick(previous, GuidedValues::className, sheet.className()),
+                pick(previous, GuidedValues::characterClass, sheet.characterClass()),
+                styleChanged ? fightingStyle : sheet.fightingStyle(),
                 pick(previous, GuidedValues::level, sheet.level()),
                 pick(previous, GuidedValues::species, sheet.species()),
                 pick(previous, GuidedValues::size, sheet.size()),
                 pick(previous, GuidedValues::background, sheet.background()), abilities,
                 pick(previous, GuidedValues::proficiencyBonus, sheet.proficiencyBonus()),
                 saves, skills,
-                pick(previous, GuidedValues::armorClass, sheet.armorClass()),
+                sheet.armorBonus(),
                 pick(previous, GuidedValues::hitPointMax, sheet.hitPointMax()),
                 pick(previous, GuidedValues::hitPoints, sheet.hitPoints()),
                 pick(previous, GuidedValues::hitDice, sheet.hitDice()),
                 pick(previous, GuidedValues::speed, sheet.speed()),
                 pick(previous, GuidedValues::initiative, sheet.initiative()),
-                pick(previous, GuidedValues::attacks, sheet.attacks()),
+                sheet.otherAttacks(),
                 pick(previous, GuidedValues::features, sheet.features()),
                 pick(previous, GuidedValues::speciesTraits, sheet.speciesTraits()),
                 pickWithdrawn(previous, GuidedValues::feats, sheet.feats()),
-                pick(previous, GuidedValues::equipment, sheet.equipment()),
+                pick(previous, GuidedValues::inventory, sheet.inventory()),
                 pick(previous, GuidedValues::proficiencies, sheet.proficiencies()),
                 sheet.languages(), sheet.spellSlots());
     }
@@ -190,70 +173,6 @@ public record GuidedValues(String className, int level, int proficiencyBonus, Ma
 
     private static int modifier(int score) {
         return Math.floorDiv(score - 10, 2);
-    }
-
-    /**
-     * CA de ce qui est porté : l'armure (Dextérité selon sa catégorie) et Défense ; sans armure, la meilleure de 10 + Dex et
-     * de la Défense sans armure de la classe (si le bouclier la permet) ; puis le bouclier.
-     *
-     * @param unarmoredBonus le modificateur de la caractéristique de Défense sans armure, 0 sans
-     */
-    static int armorClass(CharacterClass characterClass, SrdArmor armor, boolean shield, int dex, int unarmoredBonus,
-                          FightingStyle style) {
-        int armorClass;
-        if (armor != null) {
-            armorClass = armor.armorClass(dex) + (style == FightingStyle.DEFENSE ? DEFENSE_BONUS : 0);
-        } else {
-            armorClass = 10 + dex;
-            boolean unarmored = characterClass.unarmoredDefense() != null
-                    && (!shield || characterClass.unarmoredDefenseWithShield());
-            if (unarmored) armorClass = Math.max(armorClass, 10 + dex + unarmoredBonus);
-        }
-        return armorClass + (shield ? SrdArmor.SHIELD.armorClass() : 0);
-    }
-
-    /**
-     * Maîtrise + Force, Dextérité à distance, la meilleure en Finesse ; + 2 en Archerie avec une arme à distance. Une arme de
-     * Moine, avec Arts martiaux, prend la meilleure de Force et Dextérité, et le dé d'Arts martiaux s'il est plus fort que le
-     * sien. Allonge 1,5 m (3 m pour Allonge) au corps à corps, aucune à distance ; portée pour Lancer et Munitions.
-     * <p>
-     * Arts martiaux ne tient que sans armure ni bouclier (SRD 5.2.1, « Martial Arts ») ; il n'est pas vérifié ici, car aucun
-     * équipement de départ du Moine n'en porte. L'inventaire (story « tenir l'inventaire du personnage ») devra passer ce
-     * qui est porté et couper Arts martiaux avec une armure ou un bouclier, ici et dans {@link #unarmedStrike}.
-     */
-    static SheetAttack attack(SrdWeapon weapon, int str, int dex, FightingStyle style, CharacterClass characterClass) {
-        boolean ranged = weapon.category().ranged();
-        boolean martialArts = characterClass.martialArts() && CharacterClass.monkWeapon(weapon);
-        int ability = martialArts || weapon.has(SrdWeapon.Property.FINESSE) ? Math.max(str, dex) : ranged ? dex : str;
-        int bonus = PROFICIENCY_BONUS + ability + (ranged && style == FightingStyle.ARCHERY ? ARCHERY_BONUS : 0);
-        Double reach = ranged ? null : weapon.has(SrdWeapon.Property.REACH) ? REACH_WEAPON : MELEE_REACH;
-        boolean hasRange = weapon.normalRange() > 0;
-        int diceCount = weapon.diceCount();
-        int dieSides = weapon.dieSides();
-        // Le dé le plus fort en moyenne : n × (faces + 1) / 2 contre (d + 1) / 2.
-        if (martialArts && diceCount * (dieSides + 1) < CharacterClass.MARTIAL_ARTS_DIE + 1) {
-            diceCount = 1;
-            dieSides = CharacterClass.MARTIAL_ARTS_DIE;
-        }
-        // Des dégâts fixes, sans dé (sarbacane), ne prennent pas le modificateur (SRD 5.2.1 p. 16, « Damage Rolls »).
-        int damageBonus = diceCount == 0 ? weapon.flatDamage() : ability;
-        return new SheetAttack(weapon.label(), bonus, diceCount, dieSides, damageBonus,
-                weapon.damageType(), reach, hasRange ? weapon.normalRange() : null, hasRange ? weapon.longRange() : null);
-    }
-
-    /**
-     * L'attaque à mains nues de toute créature (SRD 5.2.1, « Unarmed Strike ») : Force + maîtrise, 1 + Force contondants ;
-     * avec Arts martiaux, la meilleure de Force et Dextérité au toucher et aux dégâts, et le dé d'Arts martiaux. Comme pour
-     * {@link #attack}, Arts martiaux s'applique sans vérifier armure ni bouclier, que l'équipement de départ du Moine n'a pas.
-     */
-    static SheetAttack unarmedStrike(int str, int dex, CharacterClass characterClass) {
-        if (characterClass.martialArts()) {
-            int ability = Math.max(str, dex);
-            return new SheetAttack(UNARMED_STRIKE, PROFICIENCY_BONUS + ability, 1, CharacterClass.MARTIAL_ARTS_DIE, ability,
-                    DamageType.BLUDGEONING, MELEE_REACH, null, null);
-        }
-        return new SheetAttack(UNARMED_STRIKE, PROFICIENCY_BONUS + str, 0, 4, 1 + str, DamageType.BLUDGEONING,
-                MELEE_REACH, null, null);
     }
 
     private static String features(Build build) {

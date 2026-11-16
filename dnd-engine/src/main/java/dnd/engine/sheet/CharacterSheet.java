@@ -10,18 +10,24 @@ import java.util.Set;
 
 /**
  * La fiche d'un personnage D&D 2024 : ce que le joueur y écrit, et ce que les formules du SRD 5.2.1 en tirent
- * (modificateurs, sauvegardes, compétences, Perception passive). Le nom du personnage n'y est pas : c'est le titre de sa
- * page dans le Carnet.
+ * (modificateurs, sauvegardes, compétences, Perception passive, CA et attaques). Le nom du personnage n'y est pas : c'est
+ * le titre de sa page dans le Carnet.
  *
  * <p>Une compétence absente de {@code skills} n'est pas maîtrisée. Vitesse en mètres. Taille et traits d'espèce sont du
- * texte, comme l'espèce ; les dons aussi. Les textes absents valent {@code ""}.</p>
+ * texte, comme l'espèce ; les dons aussi. Les textes absents valent {@code ""}. CA et attaques ne sont pas gardées :
+ * {@link CombatStats} les calcule de la classe, du Style, des caractéristiques, de l'inventaire, de l'ajustement de CA
+ * ({@code armorBonus}) et des autres attaques saisies ({@code otherAttacks}, sorts…).</p>
+ *
+ * @param characterClass la classe, {@code null} tant qu'elle n'est pas choisie : ni CA ni attaques
+ * @param fightingStyle  le Style de combat, seulement pour une classe qui en prend un
  */
-public record CharacterSheet(String className, int level, String species, String size, String background,
+public record CharacterSheet(CharacterClass characterClass, FightingStyle fightingStyle, int level, String species,
+                             String size, String background,
                              Map<Ability, Integer> abilities, int proficiencyBonus,
                              Set<Ability> savingThrows, Map<Skill, Proficiency> skills,
-                             int armorClass, int hitPointMax, int hitPoints, String hitDice, double speed, int initiative,
-                             List<SheetAttack> attacks,
-                             String features, String speciesTraits, String feats, String equipment, String proficiencies,
+                             int armorBonus, int hitPointMax, int hitPoints, String hitDice, double speed, int initiative,
+                             List<SheetAttack> otherAttacks,
+                             String features, String speciesTraits, String feats, Inventory inventory, String proficiencies,
                              String languages,
                              List<SpellSlots> spellSlots) {
 
@@ -31,7 +37,6 @@ public record CharacterSheet(String className, int level, String species, String
     public static final int MAX_PROFICIENCY_BONUS = 10;
 
     public CharacterSheet {
-        className = text(className);
         species = text(species);
         size = text(size);
         background = text(background);
@@ -39,7 +44,11 @@ public record CharacterSheet(String className, int level, String species, String
         features = text(features);
         speciesTraits = text(speciesTraits);
         feats = text(feats);
-        equipment = text(equipment);
+        inventory = inventory == null ? Inventory.EMPTY : inventory;
+        if (fightingStyle != null && (characterClass == null || !characterClass.takesFightingStyle())) {
+            throw new IllegalArgumentException(characterClass == null ? "Choisir une classe avant un Style de combat"
+                    : characterClass.label() + " : aucun Style de combat au niveau 1");
+        }
         proficiencies = text(proficiencies);
         languages = text(languages);
         if (level < 1 || level > MAX_LEVEL) throw new IllegalArgumentException("Niveau entre 1 et %d : %d".formatted(MAX_LEVEL, level));
@@ -57,13 +66,18 @@ public record CharacterSheet(String className, int level, String species, String
         }
         savingThrows = savingThrows == null || savingThrows.isEmpty() ? Set.of() : Set.copyOf(EnumSet.copyOf(savingThrows));
         skills = skills == null ? Map.of() : Map.copyOf(skills);
-        if (armorClass < 0) throw new IllegalArgumentException("CA négative : " + armorClass);
         if (hitPointMax < 0) throw new IllegalArgumentException("PV maximum négatifs : " + hitPointMax);
         if (hitPoints < 0) throw new IllegalArgumentException("PV actuels négatifs : " + hitPoints);
         if (!(speed >= 0)) throw new IllegalArgumentException("Vitesse négative : " + speed);
-        attacks = attacks == null ? List.of() : List.copyOf(attacks);
-        if (attacks.stream().map(SheetAttack::name).distinct().count() != attacks.size()) {
+        otherAttacks = otherAttacks == null ? List.of() : List.copyOf(otherAttacks);
+        if (otherAttacks.stream().map(SheetAttack::name).distinct().count() != otherAttacks.size()) {
             throw new IllegalArgumentException("Deux attaques portent le même nom");
+        }
+        Set<String> derived = CombatStats.derivedAttackNames(characterClass, inventory);
+        for (SheetAttack attack : otherAttacks) {
+            if (derived.contains(attack.name())) {
+                throw new IllegalArgumentException("Attaque « %s » : nom déjà pris par une arme tenue ou les mains nues".formatted(attack.name()));
+            }
         }
         spellSlots = spellSlots == null ? List.of() : List.copyOf(spellSlots);
         if (spellSlots.stream().map(SpellSlots::level).distinct().count() != spellSlots.size()) {
@@ -75,15 +89,15 @@ public record CharacterSheet(String className, int level, String species, String
     public static CharacterSheet blank() {
         Map<Ability, Integer> abilities = new EnumMap<>(Ability.class);
         for (Ability ability : Ability.values()) abilities.put(ability, 10);
-        return new CharacterSheet("", 1, "", "", "", abilities, 2, Set.of(), Map.of(),
-                10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of());
+        return new CharacterSheet(null, null, 1, "", "", "", abilities, 2, Set.of(), Map.of(),
+                0, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of());
     }
 
     /** Cette fiche, avec ces PV actuels. */
     public CharacterSheet withHitPoints(int hitPoints) {
-        return new CharacterSheet(className, level, species, size, background, abilities, proficiencyBonus, savingThrows,
-                skills, armorClass, hitPointMax, hitPoints, hitDice, speed, initiative, attacks, features, speciesTraits,
-                feats, equipment, proficiencies, languages, spellSlots);
+        return new CharacterSheet(characterClass, fightingStyle, level, species, size, background, abilities,
+                proficiencyBonus, savingThrows, skills, armorBonus, hitPointMax, hitPoints, hitDice, speed, initiative,
+                otherAttacks, features, speciesTraits, feats, inventory, proficiencies, languages, spellSlots);
     }
 
     /** Le modificateur d'une caractéristique : (valeur − 10) / 2, arrondi à l'inférieur. */
@@ -111,16 +125,28 @@ public record CharacterSheet(String className, int level, String species, String
         return 10 + skill(Skill.PERCEPTION);
     }
 
+    /** La CA, calculée ({@link CombatStats#armorClass}) ; {@code null} sans classe. */
+    public Integer armorClass() {
+        return characterClass == null ? null : CombatStats.armorClass(this);
+    }
+
+    /** Les attaques, calculées puis saisies ({@link CombatStats#attacks}) ; {@code null} sans classe. */
+    public List<SheetAttack> attacks() {
+        return characterClass == null ? null : CombatStats.attacks(this);
+    }
+
     /**
      * La créature que joue cette fiche, telle qu'elle est maintenant : CA, PV maximum et actuels, vitesse, initiative et une
      * arme par attaque.
      *
-     * @throws IllegalArgumentException si la fiche ne peut pas jouer (PV maximum à 0, PV actuels au-dessus du maximum)
+     * @throws IllegalArgumentException si la fiche ne peut pas jouer (sans classe, PV maximum à 0, PV actuels au-dessus
+     *     du maximum)
      */
     public CreatureProfile profile() {
+        if (characterClass == null) throw new IllegalArgumentException("Aucune classe : la choisir avant de poser la fiche");
         if (hitPointMax == 0) throw new IllegalArgumentException("PV maximum à 0 : compléter la fiche avant de la poser");
-        return CreatureProfile.of(armorClass, hitPointMax, hitPoints, speed, initiative,
-                attacks.stream().map(SheetAttack::weapon).toList());
+        return CreatureProfile.of(armorClass(), hitPointMax, hitPoints, speed, initiative,
+                attacks().stream().map(SheetAttack::weapon).toList());
     }
 
     /** Un texte saisi, sans espaces aux bords ; {@code ""} s'il est absent. */

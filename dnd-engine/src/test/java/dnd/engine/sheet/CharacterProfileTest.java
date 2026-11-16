@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CharacterProfileTest {
@@ -19,11 +20,12 @@ class CharacterProfileTest {
     private static final SheetAttack EPEE = new SheetAttack("Épée longue", 5, 1, 8, 3, DamageType.SLASHING, 1.5, null, null);
     private static final SheetAttack JAVELINE = new SheetAttack("Javeline", 5, 1, 6, 3, DamageType.PIERCING, 1.5, 9.0, 36.0);
 
+    /** Un Guerrier sans inventaire, toutes valeurs à 10 : CA 10 + 8 d'ajustement, mains nues puis ces attaques saisies. */
     private static CharacterSheet fiche(int pvMax, int pv, List<SheetAttack> attaques) {
         Map<Ability, Integer> valeurs = new EnumMap<>(Ability.class);
         for (Ability ability : Ability.values()) valeurs.put(ability, 10);
-        return new CharacterSheet("Guerrier", 1, "", "", "", valeurs, 2, Set.of(), Map.of(),
-                18, pvMax, pv, "1d10", 9, 2, attaques, "", "", "", "", "", "", List.of());
+        return new CharacterSheet(CharacterClass.FIGHTER, null, 1, "", "", "", valeurs, 2, Set.of(), Map.of(),
+                8, pvMax, pv, "1d10", 9, 2, attaques, "", "", "", Inventory.EMPTY, "", "", List.of());
     }
 
     @Test
@@ -35,13 +37,14 @@ class CharacterProfileTest {
         assertEquals(12, aria.maxHitPoints());
         assertEquals(9, aria.speed());
         assertEquals(2, aria.initiative());
-        assertEquals(List.of("Épée longue", "Javeline", "Javeline (lancer)"), aria.attacks().stream().map(Attack::label).toList());
-        var epee = aria.weapons().getFirst();
+        assertEquals(List.of("Attaque à mains nues", "Épée longue", "Javeline", "Javeline (lancer)"),
+                aria.attacks().stream().map(Attack::label).toList());
+        var epee = aria.weapons().get(1);
         assertEquals(5, epee.attackBonus());
         assertEquals(3, epee.damageBonus());
         assertEquals("1d8", epee.diceNotation());
         assertEquals(DamageType.SLASHING, epee.damageType());
-        assertEquals(9, aria.weapons().get(1).range().normal());
+        assertEquals(9, aria.weapons().get(2).range().normal());
     }
 
     @Test
@@ -53,8 +56,16 @@ class CharacterProfileTest {
     }
 
     @Test
-    void uneFicheAZeroPVMax_neSePosePas() {
+    void uneFicheSansClasse_neSePosePas_etNAniCAniAttaques() {
         var refus = assertThrows(IllegalArgumentException.class, () -> CharacterSheet.blank().profile());
+        assertEquals("Aucune classe : la choisir avant de poser la fiche", refus.getMessage());
+        assertNull(CharacterSheet.blank().armorClass());
+        assertNull(CharacterSheet.blank().attacks());
+    }
+
+    @Test
+    void uneFicheAZeroPVMax_neSePosePas() {
+        var refus = assertThrows(IllegalArgumentException.class, () -> fiche(0, 0, List.of()).profile());
         assertEquals("PV maximum à 0 : compléter la fiche avant de la poser", refus.getMessage());
     }
 
@@ -86,7 +97,7 @@ class CharacterProfileTest {
 
     @Test
     void laSarbacaneGuidee_neDonnePasSonModificateurAuxDegatsFixes() {
-        SheetAttack sarbacane = GuidedValues.attack(SrdWeapon.BLOWGUN, 0, 3, FightingStyle.ARCHERY, CharacterClass.FIGHTER);
+        SheetAttack sarbacane = CombatStats.attack(SrdWeapon.BLOWGUN, 0, 3, 2, FightingStyle.ARCHERY, false);
 
         assertEquals(0, sarbacane.diceCount());
         assertEquals(1, sarbacane.damageBonus());

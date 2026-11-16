@@ -60,6 +60,11 @@ class PlayerCharacterApiTest {
         return new HashMap<>(when().get(campagne() + "/dnd/sheets/" + aria).then().statusCode(200).extract().path("values"));
     }
 
+    /** La CA que la fiche calcule. */
+    private int ca() {
+        return when().get(campagne() + "/dnd/sheets/" + aria).then().statusCode(200).extract().path("derived.armorClass");
+    }
+
     private void saisir(Map<String, Object> values) {
         given().contentType(ContentType.JSON).body(values).put(campagne() + "/dnd/sheets/" + aria).then().statusCode(200);
     }
@@ -80,7 +85,7 @@ class PlayerCharacterApiTest {
                 .body("kind", equalTo("CHARACTER"));
         poser("gobelin", 3, 1.5).statusCode(201);
         when().get(campagne() + "/creatures/" + aria + "-1").then().statusCode(200)
-                .body("armorClass", equalTo(fiche.get("armorClass")))
+                .body("armorClass", equalTo(ca()))
                 .body("maxHitPoints", equalTo(fiche.get("hitPointMax")))
                 .body("attacks.label", hasItem("Épée à deux mains"));
 
@@ -101,14 +106,14 @@ class PlayerCharacterApiTest {
 
     @Test
     void retoucherRenommerSupprimerLaFiche_neChangePasLePJPose_niEnRepriseNiEnRejeu() {
-        int ca = (int) valeurs().get("armorClass");
+        int ca = ca();
         poser(aria, 1.5, 1.5).statusCode(201);
         poser("gobelin", 3, 1.5).statusCode(201);
         dice.script(20, 1);
         when().post(campagne() + "/combat").then().statusCode(200);
 
         Map<String, Object> retouchee = valeurs();
-        retouchee.put("armorClass", 25);
+        retouchee.put("armorBonus", 25 - ca());
         saisir(retouchee);
         given().contentType(ContentType.JSON).body(Map.of("title", "Aria la Brave"))
                 .put(campagne() + "/notebook/pages/" + aria + "/title").then().statusCode(204);
@@ -204,7 +209,7 @@ class PlayerCharacterApiTest {
         given().contentType(ContentType.JSON).body(Map.of("name", nom)).post(campagne() + "/maps").then().statusCode(201);
 
         Map<String, Object> retouchee = valeurs();
-        retouchee.put("armorClass", 25);
+        retouchee.put("armorBonus", 25 - ca());
         saisir(retouchee);
         given().contentType(ContentType.JSON).body(Map.of("name", nom)).post(campagne() + "/maps/load").then().statusCode(200);
         when().get(campagne() + "/creatures/" + aria + "-1").then().body("armorClass", equalTo(25));

@@ -65,13 +65,8 @@ public record BackgroundChoice(Background background, Map<Ability, Integer> incr
         return "boîte de jeux (" + (gamingSet == null ? "à choisir" : gamingSet.label()) + ")";
     }
 
-    /** L'équipement choisi tel qu'il s'écrit sur la fiche. */
-    public String equipmentText() {
-        return background.equipmentText(equipment);
-    }
-
-    /** Les armes de l'équipement choisi : celles de A, aucune avec B. */
-    public List<SrdWeapon> weapons() {
-        return equipment == BackgroundEquipment.A ? background.weapons() : List.of();
+    /** L'inventaire de l'équipement choisi. */
+    public Inventory inventory() {
+        return background.inventory(equipment, gamingSet);
     }
 }

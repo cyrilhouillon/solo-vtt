@@ -19,26 +19,30 @@ public enum CharacterClass {
                     Skill.INTIMIDATION, Skill.PERCEPTION, Skill.PERSUASION, Skill.SURVIVAL), 2,
             scores(15, 14, 13, 8, 10, 12),
             "Armes courantes et armes de guerre ; armures légères, intermédiaires et lourdes, boucliers",
-            new Traits(true, 3, weapon -> true, 0, null, Set.of(), null, false, false)),
+            new Traits(true, 3, weapon -> true, 0, null, Set.of(), null, false, false,
+                    weapon -> true, EnumSet.allOf(SrdArmor.Category.class))),
     BARBARIAN("Barbare", 12, EnumSet.of(Ability.STRENGTH, Ability.CONSTITUTION),
             EnumSet.of(Skill.ATHLETICS, Skill.ANIMAL_HANDLING, Skill.INTIMIDATION, Skill.NATURE, Skill.PERCEPTION,
                     Skill.SURVIVAL), 2,
             scores(15, 13, 14, 10, 12, 8),
             "Armes courantes et armes de guerre ; armures légères et intermédiaires, boucliers",
             new Traits(false, 2, weapon -> !weapon.category().ranged(), 0, null, Set.of(),
-                    Ability.CONSTITUTION, true, false)),
+                    Ability.CONSTITUTION, true, false,
+                    weapon -> true, EnumSet.of(SrdArmor.Category.LIGHT, SrdArmor.Category.MEDIUM, SrdArmor.Category.SHIELD))),
     MONK("Moine", 8, EnumSet.of(Ability.STRENGTH, Ability.DEXTERITY),
             EnumSet.of(Skill.ACROBATICS, Skill.ATHLETICS, Skill.STEALTH, Skill.HISTORY, Skill.INSIGHT, Skill.RELIGION), 2,
             scores(12, 15, 13, 10, 14, 8),
             "Armes courantes et armes de guerre dotées de la propriété Légère ; aucune armure",
             new Traits(false, 0, weapon -> false, 0, null,
-                    EnumSet.of(Tool.Category.ARTISAN, Tool.Category.MUSICAL_INSTRUMENT), Ability.WISDOM, false, true)),
+                    EnumSet.of(Tool.Category.ARTISAN, Tool.Category.MUSICAL_INSTRUMENT), Ability.WISDOM, false, true,
+                    CharacterClass::monkProficient, Set.of())),
     ROGUE("Roublard", 8, EnumSet.of(Ability.DEXTERITY, Ability.INTELLIGENCE),
             EnumSet.of(Skill.ACROBATICS, Skill.ATHLETICS, Skill.STEALTH, Skill.SLEIGHT_OF_HAND, Skill.INTIMIDATION,
                     Skill.INSIGHT, Skill.INVESTIGATION, Skill.PERCEPTION, Skill.PERSUASION, Skill.DECEPTION), 4,
             scores(12, 15, 13, 14, 10, 8),
             "Armes courantes et armes de guerre dotées de la propriété Finesse ou Légère ; armures légères",
-            new Traits(false, 2, CharacterClass::rogueProficient, 2, Tool.THIEVES_TOOLS, Set.of(), null, false, false));
+            new Traits(false, 2, CharacterClass::rogueProficient, 2, Tool.THIEVES_TOOLS, Set.of(), null, false, false,
+                    CharacterClass::rogueProficient, EnumSet.of(SrdArmor.Category.LIGHT)));
 
     /**
      * Les aptitudes de niveau 1 qui changent la construction.
@@ -52,10 +56,12 @@ public enum CharacterClass {
      * @param unarmoredDefense  la caractéristique de Défense sans armure (10 + Dex + elle), {@code null} sans
      * @param unarmoredShield   la Défense sans armure tient-elle avec un bouclier
      * @param martialArts       Arts martiaux : armes de Moine et mains nues
+     * @param weapons           les armes que la classe maîtrise
+     * @param armorTraining     les catégories d'armure où la classe est formée, bouclier compris
      */
     private record Traits(boolean fightingStyle, int masteryCount, Predicate<SrdWeapon> masteryWeapons, int expertiseCount,
                           Tool tool, Set<Tool.Category> toolChoices, Ability unarmoredDefense, boolean unarmoredShield,
-                          boolean martialArts) {
+                          boolean martialArts, Predicate<SrdWeapon> weapons, Set<SrdArmor.Category> armorTraining) {
     }
 
     /** Le dé d'Arts martiaux au niveau 1. */
@@ -170,6 +176,19 @@ public enum CharacterClass {
         return weapon.category() == SIMPLE_MELEE || weapon.category() == MARTIAL_MELEE && weapon.has(SrdWeapon.Property.LIGHT);
     }
 
+    /** La classe maîtrise-t-elle cette arme : sinon, pas de bonus de maîtrise à l'attaque (SRD 5.2.1, « Proficiency »). */
+    public boolean proficient(SrdWeapon weapon) {
+        return traits.weapons().test(weapon);
+    }
+
+    /**
+     * La classe est-elle formée à cette armure ou au bouclier (SRD 5.2.1, « Armor Training ») : sans formation, un
+     * bouclier ne donne pas son bonus de CA.
+     */
+    public boolean trained(SrdArmor armor) {
+        return traits.armorTraining().contains(armor.category());
+    }
+
     /** Les maîtrises d'arme et la formation aux armures, en texte. */
     public String proficiencies() {
         return proficiencies;
@@ -178,6 +197,11 @@ public enum CharacterClass {
     /** Les équipements de départ que la classe propose. */
     public List<StartingEquipment> equipments() {
         return Arrays.stream(StartingEquipment.values()).filter(equipment -> equipment.characterClass() == this).toList();
+    }
+
+    /** Le Moine maîtrise les armes courantes et les armes de guerre Légères. */
+    private static boolean monkProficient(SrdWeapon weapon) {
+        return weapon.category() == SIMPLE_MELEE || weapon.category() == SIMPLE_RANGED || weapon.has(SrdWeapon.Property.LIGHT);
     }
 
     /** Le Roublard maîtrise les armes courantes et les armes de guerre Finesse ou Légère. */

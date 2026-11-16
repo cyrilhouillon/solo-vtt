@@ -53,7 +53,7 @@ class SheetCharactersTest {
         Creature creature = copie.profile().create("c-1", copie.name());
 
         assertEquals("Aria la Brave", copie.name());
-        assertEquals(dnd.read(STRAHD, aria).values().armorClass(), creature.armorClass());
+        assertEquals(dnd.read(STRAHD, aria).derived().armorClass(), creature.armorClass());
         assertEquals(dnd.read(STRAHD, aria).values().hitPointMax(), creature.maxHitPoints());
         assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Attaque à mains nues", "Javeline (lancer)"),
                 creature.attacks().stream().map(a -> a.label()).toList());
@@ -64,7 +64,7 @@ class SheetCharactersTest {
         String vierge = dnd.create(STRAHD, new DndDtos.NewSheetRequest("Vierge")).pageId();
 
         var refus = assertThrows(IllegalArgumentException.class, () -> personnages.take(STRAHD, vierge));
-        assertEquals("PV maximum à 0 : compléter la fiche avant de la poser", refus.getMessage());
+        assertEquals("Aucune classe : la choisir avant de poser la fiche", refus.getMessage());
         assertEquals(Optional.empty(), personnages.take(STRAHD, pages.pageOrdinaire(STRAHD, "Notes")));
         assertEquals(Optional.empty(), personnages.take(STRAHD, "inconnue"));
     }
