@@ -55,7 +55,7 @@ Source: aidd_docs/backlog/stories/tenir-l-inventaire-du-personnage.md
 | La classe de la fiche est une `CharacterClass` du moteur, choisie aussi en saisie libre ; sans classe, ni CA ni attaques, et la fiche ne se pose pas (400) ; le Style aussi se choisit en saisie libre | décision du joueur : pas de calcul générique ; la saisie libre est limitée aux quatre classes du moteur jusqu'aux stories des autres |
 | Pas de compatibilité : un document gardé d'avant rend 409 | décision du joueur : pas de code de reprise |
 | Un geste d'inventaire est une saisie ordinaire, envoyée sans attendre ; la fiche montre la CA et les attaques de la réponse | plus de route ni de recalcul dédiés : la saisie suffit, le calcul est à la lecture |
-| Une autre attaque qui porte le nom d'une attaque calculée est refusée (400 avec la raison) | pas de règle cachée sur les doublons |
+| Une autre attaque peut porter le nom d'une attaque calculée : le profil l'identifie par `autre:<nom>` (`Weapon.id`, facultatif, le nom sans lui) | le nom n'est pas un identifiant ; revue, round 1 : le refus bloquait un choix guidé |
 | Changer un choix qui change l'équipement de départ remplace tout l'inventaire ; un autre choix le garde | même règle que les champs dérivés restants de `rebuild` |
 | Équipement de départ : armure portée, bouclier tenu, toutes les armes tenues ; pas de limite de mains | CA et attaques de départ inchangées ; mains non jouées |
 | Arme non maîtrisée : sans bonus de maîtrise ; bouclier sans formation : sans bonus de CA ; armure sans formation : CA de l'armure, pénalités listées non jouées | SRD 5.2.1 ; les pénalités ont leur story |

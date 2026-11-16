@@ -24,7 +24,7 @@ public record Attack(Weapon weapon, Mode mode) {
 
     /** Identifiant stable dans les attaques d'une créature. */
     public String id() {
-        return mode.name().toLowerCase(Locale.ROOT) + ":" + weapon.name();
+        return mode.name().toLowerCase(Locale.ROOT) + ":" + weapon.key();
     }
 
     public String label() {

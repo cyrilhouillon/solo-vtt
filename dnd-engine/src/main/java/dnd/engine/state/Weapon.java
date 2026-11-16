@@ -10,10 +10,12 @@ package dnd.engine.state;
  *
  * @param oneHandedMelee l'arme se tient à une main pour le corps à corps (style Duel) ;
  *                       faux pour une arme naturelle comme la Morsure.
+ * @param id             ce qui distingue l'arme parmi celles d'une créature quand son nom ne suffit pas (une attaque
+ *                       saisie sur une fiche, qui peut porter le nom d'une arme tenue) ; {@code null} : son nom.
  */
 public record Weapon(String name, int diceCount, int dieSides, DamageType damageType,
                      int attackBonus, int damageBonus, boolean oneHandedMelee,
-                     Double reach, Range range) {
+                     Double reach, Range range, String id) {
 
     /** Allonge d'une créature : 5 ft, soit 1,5 m (SRD 5.2.1, « Reach »). */
     public static final double STANDARD_REACH = 1.5;
@@ -33,6 +35,12 @@ public record Weapon(String name, int diceCount, int dieSides, DamageType damage
         }
     }
 
+    /** Arme identifiée par son nom. */
+    public Weapon(String name, int diceCount, int dieSides, DamageType damageType,
+                  int attackBonus, int damageBonus, boolean oneHandedMelee, Double reach, Range range) {
+        this(name, diceCount, dieSides, damageType, attackBonus, damageBonus, oneHandedMelee, reach, range, null);
+    }
+
     /** Arme de corps à corps, à l'allonge standard. */
     public Weapon(String name, int diceCount, int dieSides, DamageType damageType,
                   int attackBonus, int damageBonus, boolean oneHandedMelee) {
@@ -49,7 +57,12 @@ public record Weapon(String name, int diceCount, int dieSides, DamageType damage
     /** La même arme, qui peut aussi être lancée. */
     public Weapon thrown(double normal, double longRange) {
         return new Weapon(name, diceCount, dieSides, damageType, attackBonus, damageBonus, oneHandedMelee,
-                reach, new Range(normal, longRange));
+                reach, new Range(normal, longRange), id);
+    }
+
+    /** Ce qui identifie l'arme dans les attaques d'une créature : son {@code id}, sinon son nom. */
+    public String key() {
+        return id != null ? id : name;
     }
 
     public boolean isMelee() {

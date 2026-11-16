@@ -127,11 +127,16 @@ class CharacterSheetTest {
     }
 
     @Test
-    void uneAutreAttaque_neReprendPasLeNomDUneArmeTenue() {
+    void uneAutreAttaqueAuNomDUneArmeTenue_seJoueAPart() {
         var dague = new SheetAttack("Dague", 6, 1, 4, 2, DamageType.PIERCING, 1.5, null, null);
-        var refus = assertThrows(IllegalArgumentException.class, () -> new CharacterSheet(CharacterClass.ROGUE, null, 1, "", "", "",
-                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 0, 0, 0, "", 9, 0, List.of(dague), "", "", "",
-                new Inventory(List.of(Item.weapon(SrdWeapon.DAGGER, 1)), 0), "", "", List.of()));
-        assertEquals("Attaque « Dague » : nom déjà pris par une arme tenue ou les mains nues", refus.getMessage());
+        var fiche = new CharacterSheet(CharacterClass.ROGUE, null, 1, "", "", "",
+                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 0, 8, 8, "", 9, 0, List.of(dague), "", "", "",
+                new Inventory(List.of(Item.weapon(SrdWeapon.DAGGER, 1)), 0), "", "", List.of());
+
+        assertEquals(List.of("Dague", "Attaque à mains nues", "Dague"), fiche.attacks().stream().map(SheetAttack::name).toList());
+        var attaques = fiche.profile().create("pj-1", "Aria").attacks().stream()
+                .map(a -> a.id() + " " + a.weapon().attackBonus()).toList();
+        assertEquals(List.of("melee:Dague 2", "melee:Attaque à mains nues 2", "melee:autre:Dague 6", "ranged:Dague 2"), attaques,
+                "la Dague tenue garde l'id de son nom, la saisie le sien");
     }
 }

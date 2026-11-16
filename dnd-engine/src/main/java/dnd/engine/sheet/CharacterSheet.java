@@ -1,7 +1,9 @@
 package dnd.engine.sheet;
 
 import dnd.engine.state.CreatureProfile;
+import dnd.engine.state.Weapon;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -35,6 +37,11 @@ public record CharacterSheet(CharacterClass characterClass, FightingStyle fighti
     public static final int MAX_SCORE = 30;
     public static final int MAX_LEVEL = 20;
     public static final int MAX_PROFICIENCY_BONUS = 10;
+    /**
+     * Le préfixe de l'id d'une autre attaque dans le profil : elle peut porter le nom d'une attaque calculée (« Dague »
+     * saisie, Dague tenue) sans que le moteur les confonde.
+     */
+    static final String OTHER_ATTACK_ID = "autre:";
 
     public CharacterSheet {
         species = text(species);
@@ -72,12 +79,6 @@ public record CharacterSheet(CharacterClass characterClass, FightingStyle fighti
         otherAttacks = otherAttacks == null ? List.of() : List.copyOf(otherAttacks);
         if (otherAttacks.stream().map(SheetAttack::name).distinct().count() != otherAttacks.size()) {
             throw new IllegalArgumentException("Deux attaques portent le même nom");
-        }
-        Set<String> derived = CombatStats.derivedAttackNames(characterClass, inventory);
-        for (SheetAttack attack : otherAttacks) {
-            if (derived.contains(attack.name())) {
-                throw new IllegalArgumentException("Attaque « %s » : nom déjà pris par une arme tenue ou les mains nues".formatted(attack.name()));
-            }
         }
         spellSlots = spellSlots == null ? List.of() : List.copyOf(spellSlots);
         if (spellSlots.stream().map(SpellSlots::level).distinct().count() != spellSlots.size()) {
@@ -145,8 +146,9 @@ public record CharacterSheet(CharacterClass characterClass, FightingStyle fighti
     public CreatureProfile profile() {
         if (characterClass == null) throw new IllegalArgumentException("Aucune classe : la choisir avant de poser la fiche");
         if (hitPointMax == 0) throw new IllegalArgumentException("PV maximum à 0 : compléter la fiche avant de la poser");
-        return CreatureProfile.of(armorClass(), hitPointMax, hitPoints, speed, initiative,
-                attacks().stream().map(SheetAttack::weapon).toList());
+        List<Weapon> weapons = new ArrayList<>(CombatStats.computedAttacks(this).stream().map(SheetAttack::weapon).toList());
+        otherAttacks.forEach(attack -> weapons.add(attack.weapon(OTHER_ATTACK_ID + attack.name())));
+        return CreatureProfile.of(armorClass(), hitPointMax, hitPoints, speed, initiative, weapons);
     }
 
     /** Un texte saisi, sans espaces aux bords ; {@code ""} s'il est absent. */

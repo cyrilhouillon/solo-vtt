@@ -39,7 +39,12 @@ public record SheetAttack(String name, int bonus, int diceCount, int dieSides, i
 
     /** L'arme que joue le moteur. Tenue à une main n'est pas noté sur la fiche : le style Duel ne s'y applique pas. */
     public Weapon weapon() {
+        return weapon(null);
+    }
+
+    /** La même arme, identifiée par {@code id} parmi celles de la créature ({@code null} : par son nom). */
+    public Weapon weapon(String id) {
         return new Weapon(name, diceCount, dieSides, damageType, bonus, damageBonus, false, reach,
-                normalRange == null ? null : new Weapon.Range(normalRange, longRange));
+                normalRange == null ? null : new Weapon.Range(normalRange, longRange), id);
     }
 }

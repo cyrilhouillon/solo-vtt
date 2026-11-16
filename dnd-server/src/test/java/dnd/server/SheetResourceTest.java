@@ -979,10 +979,6 @@ class SheetResourceTest {
                 () -> dnd().edit(STRAHD, aria, ajoute(guerrier, Item.armor(SrdArmor.LEATHER)))).getMessage());
         assertEquals("Dague : quantité d’au moins 1", assertThrows(IllegalArgumentException.class,
                 () -> dnd().edit(STRAHD, aria, ajoute(guerrier, new Item(SrdWeapon.DAGGER, null, null, 0, false)))).getMessage());
-        DndDtos.AttackDto javeline = new DndDtos.AttackDto("Javeline", 4, 1, 6, 2, DamageType.PIERCING, 1.5, null, null);
-        assertEquals("Attaque « Javeline » : nom déjà pris par une arme tenue ou les mains nues",
-                assertThrows(IllegalArgumentException.class, () -> dnd().edit(STRAHD, aria,
-                        avec(guerrier, guerrier.abilities(), 0, List.of(javeline), guerrier.inventory()))).getMessage());
         DndDtos.InventoryDto inconnu = new DndDtos.InventoryDto(java.util.Arrays.asList((DndDtos.ItemDto) null), 0);
         assertEquals("Objet inconnu", assertThrows(IllegalArgumentException.class, () -> dnd().edit(STRAHD, aria,
                 avec(guerrier, guerrier.abilities(), 0, List.of(), inconnu))).getMessage());

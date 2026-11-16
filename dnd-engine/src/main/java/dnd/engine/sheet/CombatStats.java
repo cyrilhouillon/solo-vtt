@@ -3,9 +3,7 @@ package dnd.engine.sheet;
 import dnd.engine.state.DamageType;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * La CA et les attaques d'une fiche, calculées de ce qu'elle porte (SRD 5.2.1, niveau 1) : sa classe, son Style de combat,
@@ -48,8 +46,15 @@ public final class CombatStats {
         return armorClass + sheet.armorBonus();
     }
 
-    /** Une attaque par arme tenue, dans l'ordre de l'inventaire, puis l'attaque à mains nues, puis les autres attaques. */
+    /** Les attaques calculées, puis les autres attaques saisies. */
     static List<SheetAttack> attacks(CharacterSheet sheet) {
+        List<SheetAttack> attacks = new ArrayList<>(computedAttacks(sheet));
+        attacks.addAll(sheet.otherAttacks());
+        return attacks;
+    }
+
+    /** Une attaque par arme tenue, dans l'ordre de l'inventaire, puis l'attaque à mains nues. */
+    static List<SheetAttack> computedAttacks(CharacterSheet sheet) {
         CharacterClass characterClass = sheet.characterClass();
         int str = sheet.modifier(Ability.STRENGTH);
         int dex = sheet.modifier(Ability.DEXTERITY);
@@ -62,17 +67,7 @@ public final class CombatStats {
                     sheet.fightingStyle(), monkWeapon));
         }
         attacks.add(unarmedStrike(str, dex, proficiency, martialArts));
-        attacks.addAll(sheet.otherAttacks());
         return attacks;
-    }
-
-    /** Les noms des attaques calculées, qu'une autre attaque ne peut pas reprendre ; aucun sans classe. */
-    static Set<String> derivedAttackNames(CharacterClass characterClass, Inventory inventory) {
-        Set<String> names = new LinkedHashSet<>();
-        if (characterClass == null) return names;
-        inventory.weapons().forEach(weapon -> names.add(weapon.label()));
-        names.add(UNARMED_STRIKE);
-        return names;
     }
 
     /** Arts martiaux ne tient que sans armure ni bouclier (SRD 5.2.1, « Martial Arts »). */
