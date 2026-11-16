@@ -166,7 +166,7 @@ class SheetResourceTest {
     private static DndDtos.BuildDto guerrier(Set<Skill> skills, StartingEquipment equipment, FightingStyle style) {
         Build base = Build.fighter();
         return DndDtos.BuildDto.of(new Build(base.characterClass(), base.method(), base.scores(), skills, style,
-                equipment, equipment.weapons(), null, null, Set.of(), null));
+                equipment, equipment.weapons(), null, null, Set.of(), null, List.of(), List.of(), List.of()));
     }
 
     /** Ces valeurs, avec cet ajustement de CA, ces autres attaques et cet inventaire. */
@@ -335,7 +335,7 @@ class SheetResourceTest {
     void lesOptionsDuGuerrier_disentSesChoix() {
         List<DndDtos.ClassOptionsDto> classes = dnd().classes(STRAHD);
 
-        assertEquals(List.of("FIGHTER", "BARBARIAN", "MONK", "ROGUE"), classes.stream().map(DndDtos.ClassOptionsDto::id).toList());
+        assertEquals(List.of("FIGHTER", "BARBARIAN", "MONK", "ROGUE", "WIZARD"), classes.stream().map(DndDtos.ClassOptionsDto::id).toList());
         DndDtos.ClassOptionsDto guerrier = classes.getFirst();
         assertEquals("FIGHTER", guerrier.id());
         assertEquals("Guerrier", guerrier.label());
@@ -434,7 +434,7 @@ class SheetResourceTest {
         scores.put(Ability.CHARISMA, 12);
         Build base = Build.fighter();
         DndDtos.SheetDto construite = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(new Build(CharacterClass.FIGHTER,
-                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries(), null, null, Set.of(), null)));
+                AbilityMethod.ROLLED, scores, Set.of(), base.fightingStyle(), base.equipment(), base.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of())));
         assertEquals(scores, construite.values().abilities());
         assertEquals(AbilityMethod.ROLLED, construite.build().method());
         assertEquals(lancee.rolls(), construite.rolls(), "la construction garde les jets");
@@ -609,7 +609,7 @@ class SheetResourceTest {
     private static DndDtos.BuildDto guerrierDeLEspece(SpeciesChoice espece) {
         Build base = Build.fighter();
         return DndDtos.BuildDto.of(new Build(base.characterClass(), base.method(), base.scores(),
-                Set.of(Skill.ATHLETICS, Skill.PERCEPTION), base.fightingStyle(), base.equipment(), base.masteries(), espece, null, Set.of(), null));
+                Set.of(Skill.ATHLETICS, Skill.PERCEPTION), base.fightingStyle(), base.equipment(), base.masteries(), espece, null, Set.of(), null, List.of(), List.of(), List.of()));
     }
 
     @Test
@@ -707,7 +707,7 @@ class SheetResourceTest {
         return new Build(base.characterClass(), base.method(), base.scores(), Set.of(Skill.ACROBATICS, Skill.PERCEPTION),
                 base.fightingStyle(), base.equipment(), base.masteries(), null,
                 new BackgroundChoice(Background.SOLDIER, Map.of(Ability.STRENGTH, 2, Ability.CONSTITUTION, 1),
-                        BackgroundEquipment.A, GamingSet.DICE, null), Set.of(), null);
+                        BackgroundEquipment.A, GamingSet.DICE, null), Set.of(), null, List.of(), List.of(), List.of());
     }
 
     @Test
@@ -771,7 +771,7 @@ class SheetResourceTest {
 
         var doublon = assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, DndDtos.BuildDto.of(
                 new Build(base.characterClass(), base.method(), base.scores(), Set.of(Skill.ATHLETICS), base.fightingStyle(),
-                        base.equipment(), base.masteries(), null, base.background(), Set.of(), null))));
+                        base.equipment(), base.masteries(), null, base.background(), Set.of(), null, List.of(), List.of(), List.of()))));
         assertEquals("Athlétisme déjà donnée par l’historique", doublon.getMessage());
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, DndDtos.BuildDto.of(base.withBackground(
                 new BackgroundChoice(Background.SOLDIER, Map.of(Ability.STRENGTH, 3), BackgroundEquipment.A, null, null)))));
@@ -808,7 +808,7 @@ class SheetResourceTest {
     private static Build suggeree(CharacterClass classe, Set<Skill> competences, Set<Skill> expertise, Tool outil) {
         Build base = Build.suggested(classe);
         return new Build(classe, base.method(), base.scores(), competences, base.fightingStyle(), base.equipment(),
-                base.masteries(), null, null, expertise, outil);
+                base.masteries(), null, null, expertise, outil, List.of(), List.of(), List.of());
     }
 
     @Test
@@ -882,7 +882,7 @@ class SheetResourceTest {
         String kael = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Kael")).pageId();
         Build barbare = Build.suggested(CharacterClass.BARBARIAN);
         Build barbareStyle = new Build(barbare.characterClass(), barbare.method(), barbare.scores(), Set.of(),
-                FightingStyle.DEFENSE, barbare.equipment(), barbare.masteries(), null, null, Set.of(), null);
+                FightingStyle.DEFENSE, barbare.equipment(), barbare.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
         Set<Skill> quatre = Set.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND, Skill.PERCEPTION, Skill.DECEPTION);
 
         assertEquals("Barbare : aucun Style de combat au niveau 1", assertThrows(IllegalArgumentException.class,

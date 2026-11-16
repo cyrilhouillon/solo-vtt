@@ -11,13 +11,14 @@ import java.util.Set;
 
 /**
  * Les choix de la création guidée d'un personnage : classe, méthode et valeurs de caractéristique, compétences, Style de
- * combat, équipement de départ, Bottes d'arme, espèce, historique, Expertises et outil de classe ({@code null} tant qu'ils
- * ne sont pas choisis). Le record n'impose rien : {@link #validate} dit ce qui est impossible.
+ * combat, équipement de départ, Bottes d'arme, espèce, historique, Expertises, outil de classe ({@code null} tant qu'ils
+ * ne sont pas choisis), sorts mineurs, sorts du grimoire et sorts préparés. Le record n'impose rien : {@link #validate} dit
+ * ce qui est impossible.
  */
 public record Build(CharacterClass characterClass, AbilityMethod method, Map<Ability, Integer> scores,
                     Set<Skill> skills, FightingStyle fightingStyle, StartingEquipment equipment,
                     List<SrdWeapon> masteries, SpeciesChoice species, BackgroundChoice background,
-                    Set<Skill> expertise, Tool tool) {
+                    Set<Skill> expertise, Tool tool, List<Spell> cantrips, List<Spell> spellbook, List<Spell> prepared) {
 
     public Build {
         scores = scores == null || scores.isEmpty() ? Map.of() : Collections.unmodifiableMap(new EnumMap<>(scores));
@@ -26,6 +27,13 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
         skills = Collections.unmodifiableSet(skills == null ? new HashSet<>() : new HashSet<>(skills));
         masteries = Collections.unmodifiableList(masteries == null ? new ArrayList<>() : new ArrayList<>(masteries));
         expertise = Collections.unmodifiableSet(expertise == null ? new HashSet<>() : new HashSet<>(expertise));
+        cantrips = spells(cantrips);
+        spellbook = spells(spellbook);
+        prepared = spells(prepared);
+    }
+
+    private static List<Spell> spells(List<Spell> spells) {
+        return Collections.unmodifiableList(spells == null ? new ArrayList<>() : new ArrayList<>(spells));
     }
 
     /** Un Guerrier jouable d'emblée : répartition standard suggérée, Défense, équipement A et ses trois armes en Bottes. */
@@ -36,25 +44,31 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
     /** Cette construction, avec cette espèce. */
     public Build withSpecies(SpeciesChoice species) {
         return new Build(characterClass, method, scores, skills, fightingStyle, equipment, masteries, species, background,
-                expertise, tool);
+                expertise, tool, cantrips, spellbook, prepared);
     }
 
     /** Cette construction, avec cet historique. */
     public Build withBackground(BackgroundChoice background) {
         return new Build(characterClass, method, scores, skills, fightingStyle, equipment, masteries, species, background,
-                expertise, tool);
+                expertise, tool, cantrips, spellbook, prepared);
     }
 
     /** Cette construction, avec ces Expertises. */
     public Build withExpertise(Set<Skill> expertise) {
         return new Build(characterClass, method, scores, skills, fightingStyle, equipment, masteries, species, background,
-                expertise, tool);
+                expertise, tool, cantrips, spellbook, prepared);
     }
 
     /** Cette construction, avec cet outil de classe. */
     public Build withTool(Tool tool) {
         return new Build(characterClass, method, scores, skills, fightingStyle, equipment, masteries, species, background,
-                expertise, tool);
+                expertise, tool, cantrips, spellbook, prepared);
+    }
+
+    /** Cette construction, avec ces sorts mineurs, ce grimoire et ces sorts préparés. */
+    public Build withSpells(List<Spell> cantrips, List<Spell> spellbook, List<Spell> prepared) {
+        return new Build(characterClass, method, scores, skills, fightingStyle, equipment, masteries, species, background,
+                expertise, tool, cantrips, spellbook, prepared);
     }
 
     /** Les valeurs de caractéristique, augmentations de l'historique comprises. */
@@ -87,15 +101,20 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
 
     /**
      * La construction d'où part une classe quand le joueur la choisit : répartition standard suggérée, premier équipement,
-     * ses premières armes que la classe peut viser en Bottes, Défense si la classe prend un Style.
+     * ses premières armes que la classe peut viser en Bottes, Défense si la classe prend un Style ; pour une classe qui
+     * lance des sorts, les sorts recommandés par le SRD, les premiers du grimoire préparés.
      */
     public static Build suggested(CharacterClass characterClass) {
         StartingEquipment equipment = characterClass.equipments().getFirst();
         List<SrdWeapon> masteries = equipment.weapons().stream().filter(characterClass::masters)
                 .limit(characterClass.masteryCount()).toList();
+        CharacterClass.Spellcasting casting = characterClass.spellcasting();
+        List<Spell> spells = casting == null ? List.of() : casting.suggestedSpells();
         return new Build(characterClass, AbilityMethod.STANDARD_ARRAY, characterClass.suggestedScores(), Set.of(),
                 characterClass.takesFightingStyle() ? FightingStyle.DEFENSE : null, equipment, masteries, null, null,
-                Set.of(), null);
+                Set.of(), null, casting == null ? List.of() : casting.suggestedCantrips(),
+                casting == null || casting.spellbook() == 0 ? List.of() : spells,
+                casting == null ? List.of() : spells.stream().limit(casting.prepared()).toList());
     }
 
     /**
@@ -146,6 +165,50 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
         }
         checkExpertise();
         checkTool();
+        checkSpells();
+    }
+
+    /**
+     * Les sorts se choisissent dans la liste de la classe, au plus le nombre qu'elle connaît, chacun une fois : sorts
+     * mineurs au niveau 0, grimoire et préparés au 1er niveau, préparés dans le grimoire s'il y en a un (SRD 5.2.1,
+     * « Sorts » du Magicien). Moins que le nombre : le reste est à choisir.
+     */
+    private void checkSpells() {
+        String name = characterClass.label();
+        CharacterClass.Spellcasting casting = characterClass.spellcasting();
+        if (casting == null) {
+            if (!cantrips.isEmpty() || !spellbook.isEmpty() || !prepared.isEmpty()) {
+                throw new IllegalArgumentException(name + " : aucun sort au niveau 1");
+            }
+            return;
+        }
+        checkSpells("Sorts mineurs", cantrips, casting.cantrips(), 0, casting.list());
+        checkSpells("Grimoire", spellbook, casting.spellbook(), 1, casting.list());
+        checkSpells("Sorts préparés", prepared, casting.prepared(), 1, casting.list());
+        if (casting.spellbook() > 0) {
+            for (Spell spell : prepared) {
+                if (!spellbook.contains(spell)) {
+                    throw new IllegalArgumentException("%s : préparé hors du grimoire".formatted(spell.label()));
+                }
+            }
+        }
+    }
+
+    private static void checkSpells(String what, List<Spell> spells, int count, int level, SpellList list) {
+        if (spells.contains(null)) throw new IllegalArgumentException("Sort inconnu");
+        if (spells.size() > count) {
+            throw new IllegalArgumentException(count == 0 ? what + " : aucun au niveau 1" : "%s : %d au plus".formatted(what, count));
+        }
+        if (Set.copyOf(spells).size() != spells.size()) throw new IllegalArgumentException(what + " : un sort en double");
+        for (Spell spell : spells) {
+            if (spell.level() != level) {
+                throw new IllegalArgumentException(level == 0 ? "%s n’est pas un sort mineur".formatted(spell.label())
+                        : "%s : %s n’est pas un sort du 1er niveau".formatted(what, spell.label()));
+            }
+            if (!spell.lists().contains(list)) {
+                throw new IllegalArgumentException("%s hors de la liste du %s".formatted(spell.label(), list.label()));
+            }
+        }
     }
 
     /** Une Expertise porte sur une compétence maîtrisée (SRD 5.2.1, « Expertise »), au plus le nombre de la classe. */

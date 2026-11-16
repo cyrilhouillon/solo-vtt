@@ -138,7 +138,7 @@ public final class DndDtos {
                     features, speciesTraits, feats, inventory == null ? Inventory.EMPTY : inventory.toInventory(),
                     proficiencies, languages,
                     spellSlots == null ? List.of() : spellSlots.stream()
-                            .map(s -> new SpellSlots(s.level(), s.max(), s.expended())).toList());
+                            .map(s -> new SpellSlots(s.level(), s.max(), s.expended())).toList(), null, List.of(), List.of(), List.of());
         }
 
         private static Map<Skill, Proficiency> withoutNone(Map<Skill, Proficiency> skills) {
@@ -257,7 +257,7 @@ public final class DndDtos {
             if (expertise != null && expertise.contains(null)) throw new IllegalArgumentException("Expertise inconnue");
             return new Build(characterClass, method, scores, new HashSet<>(skills), fightingStyle, equipment, masteries,
                     species == null ? null : species.toChoice(), background == null ? null : background.toChoice(),
-                    expertise == null ? Set.of() : new HashSet<>(expertise), tool);
+                    expertise == null ? Set.of() : new HashSet<>(expertise), tool, List.of(), List.of(), List.of());
         }
     }
 

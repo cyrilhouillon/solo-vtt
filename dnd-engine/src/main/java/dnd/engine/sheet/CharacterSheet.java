@@ -6,8 +6,10 @@ import dnd.engine.state.Weapon;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -22,6 +24,10 @@ import java.util.Set;
  *
  * @param characterClass la classe, {@code null} tant qu'elle n'est pas choisie : ni CA ni attaques
  * @param fightingStyle  le Style de combat, seulement pour une classe qui en prend un
+ * @param spellcastingAbility la caractéristique d'incantation, {@code null} sans : ni DD ni attaque de sort
+ * @param cantrips       les sorts mineurs connus
+ * @param spellbook      les sorts du grimoire (Magicien), vide sans grimoire
+ * @param preparedSpells les sorts préparés, ceux que le personnage peut lancer ; la fiche ne les exige pas dans le grimoire
  */
 public record CharacterSheet(CharacterClass characterClass, FightingStyle fightingStyle, int level, String species,
                              String size, String background,
@@ -31,7 +37,9 @@ public record CharacterSheet(CharacterClass characterClass, FightingStyle fighti
                              List<SheetAttack> otherAttacks,
                              String features, String speciesTraits, String feats, Inventory inventory, String proficiencies,
                              String languages,
-                             List<SpellSlots> spellSlots) {
+                             List<SpellSlots> spellSlots,
+                             Ability spellcastingAbility, List<Spell> cantrips, List<Spell> spellbook,
+                             List<Spell> preparedSpells) {
 
     public static final int MIN_SCORE = 1;
     public static final int MAX_SCORE = 30;
@@ -84,6 +92,23 @@ public record CharacterSheet(CharacterClass characterClass, FightingStyle fighti
         if (spellSlots.stream().map(SpellSlots::level).distinct().count() != spellSlots.size()) {
             throw new IllegalArgumentException("Un seul jeu d'emplacements par niveau de sort");
         }
+        cantrips = spells("Sorts mineurs", cantrips, true);
+        spellbook = spells("Grimoire", spellbook, false);
+        preparedSpells = spells("Sorts préparés", preparedSpells, false);
+    }
+
+    /** Une liste de sorts saisie : sans inconnu ni doublon, de sorts mineurs ou de sorts de niveau 1 et plus. */
+    private static List<Spell> spells(String what, List<Spell> spells, boolean cantrips) {
+        if (spells == null) return List.of();
+        if (spells.stream().anyMatch(Objects::isNull)) throw new IllegalArgumentException(what + " : sort inconnu");
+        if (Set.copyOf(spells).size() != spells.size()) throw new IllegalArgumentException(what + " : un sort en double");
+        for (Spell spell : spells) {
+            if (spell.cantrip() != cantrips) {
+                throw new IllegalArgumentException(cantrips ? "%s n’est pas un sort mineur".formatted(spell.label())
+                        : "%s : %s est un sort mineur".formatted(what, spell.label()));
+            }
+        }
+        return List.copyOf(spells);
     }
 
     /** La fiche d'un personnage qui vient d'être créé : niveau 1, toutes les valeurs à 10, bonus de maîtrise +2. */
@@ -91,14 +116,41 @@ public record CharacterSheet(CharacterClass characterClass, FightingStyle fighti
         Map<Ability, Integer> abilities = new EnumMap<>(Ability.class);
         for (Ability ability : Ability.values()) abilities.put(ability, 10);
         return new CharacterSheet(null, null, 1, "", "", "", abilities, 2, Set.of(), Map.of(),
-                0, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of());
+                0, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of(), null, List.of(), List.of(),
+                List.of());
     }
 
     /** Cette fiche, avec ces PV actuels. */
     public CharacterSheet withHitPoints(int hitPoints) {
         return new CharacterSheet(characterClass, fightingStyle, level, species, size, background, abilities,
                 proficiencyBonus, savingThrows, skills, armorBonus, hitPointMax, hitPoints, hitDice, speed, initiative,
-                otherAttacks, features, speciesTraits, feats, inventory, proficiencies, languages, spellSlots);
+                otherAttacks, features, speciesTraits, feats, inventory, proficiencies, languages, spellSlots,
+                spellcastingAbility, cantrips, spellbook, preparedSpells);
+    }
+
+    /**
+     * Cette fiche, avec un emplacement de ce niveau dépensé de plus, jamais au-delà du maximum ; inchangée sans
+     * emplacement de ce niveau.
+     */
+    public CharacterSheet withSpellSlotExpended(int slotLevel) {
+        List<SpellSlots> slots = spellSlots.stream()
+                .map(slot -> slot.level() == slotLevel && slot.expended() < slot.max()
+                        ? new SpellSlots(slot.level(), slot.max(), slot.expended() + 1) : slot)
+                .toList();
+        return new CharacterSheet(characterClass, fightingStyle, level, species, size, background, abilities,
+                proficiencyBonus, savingThrows, skills, armorBonus, hitPointMax, hitPoints, hitDice, speed, initiative,
+                otherAttacks, features, speciesTraits, feats, inventory, proficiencies, languages, slots,
+                spellcastingAbility, cantrips, spellbook, preparedSpells);
+    }
+
+    /** Le DD de sauvegarde des sorts : 8 + modificateur d'incantation + bonus de maîtrise ; {@code null} sans incantation. */
+    public Integer spellSaveDc() {
+        return spellcastingAbility == null ? null : 8 + modifier(spellcastingAbility) + proficiencyBonus;
+    }
+
+    /** Le modificateur d'attaque des sorts : modificateur d'incantation + bonus de maîtrise ; {@code null} sans incantation. */
+    public Integer spellAttackBonus() {
+        return spellcastingAbility == null ? null : modifier(spellcastingAbility) + proficiencyBonus;
     }
 
     /** Le modificateur d'une caractéristique : (valeur − 10) / 2, arrondi à l'inférieur. */
@@ -137,8 +189,8 @@ public record CharacterSheet(CharacterClass characterClass, FightingStyle fighti
     }
 
     /**
-     * La créature que joue cette fiche, telle qu'elle est maintenant : CA, PV maximum et actuels, vitesse, initiative et une
-     * arme par attaque.
+     * La créature que joue cette fiche, telle qu'elle est maintenant : CA, PV maximum et actuels, vitesse, initiative, une
+     * arme par attaque, ses sorts mineurs et préparés (par leur id) et ses emplacements restants (maximum − dépensés).
      *
      * @throws IllegalArgumentException si la fiche ne peut pas jouer (sans classe, PV maximum à 0, PV actuels au-dessus
      *     du maximum)
@@ -148,7 +200,18 @@ public record CharacterSheet(CharacterClass characterClass, FightingStyle fighti
         if (hitPointMax == 0) throw new IllegalArgumentException("PV maximum à 0 : compléter la fiche avant de la poser");
         List<Weapon> weapons = new ArrayList<>(CombatStats.computedAttacks(this).stream().map(SheetAttack::weapon).toList());
         otherAttacks.forEach(attack -> weapons.add(attack.weapon(OTHER_ATTACK_ID + attack.name())));
-        return CreatureProfile.of(armorClass(), hitPointMax, hitPoints, speed, initiative, weapons);
+        Set<String> spells = new LinkedHashSet<>();
+        cantrips.forEach(spell -> spells.add(spell.id()));
+        preparedSpells.forEach(spell -> spells.add(spell.id()));
+        int highest = spellSlots.stream().mapToInt(SpellSlots::level).max().orElse(0);
+        List<Integer> remaining = new ArrayList<>();
+        for (int slotLevel = 1; slotLevel <= highest; slotLevel++) {
+            int at = slotLevel;
+            remaining.add(spellSlots.stream().filter(slot -> slot.level() == at)
+                    .mapToInt(slot -> slot.max() - slot.expended()).findFirst().orElse(0));
+        }
+        return new CreatureProfile(armorClass(), hitPointMax, hitPoints, speed, initiative, weapons, Set.of(), spells,
+                remaining);
     }
 
     /** Un texte saisi, sans espaces aux bords ; {@code ""} s'il est absent. */

@@ -21,7 +21,7 @@ class BackgroundChoiceTest {
     private static Build guerrier(Set<Skill> competences) {
         Build base = Build.fighter();
         return new Build(base.characterClass(), base.method(), base.scores(), competences, base.fightingStyle(),
-                base.equipment(), base.masteries(), null, null, Set.of(), null);
+                base.equipment(), base.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
     }
 
     private static Map<Ability, Integer> augmentations(Object... paires) {
@@ -147,7 +147,7 @@ class BackgroundChoiceTest {
                 fiche.size(), fiche.background(), fiche.abilities(), fiche.proficiencyBonus(), fiche.savingThrows(), fiche.skills(),
                 2, fiche.hitPointMax(), fiche.hitPoints(), fiche.hitDice(), fiche.speed(), fiche.initiative(), fiche.otherAttacks(),
                 fiche.features(), fiche.speciesTraits(), fiche.feats(), fiche.inventory(), fiche.proficiencies(),
-                fiche.languages(), fiche.spellSlots());
+                fiche.languages(), fiche.spellSlots(), null, List.of(), List.of(), List.of());
         SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
                 new SheetEvent.SheetBuilt(soldat, fiche), new SheetEvent.SheetEdited(retouchee)));
 
@@ -169,7 +169,7 @@ class BackgroundChoiceTest {
     @Test
     void unHistoriqueSaisiALaMain_resteSansHistoriqueDansLaConstruction() {
         CharacterSheet saisie = new CharacterSheet(null, null, 1, "", "", "Marin", CharacterSheet.blank().abilities(), 2, Set.of(),
-                Map.of(), 0, 0, 0, "", 9, 0, List.of(), "", "", "Chanceux", Inventory.EMPTY, "", "", List.of());
+                Map.of(), 0, 0, 0, "", 9, 0, List.of(), "", "", "Chanceux", Inventory.EMPTY, "", "", List.of(), null, List.of(), List.of(), List.of());
         SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(), new SheetEvent.SheetEdited(saisie)));
 
         CharacterSheet construite = etat.rebuild(guerrier(ACROBATIES_PERCEPTION));
