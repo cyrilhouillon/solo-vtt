@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: sorts au serveur et emplacements suivis par la fiche
