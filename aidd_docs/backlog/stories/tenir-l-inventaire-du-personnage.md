@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/creer-en-guide-un-barbare-un-moine-ou-un-roublard.md

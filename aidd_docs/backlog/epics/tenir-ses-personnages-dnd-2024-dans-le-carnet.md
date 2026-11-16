@@ -23,7 +23,7 @@ Le joueur crée ses personnages D&D 2024 de niveau 1, dans n'importe quelle clas
 - **Inclut :**
   - un module D&D activable par campagne, qui porte les fiches et les règles affichées ;
   - les 12 classes du SRD 5.2.1 au niveau 1, avec espèces et historiques du SRD ;
-  - la création guidée (classe, espèce, historique, caractéristiques, choix de classe, équipement) et la saisie libre. Toute valeur se retouche à la main. Changer un choix guidé recalcule ce qui en dérive : changer d'armure recalcule la CA, même retouchée ;
+  - la création guidée (classe, espèce, historique, caractéristiques, choix de classe, équipement) et la saisie libre. Toute valeur saisie se retouche à la main ; CA et attaques ne se saisissent pas : la fiche les calcule de la classe, des caractéristiques et de l'inventaire, avec un ajustement de CA et des attaques saisies pour le reste. Changer un choix guidé recalcule ce qui en dérive ;
   - la fiche, un écran structuré qui passe pour une page du Carnet, rangé dans la section « Personnages joueurs » ;
   - la fiche, son propre agrégat à événements. Poser un personnage en combat en fait une copie, prise à la pose. Chaque coup émet aussi un événement sur la fiche : PV perdus, emplacements de sort dépensés. Le rejeu d'un combat ne relit jamais les événements de la fiche ;
   - les PJ de la campagne, dans le catalogue de préparation, à la place de la Guerrière et de la Magicienne ;

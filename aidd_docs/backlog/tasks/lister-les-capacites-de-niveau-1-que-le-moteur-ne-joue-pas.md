@@ -76,3 +76,9 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1,
 | Argot des voleurs | Roublard, niveau 1 | hors combat (langue, écrite dans Capacités) | — |
 | Doué : maîtrises d'outils | Polyvalent | non (Doué ne donne que des compétences) | [choisir des outils avec Doué](../stories/choisir-des-outils-avec-doue.md) |
 | Repos court et long : dés de vie, PV, recharge des capacités limitées (Rage, Second souffle, Acharnement, Poussée d'adrénaline) et des emplacements, changement d'une Botte d'arme | règle, toute classe | non (PV et utilisations remis à la main) | [se reposer, court et long](../stories/se-reposer-court-et-long.md) |
+| Formation aux armures : armure sans formation (Désavantage aux Tests d20 de For et Dex, pas de sorts) | règle, toute classe | non (la CA de l'armure compte) | [subir les pénalités d'armure](../stories/subir-les-penalites-d-armure.md) |
+| Formation aux armures : bouclier sans formation (pas de bonus de CA) | règle, toute classe | portée par la fiche (CA calculée sans le bouclier) | — |
+| Force requise des armures lourdes (vitesse −3 m) | cotte de mailles, clibanion, harnois | non | [subir les pénalités d'armure](../stories/subir-les-penalites-d-armure.md) |
+| Désavantage en Discrétion des armures | armures du SRD | non (Discrétion non jouée) | [subir les pénalités d'armure](../stories/subir-les-penalites-d-armure.md) |
+| Maîtrise d'arme (pas de bonus de maîtrise sans elle) | règle, toute classe | portée par la fiche (attaque calculée) | — |
+| Propriétés Polyvalente et Deux mains, mains libres | armes du SRD | non (« tenue » sans compter les mains) | [manier une arme à une ou deux mains](../stories/manier-une-arme-a-une-ou-deux-mains.md) |
