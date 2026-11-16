@@ -274,6 +274,8 @@ export interface ActionResult {
   decision: Decision | null
   /** Le combat après l'action ; `null` hors combat. */
   combat: Combat | null
+  /** Ce qui n'a pas suivi sans défaire l'action (une fiche de personnage non mise à jour), vide sinon. */
+  warnings: string[]
 }
 
 export interface CreatureSheet {

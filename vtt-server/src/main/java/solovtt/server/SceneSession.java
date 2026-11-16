@@ -28,6 +28,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -86,6 +87,10 @@ public class SceneSession {
     private final CombatStore combats;
     /** Appelé avec l'id d'un combat qui vient d'être lancé (hors rejeu), pour lui donner son entrée du Carnet. */
     private final Consumer<String> combatStarted;
+    /** Fait suivre à la fiche d'un personnage joueur les coups que sa copie posée reçoit. */
+    private final CharacterSheetFollower sheets;
+    /** Les coups reçus par chaque personnage joueur pendant l'appel en cours, par id de fiche, dans l'ordre. */
+    private final Map<String, Sustained> sustained = new LinkedHashMap<>();
     /** Le combat en cours sur la carte, gardé à chaque commande ; {@code null} hors combat ou pour un combat d'avant les combats enregistrés. */
     private String combatId;
     /** D'où viennent les dés : ceux du jeu, ou ceux de la commande rejouée. */
@@ -145,8 +150,29 @@ public class SceneSession {
         };
     }
 
-    /** Ce qu'une action (ou sa reprise) a ajouté au journal, sa cible ({@code null} sans cible), et la décision qui l'arrête, s'il y en a une. */
-    public record ActionOutcome(List<JournalEntry> entries, String targetId, Optional<Decision> decision) {}
+    /**
+     * Ce qu'une action (ou sa reprise) a ajouté au journal, sa cible ({@code null} sans cible), la décision qui l'arrête,
+     * s'il y en a une, et ce qui n'a pas suivi sans défaire l'action (une fiche non mise à jour).
+     */
+    public record ActionOutcome(List<JournalEntry> entries, String targetId, Optional<Decision> decision, List<String> warnings) {
+        public ActionOutcome {
+            warnings = List.copyOf(warnings);
+        }
+
+        ActionOutcome(List<JournalEntry> entries, String targetId, Optional<Decision> decision) {
+            this(entries, targetId, decision, List.of());
+        }
+
+        ActionOutcome withWarnings(List<String> added) {
+            if (added.isEmpty()) return this;
+            List<String> all = new ArrayList<>(warnings);
+            all.addAll(added);
+            return new ActionOutcome(entries, targetId, decision, all);
+        }
+    }
+
+    /** Les coups reçus par un personnage joueur pendant un appel : son nom sur la carte, et les événements. */
+    private record Sustained(String name, List<GameEvent> events) {}
 
     private static final System.Logger LOG = System.getLogger(SceneSession.class.getName());
 
@@ -170,6 +196,16 @@ public class SceneSession {
      * en cours est aussi gardé dans {@code combats} à chaque commande, et {@code combatStarted} reçoit l'id de chaque combat lancé.
      */
     public SceneSession(Dice dice, GameStore store, MapStore maps, CombatStore combats, Consumer<String> combatStarted) {
+        this(dice, store, maps, combats, combatStarted, CharacterSheetFollower.NONE);
+    }
+
+    /**
+     * Une session complète : en plus, {@code sheets} reçoit, après chaque commande vécue et gardée, les coups reçus par
+     * chaque personnage joueur posé ; jamais au rejeu.
+     */
+    public SceneSession(Dice dice, GameStore store, MapStore maps, CombatStore combats, Consumer<String> combatStarted,
+                        CharacterSheetFollower sheets) {
+        this.sheets = sheets;
         this.dice = dice;
         this.source = dice;
         this.store = store;
@@ -250,6 +286,14 @@ public class SceneSession {
                                 : null,
                         event instanceof GameEvent.DamageDealt d ? new Damage(d.amount(), d.type().label()) : null,
                         dice(event))));
+        engine.subscribe(event -> {
+            if (!(event instanceof GameEvent.DamageDealt damage)) return;
+            CatalogEntry entry = entries.get(damage.targetId());
+            if (entry == null || entry.profile() == null) return;
+            sustained.computeIfAbsent(entry.id(), id -> new Sustained(state.get(damage.targetId()).name(), new ArrayList<>()))
+                    .events().add(damage);
+        });
+        sustained.clear();
         journal.clear();
         action = 0;
         actionTargetId = null;
@@ -271,7 +315,7 @@ public class SceneSession {
         // Le jeton porte l'id de sa créature (voir place).
         double distance = scene.distance(attackerId, targetId);
         var resolution = AttackAction.of(attackerId, attackId, targetId, distance, scene.unit(), state);
-        return recorded(() -> run(resolution, targetId), r -> new SavedGame.SavedCommand.Attack(attackerId, attackId, targetId, r));
+        return recordedAction(() -> run(resolution, targetId), r -> new SavedGame.SavedCommand.Attack(attackerId, attackId, targetId, r));
     }
 
     /**
@@ -293,7 +337,7 @@ public class SceneSession {
     private ActionOutcome startCombat(String id) {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        return recorded(() -> {
+        return recordedAction(() -> {
             ActionOutcome outcome = run(refusable(() -> StartCombat.of(state)), null);
             // Seulement s'il est lancé : un lancement refusé ne touche pas le combat en cours.
             combatId = id;
@@ -305,14 +349,14 @@ public class SceneSession {
     public synchronized ActionOutcome endTurn() {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        return recorded(() -> run(refusable(() -> EndTurn.of(state)), null), SavedGame.SavedCommand.EndTurn::new);
+        return recordedAction(() -> run(refusable(() -> EndTurn.of(state)), null), SavedGame.SavedCommand.EndTurn::new);
     }
 
     /** Met fin au combat : plus de tours ; les créatures restent sur la carte avec leurs PV. */
     public synchronized ActionOutcome endCombat() {
         if (scene == null) throw new IllegalStateException("aucune carte");
         requireNoDecision();
-        ActionOutcome outcome = recorded(() -> run(refusable(() -> EndCombat.of(state)), null), SavedGame.SavedCommand.EndCombat::new);
+        ActionOutcome outcome = recordedAction(() -> run(refusable(() -> EndCombat.of(state)), null), SavedGame.SavedCommand.EndCombat::new);
         // Le combat est gardé avec sa fin, puis figé : la carte continue sans lui.
         combatId = null;
         return outcome;
@@ -330,7 +374,7 @@ public class SceneSession {
         Token token = scene.token(tokenId);
         Position to = new Position(x, y);
         String creatureId = token.entityId();
-        return recorded(() -> {
+        return recordedAction(() -> {
             if (!Move.limits(creatureId, state)) {
                 scene.move(tokenId, to);
                 return new ActionOutcome(List.of(), null, Optional.empty());
@@ -377,7 +421,7 @@ public class SceneSession {
      */
     public synchronized Optional<ActionOutcome> answer(String decisionId, String option) {
         if (pendingDecision().filter(d -> d.id().equals(decisionId)).isEmpty()) return Optional.empty();
-        return Optional.of(recorded(() -> {
+        return Optional.of(recordedAction(() -> {
             int from = journal.size();
             return outcome(from, engine.answer(decisionId, option));
         }, r -> new SavedGame.SavedCommand.Answer(decisionId, option, r)));
@@ -566,9 +610,31 @@ public class SceneSession {
     /** Fait l'appel puis, seulement s'il réussit, l'ajoute à la partie avec les dés qu'il a tirés. */
     private <T> T recorded(Supplier<T> call, Function<List<Integer>, SavedGame.SavedCommand> command) {
         rolls.clear();
+        sustained.clear();
         T result = call.get();
         record(command);
         return result;
+    }
+
+    /**
+     * Une action gardée comme {@link #recorded}, puis, hors rejeu, les coups reçus par chaque personnage joueur envoyés à
+     * sa fiche : après la garde, si bien qu'un arrêt entre les deux perd le coup pour la fiche, sans jamais le compter deux
+     * fois. Une fiche qui ne suit pas laisse l'action faite et gardée : la raison devient un avertissement.
+     */
+    private ActionOutcome recordedAction(Supplier<ActionOutcome> call, Function<List<Integer>, SavedGame.SavedCommand> command) {
+        ActionOutcome outcome = recorded(call, command);
+        if (replaying || sustained.isEmpty()) return outcome;
+        List<String> warnings = new ArrayList<>();
+        sustained.forEach((characterId, hits) -> {
+            try {
+                sheets.sustained(characterId, List.copyOf(hits.events()));
+            } catch (RuntimeException e) {
+                LOG.log(System.Logger.Level.WARNING, "Fiche " + characterId + " non mise à jour", e);
+                warnings.add("Fiche « " + hits.name() + " » non mise à jour : " + e.getMessage());
+            }
+        });
+        sustained.clear();
+        return outcome.withWarnings(warnings);
     }
 
     private void record(Function<List<Integer>, SavedGame.SavedCommand> command) {
@@ -649,6 +715,7 @@ public class SceneSession {
         instanceCounters.clear();
         commands.clear();
         rolls.clear();
+        sustained.clear();
     }
 
     /** Les dés d'une commande rejouée, dans l'ordre ; en manquer ou en laisser veut dire que le rejeu a divergé. */

@@ -3,6 +3,7 @@ package solovtt.server;
 import dnd.engine.catalog.CatalogEntry;
 import dnd.engine.catalog.PlayerCharacters;
 import dnd.engine.catalog.SrdCatalog;
+import dnd.engine.events.GameEvent;
 import dnd.engine.rules.DuelingStyle;
 import dnd.engine.rules.ShieldReaction;
 import dnd.engine.state.CreatureProfile;
@@ -51,6 +52,12 @@ public class TestCharacters implements PlayerCharacters {
     @Override
     public Optional<Taken> take(String campaignId, String id) {
         return Optional.ofNullable(CHARACTERS.get(id));
+    }
+
+    /** Leur fiche n'existe pas : elle « suit » sans rien garder, pour qu'un coup reçu n'avertisse pas. */
+    @Override
+    public boolean sustained(String campaignId, String id, List<GameEvent> events) {
+        return CHARACTERS.containsKey(id);
     }
 
     /** Une entrée : un monstre du SRD ou l'un de ces personnages. */

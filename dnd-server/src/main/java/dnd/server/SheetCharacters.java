@@ -1,6 +1,7 @@
 package dnd.server;
 
 import dnd.engine.catalog.PlayerCharacters;
+import dnd.engine.events.GameEvent;
 import dnd.engine.sheet.SheetEvent;
 import dnd.engine.sheet.SheetHistory;
 import dnd.engine.sheet.SheetState;
@@ -29,11 +30,14 @@ public class SheetCharacters implements PlayerCharacters {
 
     private final NotebookPages pages;
     private final SheetStore store;
+    /** Écrit les coups reçus sous le verrou des saisies de fiche. */
+    private final SheetResource sheets;
 
     @Inject
-    public SheetCharacters(ModuleData data, NotebookPages pages) {
+    public SheetCharacters(ModuleData data, NotebookPages pages, SheetResource sheets) {
         this.pages = pages;
         this.store = new SheetStore(data, SheetResource.MODULE_ID);
+        this.sheets = sheets;
     }
 
     @Override
@@ -75,5 +79,22 @@ public class SheetCharacters implements PlayerCharacters {
             throw SheetStore.unreadable();
         }
         return Optional.of(new Taken(title.get(), sheet.values().profile()));
+    }
+
+    /**
+     * Les dégâts que la copie posée a subis baissent les PV actuels de sa fiche.
+     *
+     * @return {@code false} si {@code id} n'est pas une fiche vivante de la campagne
+     * @throws ClientErrorException (409) si les fiches ne se relisent pas ; rien n'est écrit
+     */
+    @Override
+    public boolean sustained(String campaignId, String id, List<GameEvent> events) {
+        if (!pages.isEntry(campaignId, moduleId(), id)) return false;
+        List<Integer> amounts = events.stream()
+                .filter(GameEvent.DamageDealt.class::isInstance)
+                .map(event -> ((GameEvent.DamageDealt) event).amount())
+                .toList();
+        if (!amounts.isEmpty()) sheets.sustained(campaignId, id, amounts);
+        return true;
     }
 }
