@@ -40,3 +40,12 @@
 
 - [pass] `mvn -q verify` à la racine — exit 0 (moteurs, modules et `vtt-server`, tous les tests)
 - [pass] `npm run build` dans `vtt-web/` — exit 0, `✓ built in 917ms`
+
+## Revue · corrections des rounds 1 et 2
+
+- Date: 2026-11-17
+- Validated on: f7d7717
+
+- [pass] `mvn -q test` à la racine (après c72bfe6) — aucune erreur, tous modules ; `CharacterSheetTest.uneAutreAttaqueAuNomDUneArmeTenue_seJoueAPart` (`melee:Dague 2`, `melee:autre:Dague 6`), `JsonFileGameStoreTest.uneArmeGardeeAvantSonId_sIdentifieParSonNom`
+- [pass] Phase 3 Task 1 — `npm run build` dans `vtt-web/` sur f7d7717 : exit 0, `✓ built in 915ms` (vue-tsc compris)
+- [pass] Phase 3 Task 2, parties touchées par les corrections (`CharacterSheetView.vue`, `GuidedCreation.vue`) — 8081 / 5174, campagne « Revue deux dagues », Roublard A « Vex » : autre attaque « Dague » saisie et enregistrée, la Dague calculée reste dans « Attaques » ; fiche relue : `Dague, Épée courte, Arc court, Attaque à mains nues, Dague` ; posé : `melee:Dague` +4, `ranged:Dague`, `melee:autre:Dague` +0, attaque par `melee:autre:Dague` jouée (total 1 sur d20 1) ; classe de la fiche « Roublard » et listes de classes de la création guidée remplies (classes lues une fois par la fiche) ; Dague décochée → attaques calculées `Épée courte, Arc court, Attaque à mains nues`, autre attaque « Dague » gardée, état identique après rechargement, aucun bandeau. Non rejoué : le reste du Test Scope de la phase 3 (fichiers inchangés depuis 806b889 hors ces deux composants), l'échec isolé de `equipment()`. Teardown : 8081 et 5174 arrêtés, 8080 et 5173 jamais touchés
