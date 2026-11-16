@@ -27,6 +27,7 @@ import {
   type Inventory,
   type Proficiency,
   type Sheet,
+  type SheetAttack,
   type SheetValues,
   type Skill,
 } from './sheet'
@@ -48,6 +49,8 @@ const api = dndApi(props.campaignId)
 const values = ref<SheetValues | null>(null)
 /** CA et attaques de la dernière réponse du serveur. */
 const derived = ref<Derived>({ armorClass: null, attacks: null })
+/** Les attaques que le serveur a calculées (armes tenues, mains nues) : les siennes, sans les autres attaques qui les suivent. */
+const computedAttacks = ref<SheetAttack[]>([])
 const classes = ref<ClassOptions[]>([])
 const equipment = ref<EquipmentOptions | null>(null)
 const build = ref<Build | null>(null)
@@ -80,10 +83,17 @@ onMounted(async () => {
   }
 })
 
+/** CA et attaques d'une réponse ; ses autres attaques viennent en fin de ses attaques. */
+function showDerived(sheet: Sheet) {
+  derived.value = sheet.derived
+  const attacks = sheet.derived.attacks ?? []
+  computedAttacks.value = attacks.slice(0, attacks.length - sheet.values.otherAttacks.length)
+}
+
 /** Montre la fiche du serveur : un nouvel objet de valeurs, que le `watch` ne prend pas pour une frappe. */
 function show(sheet: Sheet) {
   values.value = { ...sheet.values, spellSlots: allSlots(sheet.values.spellSlots) }
-  derived.value = sheet.derived
+  showDerived(sheet)
   build.value = sheet.build
   rolls.value = sheet.rolls
 }
@@ -111,7 +121,7 @@ function save(): Promise<void> {
     pending = false
     status.value = 'saving'
     try {
-      derived.value = (await api.save(props.pageId, request())).derived
+      showDerived(await api.save(props.pageId, request()))
       status.value = pending ? 'saving' : 'saved'
     } catch (e) {
       pending = true
@@ -234,11 +244,6 @@ function setClass(id: string) {
   if (!classes.value.find((c) => c.id === id)?.fightingStyles.length) values.value.fightingStyle = null
 }
 
-/** Les attaques que le serveur calcule (armes tenues, mains nues), sans les autres attaques saisies. */
-const computedAttacks = computed(() => {
-  const others = new Set(values.value?.otherAttacks.map((a) => a.name.trim()))
-  return (derived.value.attacks ?? []).filter((a) => !others.has(a.name))
-})
 
 /** Un geste d'inventaire part aussitôt : la CA et les attaques en dépendent. */
 function onInventory(next: Inventory) {
@@ -261,6 +266,7 @@ function onInventory(next: Inventory) {
       :campaign-id="campaignId"
       :build="build"
       :rolls="rolls"
+      :classes="classes"
       :busy="choosing"
       :error="guidedError"
       @build="onBuild"
