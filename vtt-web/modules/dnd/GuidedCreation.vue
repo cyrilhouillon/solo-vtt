@@ -22,7 +22,7 @@ import {
 
 /**
  * La création guidée d'une fiche : classe, espèce et ses sous-choix (don de Polyvalent compris), historique et ses choix, méthode et valeurs de caractéristique, compétences,
- * Style de combat, équipement de départ et Bottes d'arme. Chaque choix émet la construction entière, que la fiche envoie au serveur ;
+ * Expertise, outil de classe, Style de combat, équipement de départ et Bottes d'arme, chacun seulement si la classe en a. Chaque choix émet la construction entière, que la fiche envoie au serveur ;
  * rien n'est gardé ici que les brouillons d'un choix pas encore envoyable (achat de points, dés pas encore lancés).
  * Classe « — » : saisie libre, rien n'est envoyé ; proposée tant qu'aucune classe n'est choisie.
  */
@@ -124,9 +124,24 @@ function defaults(o: ClassOptions): Build {
   return JSON.parse(JSON.stringify(o.defaultBuild)) as Build
 }
 
+/** Les compétences qu'une construction rend maîtrisées : classe, historique, espèce et Doué. */
+function proficientIn(build: Build): Set<Skill> {
+  const given = backgroundList.value.find((b) => b.id === build.background?.background)?.skills.map((s) => s.id) ?? []
+  const feat = build.species?.originFeat
+  return new Set<Skill>([
+    ...build.skills,
+    ...given,
+    ...(build.species?.skill ? [build.species.skill] : []),
+    ...(feat?.feat === 'SKILLED' ? feat.skills : []),
+  ])
+}
+
+/** Émet la construction changée, sans les Expertises dont la compétence n'est plus maîtrisée. */
 function send(change: Partial<Build>) {
   if (!shown.value) return
-  emit('build', { ...shown.value, ...change })
+  const next = { ...shown.value, ...change }
+  const proficient = proficientIn(next)
+  emit('build', { ...next, expertise: (next.expertise ?? []).filter((s) => proficient.has(s)) })
 }
 
 function chooseClass(value: string) {
@@ -202,6 +217,33 @@ function toggleSkill(skill: Skill, checked: boolean) {
   else chosen.delete(skill)
   send({ skills: o.skillChoices.map((s) => s.id).filter((s) => chosen.has(s)) })
 }
+
+/** Les compétences qui peuvent recevoir l'Expertise : celles que la construction affichée maîtrise. */
+const expertiseChoices = computed(() => {
+  const build = shown.value
+  if (!build) return []
+  const proficient = proficientIn(build)
+  return SKILLS.filter((s) => proficient.has(s.id))
+})
+
+function toggleExpertise(skill: Skill, checked: boolean) {
+  if (!shown.value) return
+  const chosen = new Set(shown.value.expertise)
+  if (checked) chosen.add(skill)
+  else chosen.delete(skill)
+  send({ expertise: SKILLS.map((s) => s.id).filter((s) => chosen.has(s)) })
+}
+
+/** Les outils au choix de la classe, groupés par catégorie dans l'ordre où le serveur les sert. */
+const toolGroups = computed(() => {
+  const groups = new Map<string, { id: string; label: string }[]>()
+  for (const t of current.value?.tools ?? []) {
+    const group = groups.get(t.category) ?? []
+    group.push(t)
+    groups.set(t.category, group)
+  }
+  return [...groups].map(([category, tools]) => ({ category, tools }))
+})
 
 function chooseMastery(index: number, weapon: string) {
   if (!shown.value) return
@@ -641,7 +683,37 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
           </ul>
         </fieldset>
 
-        <div class="part">
+        <fieldset v-if="current.expertiseCount > 0" class="part">
+          <legend>Expertise ({{ current.expertiseCount }})</legend>
+          <ul class="skills">
+            <li v-for="s in expertiseChoices" :key="s.id">
+              <label>
+                <input
+                  type="checkbox"
+                  :checked="shown.expertise.includes(s.id)"
+                  :disabled="!shown.expertise.includes(s.id) && shown.expertise.length >= current.expertiseCount"
+                  @change="toggleExpertise(s.id, ($event.target as HTMLInputElement).checked)"
+                />
+                {{ s.label }}
+              </label>
+            </li>
+          </ul>
+          <p v-if="!expertiseChoices.length" class="muted text">Choisir d'abord des compétences.</p>
+        </fieldset>
+
+        <div v-if="current.tools.length" class="part">
+          <label class="row">
+            Outil
+            <select :value="shown.tool ?? ''" @change="send({ tool: ($event.target as HTMLSelectElement).value || null })">
+              <option value="">à choisir</option>
+              <optgroup v-for="g in toolGroups" :key="g.category" :label="g.category">
+                <option v-for="t in g.tools" :key="t.id" :value="t.id">{{ t.label }}</option>
+              </optgroup>
+            </select>
+          </label>
+        </div>
+
+        <div v-if="current.fightingStyles.length" class="part">
           <label class="row">
             Style de combat
             <select :value="shown.fightingStyle" @change="send({ fightingStyle: ($event.target as HTMLSelectElement).value })">
@@ -659,7 +731,7 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
           </label>
         </fieldset>
 
-        <fieldset class="part">
+        <fieldset v-if="current.masteryCount > 0" class="part">
           <legend>Bottes d'arme ({{ current.masteryCount }})</legend>
           <div class="masteries">
             <select
