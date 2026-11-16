@@ -22,7 +22,7 @@ import {
 
 /**
  * La création guidée d'une fiche : classe, espèce et ses sous-choix (don de Polyvalent compris), historique et ses choix, méthode et valeurs de caractéristique, compétences,
- * Expertise, outil de classe, Style de combat, équipement de départ et Bottes d'arme, chacun seulement si la classe en a. Chaque choix émet la construction entière, que la fiche envoie au serveur ;
+ * Expertise, outil de classe, Style de combat, équipement de départ, Bottes d'arme et sorts, chacun seulement si la classe en a. Chaque choix émet la construction entière, que la fiche envoie au serveur ;
  * rien n'est gardé ici que les brouillons d'un choix pas encore envoyable (achat de points, dés pas encore lancés).
  * Classe « — » : saisie libre, rien n'est envoyé ; proposée tant qu'aucune classe n'est choisie.
  */
@@ -246,6 +246,45 @@ function toggleExpertise(skill: Skill, checked: boolean) {
   else chosen.delete(skill)
   send({ expertise: SKILLS.map((s) => s.id).filter((s) => chosen.has(s)) })
 }
+
+/** Les sorts que les préparés peuvent prendre : ceux du grimoire, ou toute la liste d'une classe sans grimoire. */
+const preparable = computed(() => {
+  const casting = current.value?.spellcasting
+  const build = shown.value
+  if (!casting || !build) return []
+  return casting.spellbookCount > 0 ? casting.spells.filter((s) => build.spellbook.includes(s.id)) : casting.spells
+})
+
+type SpellPick = 'cantrips' | 'spellbook' | 'prepared'
+
+/**
+ * Coche ou décoche un sort, dans l'ordre de la liste du serveur ; un sort retiré du grimoire quitte aussi les préparés,
+ * que le serveur refuserait hors du grimoire.
+ */
+function toggleSpell(pick: SpellPick, spell: string, checked: boolean) {
+  const casting = current.value?.spellcasting
+  const build = shown.value
+  if (!casting || !build) return
+  const chosen = new Set(build[pick])
+  if (checked) chosen.add(spell)
+  else chosen.delete(spell)
+  const order = (pick === 'cantrips' ? casting.cantrips : casting.spells).map((s) => s.id)
+  const next = order.filter((id) => chosen.has(id))
+  if (pick === 'spellbook') send({ spellbook: next, prepared: build.prepared.filter((id) => chosen.has(id)) })
+  else send({ [pick]: next })
+}
+
+/** Les trois listes de sorts d'une classe qui en lance : la clé de la construction, le titre, le nombre et les sorts. */
+const spellPicks = computed(() => {
+  const casting = current.value?.spellcasting
+  if (!casting) return []
+  const picks = [{ pick: 'cantrips' as SpellPick, title: 'Sorts mineurs', count: casting.cantripCount, spells: casting.cantrips }]
+  if (casting.spellbookCount > 0) {
+    picks.push({ pick: 'spellbook', title: 'Grimoire', count: casting.spellbookCount, spells: casting.spells })
+  }
+  picks.push({ pick: 'prepared', title: 'Sorts préparés', count: casting.preparedCount, spells: preparable.value })
+  return picks
+})
 
 /** Les outils au choix de la classe, groupés par catégorie dans l'ordre où le serveur les sert. */
 const toolGroups = computed(() => {
@@ -759,6 +798,24 @@ const reason = computed(() => props.error ?? pointBuyRefusal.value ?? loadError.
               <option v-for="w in current.weapons" :key="w.id" :value="w.id">{{ w.label }} ({{ w.mastery }})</option>
             </select>
           </div>
+        </fieldset>
+
+        <fieldset v-for="p in spellPicks" :key="p.pick" class="part">
+          <legend>{{ p.title }} ({{ shown[p.pick].length }} / {{ p.count }})</legend>
+          <ul class="skills">
+            <li v-for="s in p.spells" :key="s.id">
+              <label>
+                <input
+                  type="checkbox"
+                  :checked="shown[p.pick].includes(s.id)"
+                  :disabled="!shown[p.pick].includes(s.id) && shown[p.pick].length >= p.count"
+                  @change="toggleSpell(p.pick, s.id, ($event.target as HTMLInputElement).checked)"
+                />
+                {{ s.label }}
+              </label>
+            </li>
+          </ul>
+          <p v-if="!p.spells.length" class="muted text">Choisir d'abord les sorts du grimoire.</p>
         </fieldset>
       </template>
 

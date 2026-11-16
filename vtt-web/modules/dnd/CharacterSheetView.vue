@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { dndApi } from './api'
 import GuidedCreation from './GuidedCreation.vue'
 import InventoryPanel from './InventoryPanel.vue'
+import SpellsPanel from './SpellsPanel.vue'
 import {
   ABILITIES,
   ABILITY_LABELS,
@@ -30,6 +31,7 @@ import {
   type SheetAttack,
   type SheetValues,
   type Skill,
+  type Spell,
 } from './sheet'
 
 /**
@@ -47,12 +49,13 @@ const SAVE_DELAY_MS = 1000
 const api = dndApi(props.campaignId)
 
 const values = ref<SheetValues | null>(null)
-/** CA et attaques de la dernière réponse du serveur. */
-const derived = ref<Derived>({ armorClass: null, attacks: null })
+/** CA, attaques, DD et attaque de sort de la dernière réponse du serveur. */
+const derived = ref<Derived>({ armorClass: null, attacks: null, spellSaveDc: null, spellAttackBonus: null })
 /** Les attaques que le serveur a calculées (armes tenues, mains nues) : les siennes, sans les autres attaques qui les suivent. */
 const computedAttacks = ref<SheetAttack[]>([])
 const classes = ref<ClassOptions[]>([])
 const equipment = ref<EquipmentOptions | null>(null)
+const spells = ref<Spell[]>([])
 const build = ref<Build | null>(null)
 const rolls = ref<AbilityRoll[] | null>(null)
 /** Vrai pendant l'envoi d'un choix guidé ; `guidedError`, la raison de son dernier refus. */
@@ -77,11 +80,13 @@ onMounted(async () => {
 
 onMounted(async () => {
   // Chacune pour soi : un équipement illisible laisse les classes à la création guidée.
-  const [read, items] = await Promise.allSettled([api.classes(), api.equipment()])
+  const [read, items, known] = await Promise.allSettled([api.classes(), api.equipment(), api.spells()])
   if (read.status === 'fulfilled') classes.value = read.value
   else emit('error', `Classes illisibles : ${reason(read.reason)}`)
   if (items.status === 'fulfilled') equipment.value = items.value
   else emit('error', `Équipement illisible : ${reason(items.reason)}`)
+  if (known.status === 'fulfilled') spells.value = known.value
+  else emit('error', `Sorts illisibles : ${reason(known.reason)}`)
 })
 
 /** CA et attaques d'une réponse ; ses autres attaques viennent en fin de ses attaques. */
@@ -246,6 +251,12 @@ function setClass(id: string) {
 }
 
 /** Un geste d'inventaire part aussitôt : la CA et les attaques en dépendent. */
+/** Un geste sur les sorts : une frappe comme une autre, enregistrée une seconde après. */
+function onSpells(patch: Partial<SheetValues>) {
+  if (!values.value) return
+  Object.assign(values.value, patch)
+}
+
 function onInventory(next: Inventory) {
   if (!values.value) return
   values.value.inventory = next
@@ -447,6 +458,8 @@ function onInventory(next: Inventory) {
           </table>
           </div>
           <button type="button" @click="addAttack">Ajouter une attaque</button>
+
+          <SpellsPanel :values="values" :derived="derived" :spells="spells" @change="onSpells" />
 
           <h4>Emplacements de sort</h4>
           <table class="slots">
