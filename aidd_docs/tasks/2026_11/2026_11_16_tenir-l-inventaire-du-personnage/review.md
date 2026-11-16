@@ -1,6 +1,6 @@
 # Review: tenir l'inventaire du personnage
 
-- Rounds: 2
+- Rounds: 3
 - Started: 2026-11-16
 
 ## Round 1 · r-78cc
@@ -56,3 +56,24 @@
 
 - `vtt-web/modules/dnd/CharacterSheetView.vue:80` : classes et équipement sont lus par un seul `Promise.all` ; depuis que `GuidedCreation` reçoit les classes en prop, un échec de `equipment()` laisse aussi la création guidée sans classe (avant : `allSettled`, chacun pour soi) → `Promise.allSettled`, une erreur par lecture — 🟢 minor, error-handling
 - `vtt-web/modules/dnd/CharacterSheetView.vue:246` : deux lignes vides laissées par le retrait de `computedAttacks` → en retirer une — 🟢 minor, standards
+
+## Round 3 · r-d60b
+
+- Date: 2026-11-17
+- By: Cyril Houillon
+- Diff: `main...f35964b`
+- Axes: code, functional, relevancy
+- Verdict: approve
+- Score: 8/9 met, 0 unmet, 1 unverified at runtime, 0 out of the diff
+
+### Criteria
+
+- [x] P1 T1 — armures et maîtrise / formation des classes — `SrdArmor.java`, `CharacterClass.java:213-224`, `InventoryTest.lesArmuresDuSrd_etLaFormationDesClasses`
+- [x] P1 T2 — refus avec raison, inventaire de départ de chaque option — `Item.java`, `Inventory.java`, `StartingEquipment.java`, `Background.java`, `Build.startingInventory` ; `InventoryTest`, `GuidedValuesTest`
+- [x] P1 T3 — CA et attaques de départ inchangées ; cas du Test Scope — `CombatStats.java`, `CharacterSheet.profile` ; `CombatStatsTest`, `CharacterSheetTest.uneAutreAttaqueAuNomDUneArmeTenue_seJoueAPart`
+- [x] P2 T1 — statuts, refus sans écriture, histoire sans CA ni attaques — `DndDtos.java`, `SheetResourceTest`, `SheetCharactersTest`
+- [x] P2 T2 — catalogue d'équipement complet — `SheetResource.equipment`, `SheetResourceTest.leCatalogueDEquipement_listeArmesEtArmures`
+- [x] P3 T1 — `npm run build` passe — run.md, « Revue · corrections », sur f7d7717 (depuis, Markdown seul) : exit 0, `✓ built in 915ms`
+- Unverified at runtime: P3 T2 chaque ligne du Test Scope sur 5174 — run.md sur f7d7717 ne rejoue que les parties touchées (autre attaque homonyme, classes, Dague décochée, rechargement) ; les autres lignes (bouclier CA 19, ajustement +1, Corde ×2, Équipement C, seconde armure refusée, fiche sans classe) datent de 806b889 : un passage complet sur la tête les montrerait
+- [x] P4 T1 — chaque règle rencontrée vers une story existante — `lister-les-capacites-de-niveau-1-que-le-moteur-ne-joue-pas.md:84-85`, `attaquer-avec-une-seconde-arme-legere.md`
+- [x] P4 T2 — mémoire à jour, story `done` — `architecture.md`, `tenir-l-inventaire-du-personnage.md:3, 23`
