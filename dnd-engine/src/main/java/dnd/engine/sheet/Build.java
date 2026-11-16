@@ -65,6 +65,12 @@ public record Build(CharacterClass characterClass, AbilityMethod method, Map<Abi
         return Collections.unmodifiableMap(abilities);
     }
 
+    /** L'inventaire de départ : l'équipement de la classe, puis celui de l'historique ; leurs pièces d'or additionnées. */
+    public Inventory startingInventory() {
+        Inventory inventory = equipment.inventory(tool);
+        return background == null ? inventory : inventory.plus(background.inventory());
+    }
+
     /** Les compétences que l'historique rend maîtrisées, aucune sans historique. */
     public Set<Skill> backgroundSkills() {
         return background == null || background.background() == null ? Set.of() : background.background().skills();

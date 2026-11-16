@@ -28,18 +28,20 @@ class GuidedValuesTest {
         return GuidedValues.of(build).rebuild(CharacterSheet.blank(), GuidedValues.NONE);
     }
 
-    /** La fiche avec une CA, des PV max ou des compétences retouchés à la main. */
-    private static CharacterSheet retouchee(CharacterSheet f, int armorClass, int hitPointMax, Map<Skill, Proficiency> skills) {
-        return new CharacterSheet(f.className(), f.level(), f.species(), f.size(), f.background(), f.abilities(), f.proficiencyBonus(),
-                f.savingThrows(), skills, armorClass, hitPointMax, f.hitPoints(), f.hitDice(), f.speed(),
-                f.initiative(), f.attacks(), f.features(), f.speciesTraits(), f.feats(), f.equipment(), f.proficiencies(), f.languages(), f.spellSlots());
+    /** La fiche avec un ajustement de CA, des PV max ou des compétences retouchés à la main. */
+    private static CharacterSheet retouchee(CharacterSheet f, int armorBonus, int hitPointMax, Map<Skill, Proficiency> skills) {
+        return new CharacterSheet(f.characterClass(), f.fightingStyle(), f.level(), f.species(), f.size(), f.background(), f.abilities(),
+                f.proficiencyBonus(), f.savingThrows(), skills, armorBonus, hitPointMax, f.hitPoints(), f.hitDice(), f.speed(),
+                f.initiative(), f.otherAttacks(), f.features(), f.speciesTraits(), f.feats(), f.inventory(), f.proficiencies(),
+                f.languages(), f.spellSlots());
     }
 
     @Test
     void unGuerrierA_Defense_remplitLaFiche() {
         CharacterSheet fiche = construite(guerrier(StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE));
 
-        assertEquals("Guerrier", fiche.className());
+        assertEquals(CharacterClass.FIGHTER, fiche.characterClass());
+        assertEquals(FightingStyle.DEFENSE, fiche.fightingStyle());
         assertEquals(1, fiche.level());
         assertEquals(2, fiche.proficiencyBonus());
         assertEquals(15, fiche.abilities().get(Ability.STRENGTH));
@@ -60,8 +62,9 @@ class GuidedValuesTest {
                 "Bottes d’arme : Épée à deux mains (Écorchure), Fléau d’armes (Sape), Javeline (Ralentissement)"), fiche.features());
         assertTrue(fiche.features().contains("Second souffle (2 utilisations) : action Bonus, 1d10 + 1 PV"), fiche.features());
         assertTrue(fiche.features().contains("Style de combat : Défense"), fiche.features());
-        assertTrue(fiche.equipment().startsWith("Cotte de mailles, épée à deux mains"), fiche.equipment());
-        assertTrue(fiche.equipment().endsWith("4 po"), fiche.equipment());
+        assertEquals(new Inventory(List.of(Item.armor(SrdArmor.CHAIN_MAIL), Item.weapon(SrdWeapon.GREATSWORD, 1),
+                Item.weapon(SrdWeapon.FLAIL, 1), Item.weapon(SrdWeapon.JAVELIN, 8),
+                Item.named("Paquetage d’exploration souterraine", 1)), 4), fiche.inventory());
         assertTrue(fiche.proficiencies().contains("Armes courantes et armes de guerre"), fiche.proficiencies());
     }
 
@@ -75,22 +78,41 @@ class GuidedValuesTest {
                 new SheetAttack("Épée courte", 4, 1, 6, 2, DamageType.PIERCING, 1.5, null, null),
                 new SheetAttack("Arc long", 6, 1, 8, 2, DamageType.PIERCING, null, 45.0, 180.0),
                 new SheetAttack("Attaque à mains nues", 4, 0, 4, 3, DamageType.BLUDGEONING, 1.5, null, null)), fiche.attacks());
-        assertTrue(fiche.equipment().endsWith("11 po"), fiche.equipment());
+        assertEquals(11, fiche.inventory().gold());
     }
 
     @Test
-    void passerDeAaB_recalculeLaCA_retouchee_etGardeLesPVMaxRetouches() {
+    void passerDeAaB_remplaceLInventaire_etGardeAjustementEtPVMaxRetouches() {
         Build avant = guerrier(StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE);
         Build apres = guerrier(StartingEquipment.FIGHTER_B, FightingStyle.DEFENSE);
         CharacterSheet fiche = construite(avant);
-        fiche = retouchee(fiche, 20, 30, fiche.skills());
+        fiche = retouchee(fiche, 1, 30, fiche.skills());
 
         CharacterSheet recalculee = GuidedValues.of(apres).rebuild(fiche, GuidedValues.of(avant));
 
-        assertEquals(15, recalculee.armorClass(), "12 + Dex 2 + Défense 1");
+        assertEquals(16, recalculee.armorClass(), "12 + Dex 2 + Défense 1 + ajustement 1");
         assertEquals(30, recalculee.hitPointMax(), "les PV max ne dépendent pas de l'équipement");
         assertEquals("Arc long", recalculee.attacks().get(2).name());
-        assertTrue(recalculee.equipment().endsWith("11 po"), recalculee.equipment());
+        assertEquals(11, recalculee.inventory().gold());
+    }
+
+    @Test
+    void unChoixSansRapportAvecLEquipement_gardeLInventaireRetouche() {
+        Build avant = guerrier(StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE);
+        Build apres = new Build(avant.characterClass(), avant.method(), avant.scores(), Set.of(Skill.ATHLETICS, Skill.HISTORY),
+                avant.fightingStyle(), avant.equipment(), avant.masteries(), null, null, Set.of(), null);
+        CharacterSheet fiche = construite(avant);
+        Inventory bouclier = fiche.inventory().plus(new Inventory(List.of(Item.armor(SrdArmor.SHIELD)), 0));
+        fiche = new CharacterSheet(fiche.characterClass(), fiche.fightingStyle(), fiche.level(), fiche.species(), fiche.size(),
+                fiche.background(), fiche.abilities(), fiche.proficiencyBonus(), fiche.savingThrows(), fiche.skills(),
+                fiche.armorBonus(), fiche.hitPointMax(), fiche.hitPoints(), fiche.hitDice(), fiche.speed(), fiche.initiative(),
+                fiche.otherAttacks(), fiche.features(), fiche.speciesTraits(), fiche.feats(), bouclier, fiche.proficiencies(),
+                fiche.languages(), fiche.spellSlots());
+
+        CharacterSheet recalculee = GuidedValues.of(apres).rebuild(fiche, GuidedValues.of(avant));
+
+        assertEquals(bouclier, recalculee.inventory());
+        assertEquals(19, recalculee.armorClass(), "16 + Défense 1 + bouclier 2");
     }
 
     @Test
@@ -104,7 +126,7 @@ class GuidedValuesTest {
         CharacterSheet fiche = construite(avant);
         Map<Skill, Proficiency> expertise = new HashMap<>(fiche.skills());
         expertise.put(Skill.PERCEPTION, Proficiency.EXPERTISE);
-        fiche = retouchee(fiche, fiche.armorClass(), fiche.hitPointMax(), expertise);
+        fiche = retouchee(fiche, fiche.armorBonus(), fiche.hitPointMax(), expertise);
 
         CharacterSheet recalculee = GuidedValues.of(apres).rebuild(fiche, GuidedValues.of(avant));
 
@@ -120,10 +142,10 @@ class GuidedValuesTest {
     }
 
     private static CharacterSheet vitesse(CharacterSheet f, String espece, double speed) {
-        return new CharacterSheet(f.className(), f.level(), espece, f.size(), f.background(), f.abilities(), f.proficiencyBonus(),
-                f.savingThrows(), f.skills(), f.armorClass(), f.hitPointMax(), f.hitPoints(), f.hitDice(), speed,
-                f.initiative(), f.attacks(), f.features(), f.speciesTraits(), f.feats(), f.equipment(), f.proficiencies(), f.languages(),
-                f.spellSlots());
+        return new CharacterSheet(f.characterClass(), f.fightingStyle(), f.level(), espece, f.size(), f.background(), f.abilities(),
+                f.proficiencyBonus(), f.savingThrows(), f.skills(), f.armorBonus(), f.hitPointMax(), f.hitPoints(), f.hitDice(), speed,
+                f.initiative(), f.otherAttacks(), f.features(), f.speciesTraits(), f.feats(), f.inventory(), f.proficiencies(),
+                f.languages(), f.spellSlots());
     }
 
     @Test
@@ -201,7 +223,8 @@ class GuidedValuesTest {
         assertEquals("Elfe des bois", fiche.species());
         assertEquals(10.5, fiche.speed());
         assertEquals("", fiche.speciesTraits());
-        assertEquals("Guerrier", fiche.className());
+        assertEquals(CharacterClass.FIGHTER, fiche.characterClass());
+        assertEquals(FightingStyle.DEFENSE, fiche.fightingStyle());
     }
 
     /** La construction suggérée d'une classe, avec ces compétences, ces Expertises et cet outil. */
@@ -238,7 +261,8 @@ class GuidedValuesTest {
     void unBarbare_aSaDefenseSansArmure_saRage_etSesArmes() {
         CharacterSheet fiche = construite(classe(CharacterClass.BARBARIAN, ATHLETISME_PERCEPTION, Set.of(), null));
 
-        assertEquals("Barbare", fiche.className());
+        assertEquals(CharacterClass.BARBARIAN, fiche.characterClass());
+        assertEquals(null, fiche.fightingStyle());
         assertEquals(14, fiche.hitPointMax(), "d12 + Con 2");
         assertEquals("1d12", fiche.hitDice());
         assertEquals(Set.of(Ability.STRENGTH, Ability.CONSTITUTION), fiche.savingThrows());
@@ -251,7 +275,7 @@ class GuidedValuesTest {
                 "Bottes d’arme : Hache à deux mains (Enchaînement), Hachette (Ouverture)\nRage (2 utilisations, 1 au repos court, toutes au repos long ; dégâts +2)"), fiche.features());
         assertTrue(fiche.features().contains("Défense sans armure : sans armure, CA 10 + Dex + Con ; bouclier permis"), fiche.features());
         assertFalse(fiche.features().contains("Style de combat"), fiche.features());
-        assertEquals("Hache à deux mains, 4 hachettes, paquetage d’explorateur, 15 po", fiche.equipment());
+        assertEquals("Hache à deux mains, Hachette ×4, Paquetage d’explorateur, 15 po", fiche.inventory().text());
         assertFalse(fiche.proficiencies().contains("Outils"), fiche.proficiencies());
     }
 
@@ -275,7 +299,7 @@ class GuidedValuesTest {
                 new SheetAttack("Dague", 4, 1, 6, 2, DamageType.PIERCING, 1.5, 6.0, 18.0),
                 new SheetAttack("Attaque à mains nues", 4, 1, 6, 2, DamageType.BLUDGEONING, 1.5, null, null)), fiche.attacks());
         assertTrue(fiche.proficiencies().endsWith("\nOutils : luth"), fiche.proficiencies());
-        assertEquals("Lance, 5 dagues, luth, paquetage d’explorateur, 11 po", fiche.equipment());
+        assertEquals("Lance, Dague ×5, luth, Paquetage d’explorateur, 11 po", fiche.inventory().text());
         assertTrue(fiche.features().startsWith("Arts martiaux (1d6)"), fiche.features());
         assertFalse(fiche.features().contains("Bottes"), fiche.features());
     }
@@ -296,7 +320,7 @@ class GuidedValuesTest {
 
         assertTrue(fiche.proficiencies().endsWith("\nOutils : outil d’artisan ou instrument de musique (à choisir)"),
                 fiche.proficiencies());
-        assertTrue(fiche.equipment().contains("outil d’artisan ou instrument de musique (à choisir)"), fiche.equipment());
+        assertTrue(fiche.inventory().text().contains("outil d’artisan ou instrument de musique (à choisir)"), fiche.inventory().text());
     }
 
     @Test
@@ -334,13 +358,13 @@ class GuidedValuesTest {
     @Test
     void lOptionToutEnPieces_neDonneNiArmureNiArme() {
         CharacterSheet roublard = construite(equipe(classe(CharacterClass.ROGUE, Set.of(), Set.of(), null), StartingEquipment.ROGUE_B));
-        assertEquals("100 po", roublard.equipment());
+        assertEquals("100 po", roublard.inventory().text());
         assertEquals(12, roublard.armorClass(), "10 + Dex 2");
         assertEquals(List.of("Attaque à mains nues"), roublard.attacks().stream().map(SheetAttack::name).toList());
 
         CharacterSheet guerrier = construite(equipe(guerrier(StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE),
                 StartingEquipment.FIGHTER_C));
-        assertEquals("155 po", guerrier.equipment());
+        assertEquals("155 po", guerrier.inventory().text());
         assertEquals(12, guerrier.armorClass(), "10 + Dex 2, Défense sans armure ne compte pas");
     }
 
@@ -348,16 +372,17 @@ class GuidedValuesTest {
     void passerDeGuerrierAMoine_retireLeStyle_etGardeLesLangues() {
         Build avant = guerrier(StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE);
         CharacterSheet fiche = construite(avant);
-        CharacterSheet retouchee = new CharacterSheet(fiche.className(), fiche.level(), fiche.species(), fiche.size(),
-                fiche.background(), fiche.abilities(), fiche.proficiencyBonus(), fiche.savingThrows(), fiche.skills(),
-                fiche.armorClass(), fiche.hitPointMax(), fiche.hitPoints(), fiche.hitDice(), fiche.speed(), fiche.initiative(),
-                fiche.attacks(), fiche.features(), fiche.speciesTraits(), fiche.feats(), fiche.equipment(),
+        CharacterSheet retouchee = new CharacterSheet(fiche.characterClass(), fiche.fightingStyle(), fiche.level(), fiche.species(),
+                fiche.size(), fiche.background(), fiche.abilities(), fiche.proficiencyBonus(), fiche.savingThrows(), fiche.skills(),
+                fiche.armorBonus(), fiche.hitPointMax(), fiche.hitPoints(), fiche.hitDice(), fiche.speed(), fiche.initiative(),
+                fiche.otherAttacks(), fiche.features(), fiche.speciesTraits(), fiche.feats(), fiche.inventory(),
                 fiche.proficiencies(), "Commun, Elfique", fiche.spellSlots());
         Build moine = classe(CharacterClass.MONK, Set.of(Skill.ACROBATICS, Skill.STEALTH), Set.of(), null);
 
         CharacterSheet apres = new SheetState(retouchee, avant, avant.abilities(), null).rebuild(moine);
 
-        assertEquals("Moine", apres.className());
+        assertEquals(CharacterClass.MONK, apres.characterClass());
+        assertEquals(null, apres.fightingStyle());
         assertFalse(apres.features().contains("Style de combat"), apres.features());
         assertEquals(14, apres.armorClass());
         assertEquals(9, apres.hitPointMax());

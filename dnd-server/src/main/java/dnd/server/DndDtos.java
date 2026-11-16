@@ -12,6 +12,8 @@ import dnd.engine.sheet.CharacterSheet;
 import dnd.engine.sheet.CreatureSize;
 import dnd.engine.sheet.FightingStyle;
 import dnd.engine.sheet.GamingSet;
+import dnd.engine.sheet.Inventory;
+import dnd.engine.sheet.Item;
 import dnd.engine.sheet.OriginFeat;
 import dnd.engine.sheet.OriginFeatChoice;
 import dnd.engine.sheet.Proficiency;
@@ -23,6 +25,7 @@ import dnd.engine.sheet.SpeciesChoice;
 import dnd.engine.sheet.SpeciesOption;
 import dnd.engine.sheet.SpellList;
 import dnd.engine.sheet.SpellSlots;
+import dnd.engine.sheet.SrdArmor;
 import dnd.engine.sheet.SrdWeapon;
 import dnd.engine.sheet.StartingEquipment;
 import dnd.engine.sheet.Tool;
@@ -70,24 +73,54 @@ public final class DndDtos {
     public record SpellSlotsDto(int level, int max, int expended) {}
 
     /**
-     * Les valeurs saisies d'une fiche ; {@code skills} ne liste que les compétences maîtrisées, {@code speed} est en
-     * mètres. Une fiche d'avant, sans taille, traits d'espèce ni dons, se lit avec ces textes vides.
+     * Un objet : une arme ({@code weapon}), une armure ou un bouclier ({@code armor}) par leur id, ou un objet décrit par
+     * son nom ; {@code equipped} : armure portée, arme ou bouclier tenu.
      */
-    public record SheetValuesDto(String className, int level, String species, String size, String background,
+    public record ItemDto(SrdWeapon weapon, SrdArmor armor, String name, int quantity, boolean equipped) {
+
+        static ItemDto of(Item item) {
+            return new ItemDto(item.weapon(), item.armor(), item.name(), item.quantity(), item.equipped());
+        }
+
+        Item toItem() {
+            return new Item(weapon, armor, name, quantity, equipped);
+        }
+    }
+
+    /** L'inventaire : les objets dans l'ordre, et les pièces d'or. */
+    public record InventoryDto(List<ItemDto> items, int gold) {
+
+        static InventoryDto of(Inventory inventory) {
+            return new InventoryDto(inventory.items().stream().map(ItemDto::of).toList(), inventory.gold());
+        }
+
+        Inventory toInventory() {
+            if (items != null && items.stream().anyMatch(Objects::isNull)) throw new IllegalArgumentException("Objet inconnu");
+            return new Inventory(items == null ? List.of() : items.stream().map(ItemDto::toItem).toList(), gold);
+        }
+    }
+
+    /**
+     * Les valeurs saisies d'une fiche ; {@code characterClass} et {@code fightingStyle} par leur id ({@code null} : pas
+     * encore choisi, ou sans Style) ; {@code skills} ne liste que les compétences maîtrisées, {@code speed} est en mètres ;
+     * {@code armorBonus} l'ajustement de CA, {@code otherAttacks} les attaques saisies après celles que la fiche calcule.
+     */
+    public record SheetValuesDto(CharacterClass characterClass, FightingStyle fightingStyle, int level, String species,
+                                 String size, String background,
                                  Map<Ability, Integer> abilities, int proficiencyBonus,
                                  Set<Ability> savingThrows, Map<Skill, Proficiency> skills,
-                                 int armorClass, int hitPointMax, int hitPoints, String hitDice, double speed, int initiative,
-                                 List<AttackDto> attacks,
-                                 String features, String speciesTraits, String feats, String equipment,
+                                 int armorBonus, int hitPointMax, int hitPoints, String hitDice, double speed, int initiative,
+                                 List<AttackDto> otherAttacks,
+                                 String features, String speciesTraits, String feats, InventoryDto inventory,
                                  String proficiencies, String languages, List<SpellSlotsDto> spellSlots) {
 
         static SheetValuesDto of(CharacterSheet sheet) {
-            return new SheetValuesDto(sheet.className(), sheet.level(), sheet.species(), sheet.size(), sheet.background(),
-                    new EnumMap<>(sheet.abilities()), sheet.proficiencyBonus(), sheet.savingThrows(), sheet.skills(),
-                    sheet.armorClass(), sheet.hitPointMax(), sheet.hitPoints(), sheet.hitDice(), sheet.speed(), sheet.initiative(),
-                    sheet.attacks().stream().map(AttackDto::of).toList(),
-                    sheet.features(), sheet.speciesTraits(), sheet.feats(), sheet.equipment(), sheet.proficiencies(),
-                    sheet.languages(),
+            return new SheetValuesDto(sheet.characterClass(), sheet.fightingStyle(), sheet.level(), sheet.species(), sheet.size(),
+                    sheet.background(), new EnumMap<>(sheet.abilities()), sheet.proficiencyBonus(), sheet.savingThrows(),
+                    sheet.skills(), sheet.armorBonus(), sheet.hitPointMax(), sheet.hitPoints(), sheet.hitDice(), sheet.speed(),
+                    sheet.initiative(), sheet.otherAttacks().stream().map(AttackDto::of).toList(),
+                    sheet.features(), sheet.speciesTraits(), sheet.feats(), InventoryDto.of(sheet.inventory()),
+                    sheet.proficiencies(), sheet.languages(),
                     sheet.spellSlots().stream().map(s -> new SpellSlotsDto(s.level(), s.max(), s.expended())).toList());
         }
 
@@ -97,11 +130,13 @@ public final class DndDtos {
          * @throws IllegalArgumentException si une valeur est hors bornes, avec la raison
          */
         CharacterSheet toSheet() {
-            return new CharacterSheet(className, level, species, size, background, abilities, proficiencyBonus,
-                    savingThrows, skills == null ? Map.of() : withoutNone(skills),
-                    armorClass, hitPointMax, hitPoints, hitDice, speed, initiative,
-                    attacks == null ? List.of() : attacks.stream().map(AttackDto::toAttack).toList(),
-                    features, speciesTraits, feats, equipment, proficiencies, languages,
+            if (otherAttacks != null && otherAttacks.stream().anyMatch(Objects::isNull)) throw new IllegalArgumentException("Attaque inconnue");
+            return new CharacterSheet(characterClass, fightingStyle, level, species, size, background, abilities,
+                    proficiencyBonus, savingThrows, skills == null ? Map.of() : withoutNone(skills),
+                    armorBonus, hitPointMax, hitPoints, hitDice, speed, initiative,
+                    otherAttacks == null ? List.of() : otherAttacks.stream().map(AttackDto::toAttack).toList(),
+                    features, speciesTraits, feats, inventory == null ? Inventory.EMPTY : inventory.toInventory(),
+                    proficiencies, languages,
                     spellSlots == null ? List.of() : spellSlots.stream()
                             .map(s -> new SpellSlots(s.level(), s.max(), s.expended())).toList());
         }
@@ -115,9 +150,12 @@ public final class DndDtos {
         }
     }
 
-    /** Ce que les formules du SRD tirent des valeurs saisies. */
+    /**
+     * Ce que les formules du SRD tirent des valeurs saisies ; {@code armorClass} et {@code attacks} (calculées, puis les
+     * autres attaques) valent {@code null} sans classe.
+     */
     public record DerivedDto(Map<Ability, Integer> modifiers, Map<Ability, Integer> savingThrows,
-                             Map<Skill, Integer> skills, int passivePerception) {
+                             Map<Skill, Integer> skills, int passivePerception, Integer armorClass, List<AttackDto> attacks) {
 
         static DerivedDto of(CharacterSheet sheet) {
             Map<Ability, Integer> modifiers = new EnumMap<>(Ability.class);
@@ -128,7 +166,9 @@ public final class DndDtos {
             }
             Map<Skill, Integer> skills = new EnumMap<>(Skill.class);
             for (Skill skill : Skill.values()) skills.put(skill, sheet.skill(skill));
-            return new DerivedDto(modifiers, saves, skills, sheet.passivePerception());
+            List<SheetAttack> attacks = sheet.attacks();
+            return new DerivedDto(modifiers, saves, skills, sheet.passivePerception(), sheet.armorClass(),
+                    attacks == null ? null : attacks.stream().map(AttackDto::of).toList());
         }
     }
 
@@ -313,6 +353,25 @@ public final class DndDtos {
                             .map(ability -> new ChoiceDto(ability.name(), ability.label())).toList() : List.of(),
                     feat == OriginFeat.SKILLED ? OriginFeat.SKILLED_COUNT : 0);
         }
+    }
+
+    /** Une arme ou une armure à ajouter à l'inventaire : son id, son libellé et le libellé de sa catégorie, pour les grouper. */
+    public record EquipmentChoiceDto(String id, String label, String category) {}
+
+    /** Les armes et les armures du SRD (bouclier compris), dans l'ordre du SRD. */
+    public record EquipmentOptionsDto(List<EquipmentChoiceDto> weapons, List<EquipmentChoiceDto> armors) {
+
+        static EquipmentOptionsDto of() {
+            return new EquipmentOptionsDto(
+                    Arrays.stream(SrdWeapon.values())
+                            .map(w -> new EquipmentChoiceDto(w.name(), w.label(), w.category().label())).toList(),
+                    Arrays.stream(SrdArmor.values())
+                            .map(a -> new EquipmentChoiceDto(a.name(), a.label(), ARMOR_CATEGORIES.get(a.category()))).toList());
+        }
+
+        private static final Map<SrdArmor.Category, String> ARMOR_CATEGORIES = Map.of(
+                SrdArmor.Category.LIGHT, "Armures légères", SrdArmor.Category.MEDIUM, "Armures intermédiaires",
+                SrdArmor.Category.HEAVY, "Armures lourdes", SrdArmor.Category.SHIELD, "Bouclier");
     }
 
     /** Un choix proposé : son id et son libellé. */

@@ -111,9 +111,45 @@ export interface SpellSlots {
   expended: number
 }
 
-/** Les valeurs saisies ; `skills` ne garde que les compétences maîtrisées, `speed` est en mètres. */
+/**
+ * Un objet de l'inventaire : une arme (`weapon`), une armure ou un bouclier (`armor`) par leur id, ou un objet décrit par
+ * son nom ; `equipped` : armure portée, arme ou bouclier tenu (jamais pour un objet en texte).
+ */
+export interface Item {
+  weapon: string | null
+  armor: string | null
+  name: string | null
+  quantity: number
+  equipped: boolean
+}
+
+/** L'inventaire : les objets dans l'ordre, et les pièces d'or. */
+export interface Inventory {
+  items: Item[]
+  gold: number
+}
+
+/** Une arme ou une armure à ajouter, et le libellé de sa catégorie pour les grouper. */
+export interface EquipmentChoice extends Choice {
+  category: string
+}
+
+/** Les armes et armures du SRD (bouclier compris), telles que le serveur les sert. */
+export interface EquipmentOptions {
+  weapons: EquipmentChoice[]
+  armors: EquipmentChoice[]
+}
+
+/**
+ * Les valeurs saisies ; `skills` ne garde que les compétences maîtrisées, `speed` est en mètres. CA et attaques ne sont
+ * pas saisies : le serveur les calcule (`Derived`) de la classe, du Style, de l'inventaire, de l'ajustement de CA
+ * (`armorBonus`) et des autres attaques (`otherAttacks`).
+ */
 export interface SheetValues {
-  className: string
+  /** L'id de la classe, `null` tant qu'elle n'est pas choisie. */
+  characterClass: string | null
+  /** L'id du Style de combat, `null` sans. */
+  fightingStyle: string | null
   level: number
   species: string
   /** La taille en texte (« M (moyenne) »). */
@@ -123,17 +159,17 @@ export interface SheetValues {
   proficiencyBonus: number
   savingThrows: Ability[]
   skills: Partial<Record<Skill, Proficiency>>
-  armorClass: number
+  armorBonus: number
   hitPointMax: number
   hitPoints: number
   hitDice: string
   speed: number
   initiative: number
-  attacks: SheetAttack[]
+  otherAttacks: SheetAttack[]
   features: string
   speciesTraits: string
   feats: string
-  equipment: string
+  inventory: Inventory
   proficiencies: string
   languages: string
   spellSlots: SpellSlots[]
@@ -277,13 +313,22 @@ export interface ClassOptions {
   tools: ToolChoice[]
 }
 
+/** Ce que le serveur calcule et que le client ne refait pas : CA et attaques, `null` sans classe. */
+export interface Derived {
+  armorClass: number | null
+  /** Les attaques calculées, puis les autres attaques. */
+  attacks: SheetAttack[] | null
+}
+
 /**
- * Une fiche lue au serveur : la page qui la montre, ses valeurs (les dérivés, recalculés ici, sont ignorés), sa
- * construction guidée et ses jets de caractéristique, `null` s'il n'y en a pas.
+ * Une fiche lue au serveur : la page qui la montre, ses valeurs, ce qu'il en calcule (modificateurs, sauvegardes et
+ * compétences sont recalculés ici à la frappe), sa construction guidée et ses jets de caractéristique, `null` s'il n'y en
+ * a pas.
  */
 export interface Sheet {
   pageId: string
   values: SheetValues
+  derived: Derived
   build: Build | null
   rolls: AbilityRoll[] | null
 }
@@ -347,12 +392,12 @@ export function toRequest(values: SheetValues): SheetValues {
     abilities,
     proficiencyBonus: numberOf(values.proficiencyBonus),
     skills,
-    armorClass: numberOf(values.armorClass),
+    armorBonus: numberOf(values.armorBonus),
     hitPointMax: numberOf(values.hitPointMax),
     hitPoints: numberOf(values.hitPoints),
     speed: numberOf(values.speed),
     initiative: numberOf(values.initiative),
-    attacks: values.attacks
+    otherAttacks: values.otherAttacks
       .filter((a) => a.name.trim())
       .map((a) => ({
         ...a,
@@ -363,6 +408,10 @@ export function toRequest(values: SheetValues): SheetValues {
         normalRange: optionalNumber(a.normalRange),
         longRange: optionalNumber(a.longRange),
       })),
+    inventory: {
+      items: values.inventory.items.map((i) => ({ ...i, quantity: numberOf(i.quantity) })),
+      gold: numberOf(values.inventory.gold),
+    },
     spellSlots: values.spellSlots
       .map((s) => ({ level: s.level, max: numberOf(s.max), expended: numberOf(s.expended) }))
       .filter((s) => s.max > 0 || s.expended > 0),

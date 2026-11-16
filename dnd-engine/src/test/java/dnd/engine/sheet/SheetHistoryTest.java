@@ -85,9 +85,10 @@ class SheetHistoryTest {
     private static CharacterSheet avecDex(CharacterSheet f, int dex) {
         Map<Ability, Integer> abilities = new EnumMap<>(f.abilities());
         abilities.put(Ability.DEXTERITY, dex);
-        return new CharacterSheet(f.className(), f.level(), f.species(), f.size(), f.background(), abilities, f.proficiencyBonus(),
-                f.savingThrows(), f.skills(), f.armorClass(), f.hitPointMax(), f.hitPoints(), f.hitDice(), f.speed(),
-                f.initiative(), f.attacks(), f.features(), f.speciesTraits(), f.feats(), f.equipment(), f.proficiencies(), f.languages(), f.spellSlots());
+        return new CharacterSheet(f.characterClass(), f.fightingStyle(), f.level(), f.species(), f.size(), f.background(), abilities,
+                f.proficiencyBonus(), f.savingThrows(), f.skills(), f.armorBonus(), f.hitPointMax(), f.hitPoints(), f.hitDice(), f.speed(),
+                f.initiative(), f.otherAttacks(), f.features(), f.speciesTraits(), f.feats(), f.inventory(), f.proficiencies(),
+                f.languages(), f.spellSlots());
     }
 
     @Test

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { dndApi } from './api'
 import GuidedCreation from './GuidedCreation.vue'
+import InventoryPanel from './InventoryPanel.vue'
 import {
   ABILITIES,
   ABILITY_LABELS,
@@ -20,16 +21,22 @@ import {
   type Ability,
   type AbilityRoll,
   type Build,
+  type ClassOptions,
+  type Derived,
+  type EquipmentOptions,
+  type Inventory,
   type Proficiency,
   type Sheet,
+  type SheetAttack,
   type SheetValues,
   type Skill,
 } from './sheet'
 
 /**
  * La fiche d'un personnage joueur, montrée à la place du texte de sa page. Toute valeur se saisit sur place ; les dérivés
- * (modificateurs, sauvegardes, compétences, Perception passive) suivent la frappe. La fiche s'enregistre seule, une
- * seconde après la dernière frappe, un envoi à la fois ; un refus du serveur s'affiche sur la fiche, la saisie reste à
+ * (modificateurs, sauvegardes, compétences, Perception passive) suivent la frappe. CA et attaques viennent du serveur,
+ * qui les calcule à chaque enregistrement. La fiche s'enregistre seule, une seconde après la dernière frappe, et
+ * aussitôt après un geste d'inventaire, un envoi à la fois ; un refus du serveur s'affiche sur la fiche, la saisie reste à
  * l'écran et repart au changement suivant. Un choix de la création guidée remplace les valeurs par celles du serveur,
  * après l'envoi de la saisie en attente.
  */
@@ -40,6 +47,12 @@ const SAVE_DELAY_MS = 1000
 const api = dndApi(props.campaignId)
 
 const values = ref<SheetValues | null>(null)
+/** CA et attaques de la dernière réponse du serveur. */
+const derived = ref<Derived>({ armorClass: null, attacks: null })
+/** Les attaques que le serveur a calculées (armes tenues, mains nues) : les siennes, sans les autres attaques qui les suivent. */
+const computedAttacks = ref<SheetAttack[]>([])
+const classes = ref<ClassOptions[]>([])
+const equipment = ref<EquipmentOptions | null>(null)
 const build = ref<Build | null>(null)
 const rolls = ref<AbilityRoll[] | null>(null)
 /** Vrai pendant l'envoi d'un choix guidé ; `guidedError`, la raison de son dernier refus. */
@@ -62,9 +75,26 @@ onMounted(async () => {
   }
 })
 
+onMounted(async () => {
+  // Chacune pour soi : un équipement illisible laisse les classes à la création guidée.
+  const [read, items] = await Promise.allSettled([api.classes(), api.equipment()])
+  if (read.status === 'fulfilled') classes.value = read.value
+  else emit('error', `Classes illisibles : ${reason(read.reason)}`)
+  if (items.status === 'fulfilled') equipment.value = items.value
+  else emit('error', `Équipement illisible : ${reason(items.reason)}`)
+})
+
+/** CA et attaques d'une réponse ; ses autres attaques viennent en fin de ses attaques. */
+function showDerived(sheet: Sheet) {
+  derived.value = sheet.derived
+  const attacks = sheet.derived.attacks ?? []
+  computedAttacks.value = attacks.slice(0, attacks.length - sheet.values.otherAttacks.length)
+}
+
 /** Montre la fiche du serveur : un nouvel objet de valeurs, que le `watch` ne prend pas pour une frappe. */
 function show(sheet: Sheet) {
   values.value = { ...sheet.values, spellSlots: allSlots(sheet.values.spellSlots) }
+  showDerived(sheet)
   build.value = sheet.build
   rolls.value = sheet.rolls
 }
@@ -92,7 +122,7 @@ function save(): Promise<void> {
     pending = false
     status.value = 'saving'
     try {
-      await api.save(props.pageId, request())
+      showDerived(await api.save(props.pageId, request()))
       status.value = pending ? 'saving' : 'saved'
     } catch (e) {
       pending = true
@@ -198,11 +228,29 @@ function toggleSave(ability: Ability, checked: boolean) {
 }
 
 function addAttack() {
-  values.value?.attacks.push(newAttack())
+  values.value?.otherAttacks.push(newAttack())
 }
 
 function removeAttack(index: number) {
-  values.value?.attacks.splice(index, 1)
+  values.value?.otherAttacks.splice(index, 1)
+}
+
+/** Les Styles de combat de la classe choisie, aucun pour une classe qui n'en prend pas. */
+const styles = computed(() => classes.value.find((c) => c.id === values.value?.characterClass)?.fightingStyles ?? [])
+
+/** Une classe sans Style retire celui de la fiche, que le serveur refuserait. */
+function setClass(id: string) {
+  if (!values.value) return
+  values.value.characterClass = id || null
+  if (!classes.value.find((c) => c.id === id)?.fightingStyles.length) values.value.fightingStyle = null
+}
+
+/** Un geste d'inventaire part aussitôt : la CA et les attaques en dépendent. */
+function onInventory(next: Inventory) {
+  if (!values.value) return
+  values.value.inventory = next
+  pending = true
+  void save()
 }
 </script>
 
@@ -218,6 +266,7 @@ function removeAttack(index: number) {
       :campaign-id="campaignId"
       :build="build"
       :rolls="rolls"
+      :classes="classes"
       :busy="choosing"
       :error="guidedError"
       @build="onBuild"
@@ -227,7 +276,20 @@ function removeAttack(index: number) {
     <!-- Figée pendant un choix guidé : sa réponse remplace la fiche, une frappe faite entre-temps serait perdue. -->
     <fieldset class="sheet-fields" :disabled="choosing">
     <section class="identity" aria-label="Identité">
-      <label>Classe <input v-model="values.className" type="text" maxlength="80" /></label>
+      <label
+        >Classe
+        <select :value="values.characterClass ?? ''" @change="setClass(($event.target as HTMLSelectElement).value)">
+          <option value="">— à choisir —</option>
+          <option v-for="c in classes" :key="c.id" :value="c.id">{{ c.label }}</option>
+        </select>
+      </label>
+      <label v-if="styles.length"
+        >Style de combat
+        <select v-model="values.fightingStyle">
+          <option :value="null">—</option>
+          <option v-for="s in styles" :key="s.id" :value="s.id">{{ s.label }}</option>
+        </select>
+      </label>
       <label class="narrow">Niveau <input v-model.number="values.level" type="number" min="1" max="20" /></label>
       <label>Espèce <input v-model="values.species" type="text" maxlength="80" /></label>
       <label class="narrow">Taille <input v-model="values.size" type="text" maxlength="40" /></label>
@@ -288,7 +350,10 @@ function removeAttack(index: number) {
         <section class="combat" aria-labelledby="combat-title">
           <h3 id="combat-title">Combat</h3>
           <div class="stats">
-            <label>CA <input v-model.number="values.armorClass" type="number" min="0" /></label>
+            <p class="armor-class">
+              CA <output>{{ derived.armorClass ?? '—' }}</output>
+              <label class="bonus">ajustement <input v-model.number="values.armorBonus" type="number" class="small" /></label>
+            </p>
             <label>Initiative <input v-model.number="values.initiative" type="number" /></label>
             <label>Vitesse (m) <input v-model.number="values.speed" type="number" min="0" step="0.5" /></label>
             <label>PV actuels <input v-model.number="values.hitPoints" type="number" min="0" /></label>
@@ -297,7 +362,16 @@ function removeAttack(index: number) {
           </div>
 
           <h4>Attaques</h4>
-          <div v-if="values.attacks.length" class="attacks">
+          <p v-if="!values.characterClass" class="muted">Choisir une classe pour calculer la CA et les attaques.</p>
+          <ul v-else class="computed-attacks">
+            <li v-for="attack in computedAttacks" :key="attack.name">
+              <span class="attack-name">{{ attack.name }}</span> <output>{{ signed(attack.bonus) }}</output>
+              <span class="muted">{{ attackSummary(attack) }}</span>
+            </li>
+          </ul>
+
+          <h4>Autres attaques</h4>
+          <div v-if="values.otherAttacks.length" class="attacks">
           <table>
             <thead>
               <tr>
@@ -311,7 +385,7 @@ function removeAttack(index: number) {
                 <th scope="col"><span class="visually-hidden">Retirer</span></th>
               </tr>
             </thead>
-            <tbody v-for="(attack, index) in values.attacks" :key="index">
+            <tbody v-for="(attack, index) in values.otherAttacks" :key="index">
               <tr>
                 <td><input v-model="attack.name" type="text" class="name" maxlength="80" :aria-label="`Nom de l'attaque ${index + 1}`" /></td>
                 <td><input v-model.number="attack.bonus" type="number" class="small" :aria-label="`Bonus de l'attaque ${index + 1}`" /></td>
@@ -401,11 +475,12 @@ function removeAttack(index: number) {
           </table>
         </section>
 
+        <InventoryPanel :inventory="values.inventory" :options="equipment" @change="onInventory" />
+
         <section class="texts" aria-label="Textes">
           <label>Capacités <textarea v-model="values.features" rows="4" /></label>
           <label>Traits d'espèce <textarea v-model="values.speciesTraits" rows="4" /></label>
           <label>Dons <textarea v-model="values.feats" rows="3" /></label>
-          <label>Équipement <textarea v-model="values.equipment" rows="3" /></label>
           <label>Maîtrises <textarea v-model="values.proficiencies" rows="2" /></label>
           <label>Langues <textarea v-model="values.languages" rows="2" /></label>
         </section>
@@ -616,6 +691,36 @@ input.small {
 }
 .slots {
   max-width: 20rem;
+}
+.armor-class {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.armor-class output {
+  font-family: var(--font-title);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.armor-class .bonus {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+.computed-attacks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+.attack-name {
+  font-weight: 600;
 }
 .texts {
   display: flex;

@@ -3,6 +3,7 @@ import type {
   BackgroundOptions,
   Build,
   ClassOptions,
+  EquipmentOptions,
   OriginFeatOptions,
   Sheet,
   SheetValues,
@@ -27,6 +28,8 @@ export function dndApi(campaignId: string) {
     species: () => request<SpeciesOptions[]>(`${base}/species`),
     /** Les historiques de la création guidée et leurs choix. */
     backgrounds: () => request<BackgroundOptions[]>(`${base}/backgrounds`),
+    /** Les armes et armures du SRD, à ajouter à l'inventaire. */
+    equipment: () => request<EquipmentOptions>(`${base}/equipment`),
     /** Les dons d'origines (Polyvalent) et leurs sous-choix. */
     originFeats: () => request<OriginFeatOptions[]>(`${base}/origin-feats`),
     /** Applique une construction guidée ; la réponse porte les valeurs qui en dérivent. */

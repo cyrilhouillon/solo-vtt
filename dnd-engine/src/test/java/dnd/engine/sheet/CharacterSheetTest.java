@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CharacterSheetTest {
@@ -26,12 +27,13 @@ class CharacterSheetTest {
     }
 
     private static CharacterSheet roublarde() {
-        return new CharacterSheet("Roublard", 1, "Halfelin", "P (petite)", "Criminel", valeurs(8, 14, 12, 13, 12, 10), 2,
+        return new CharacterSheet(CharacterClass.ROGUE, null, 1, "Halfelin", "P (petite)", "Criminel", valeurs(8, 14, 12, 13, 12, 10), 2,
                 Set.of(Ability.DEXTERITY, Ability.INTELLIGENCE),
                 Map.of(Skill.STEALTH, Proficiency.EXPERTISE, Skill.PERCEPTION, Proficiency.PROFICIENT),
-                14, 9, 9, "1d8", 7.5, 2,
-                List.of(new SheetAttack("Rapière", 4, 1, 8, 2, DamageType.PIERCING, 1.5, null, null)),
-                "Attaque sournoise", "Chance", "Vigilant", "Armure de cuir", "Armes courantes", "Commun", List.of(new SpellSlots(1, 2, 1)));
+                0, 9, 9, "1d8", 7.5, 2,
+                List.of(new SheetAttack("Trait de feu", 4, 1, 10, 0, DamageType.FIRE, null, 36.0, 36.0)),
+                "Attaque sournoise", "Chance", "Vigilant", new Inventory(List.of(Item.armor(SrdArmor.LEATHER)), 8),
+                "Armes courantes", "Commun", List.of(new SpellSlots(1, 2, 1)));
     }
 
     @Test
@@ -42,8 +44,9 @@ class CharacterSheetTest {
         assertEquals(1, fiche.level());
         assertEquals(2, fiche.proficiencyBonus());
         for (Ability ability : Ability.values()) assertEquals(0, fiche.modifier(ability));
-        assertEquals("", fiche.className());
-        assertEquals(List.of(), fiche.attacks());
+        assertNull(fiche.characterClass());
+        assertNull(fiche.attacks());
+        assertEquals(Inventory.EMPTY, fiche.inventory());
         assertEquals(10, fiche.passivePerception());
     }
 
@@ -65,8 +68,8 @@ class CharacterSheetTest {
 
     @Test
     void unModificateur_arrondiALInferieur() {
-        CharacterSheet fiche = new CharacterSheet("", 1, "", "", "", valeurs(9, 1, 30, 11, 10, 7), 2, Set.of(), Map.of(),
-                10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of());
+        CharacterSheet fiche = new CharacterSheet(null, null, 1, "", "", "", valeurs(9, 1, 30, 11, 10, 7), 2, Set.of(), Map.of(),
+                10, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of());
 
         assertEquals(-1, fiche.modifier(Ability.STRENGTH));
         assertEquals(-5, fiche.modifier(Ability.DEXTERITY));
@@ -96,28 +99,44 @@ class CharacterSheetTest {
 
     @Test
     void uneValeurHorsBornes_estRefuseeAvecSaRaison() {
-        var trop = assertThrows(IllegalArgumentException.class, () -> new CharacterSheet("", 1, "", "", "",
-                valeurs(10, 31, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of()));
+        var trop = assertThrows(IllegalArgumentException.class, () -> new CharacterSheet(null, null, 1, "", "", "",
+                valeurs(10, 31, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of()));
         assertEquals("Dextérité entre 1 et 30 : 31", trop.getMessage());
-        assertThrows(IllegalArgumentException.class, () -> new CharacterSheet("", 1, "", "", "",
-                valeurs(0, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of()));
-        var niveau = assertThrows(IllegalArgumentException.class, () -> new CharacterSheet("", 21, "", "", "",
-                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of()));
+        assertThrows(IllegalArgumentException.class, () -> new CharacterSheet(null, null, 1, "", "", "",
+                valeurs(0, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of()));
+        var niveau = assertThrows(IllegalArgumentException.class, () -> new CharacterSheet(null, null, 21, "", "", "",
+                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of()));
         assertEquals("Niveau entre 1 et 20 : 21", niveau.getMessage());
-        assertThrows(IllegalArgumentException.class, () -> new CharacterSheet("", 0, "", "", "",
-                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of()));
-        assertThrows(IllegalArgumentException.class, () -> new CharacterSheet("", 1, "", "", "",
-                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), -1, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of()));
-        assertThrows(IllegalArgumentException.class, () -> new CharacterSheet("", 1, "", "", "",
-                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 5, -1, "", 9, 0, List.of(), "", "", "", "", "", "", List.of()));
-        var manquante = assertThrows(IllegalArgumentException.class, () -> new CharacterSheet("", 1, "", "", "",
-                Map.of(Ability.STRENGTH, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "", List.of()));
+        assertThrows(IllegalArgumentException.class, () -> new CharacterSheet(null, null, 0, "", "", "",
+                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of()));
+        assertThrows(IllegalArgumentException.class, () -> new CharacterSheet(null, null, 1, "", "", "",
+                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 5, -1, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of()));
+        var manquante = assertThrows(IllegalArgumentException.class, () -> new CharacterSheet(null, null, 1, "", "", "",
+                Map.of(Ability.STRENGTH, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "", List.of()));
         assertEquals("Valeur manquante : Dextérité", manquante.getMessage());
         var emplacements = assertThrows(IllegalArgumentException.class, () -> new SpellSlots(1, 2, 3));
         assertEquals("Emplacements dépensés au niveau 1 entre 0 et 2 : 3", emplacements.getMessage());
-        assertThrows(IllegalArgumentException.class, () -> new CharacterSheet("", 1, "", "", "",
-                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", "", "", "",
+        assertThrows(IllegalArgumentException.class, () -> new CharacterSheet(null, null, 1, "", "", "",
+                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 10, 0, 0, "", 9, 0, List.of(), "", "", "", Inventory.EMPTY, "", "",
                 List.of(new SpellSlots(1, 2, 0), new SpellSlots(1, 3, 0))));
         assertThrows(IllegalArgumentException.class, () -> new SheetAttack("  ", 4, 1, 8, 2, DamageType.PIERCING, 1.5, null, null));
+        var style = assertThrows(IllegalArgumentException.class, () -> new CharacterSheet(CharacterClass.ROGUE, FightingStyle.DEFENSE,
+                1, "", "", "", valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 0, 0, 0, "", 9, 0, List.of(), "", "", "",
+                Inventory.EMPTY, "", "", List.of()));
+        assertEquals("Roublard : aucun Style de combat au niveau 1", style.getMessage());
+    }
+
+    @Test
+    void uneAutreAttaqueAuNomDUneArmeTenue_seJoueAPart() {
+        var dague = new SheetAttack("Dague", 6, 1, 4, 2, DamageType.PIERCING, 1.5, null, null);
+        var fiche = new CharacterSheet(CharacterClass.ROGUE, null, 1, "", "", "",
+                valeurs(10, 10, 10, 10, 10, 10), 2, Set.of(), Map.of(), 0, 8, 8, "", 9, 0, List.of(dague), "", "", "",
+                new Inventory(List.of(Item.weapon(SrdWeapon.DAGGER, 1)), 0), "", "", List.of());
+
+        assertEquals(List.of("Dague", "Attaque à mains nues", "Dague"), fiche.attacks().stream().map(SheetAttack::name).toList());
+        var attaques = fiche.profile().create("pj-1", "Aria").attacks().stream()
+                .map(a -> a.id() + " " + a.weapon().attackBonus()).toList();
+        assertEquals(List.of("melee:Dague 2", "melee:Attaque à mains nues 2", "melee:autre:Dague 6", "ranged:Dague 2"), attaques,
+                "la Dague tenue garde l'id de son nom, la saisie le sien");
     }
 }

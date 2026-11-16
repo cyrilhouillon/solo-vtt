@@ -30,6 +30,8 @@ const props = defineProps<{
   campaignId: string
   build: Build | null
   rolls: AbilityRoll[] | null
+  /** Les classes et leurs options, lues par la fiche. */
+  classes: ClassOptions[]
   /** Vrai pendant un envoi : les choix sont éteints. */
   busy: boolean
   /** La raison du dernier refus du serveur. */
@@ -48,7 +50,7 @@ const METHODS: { id: AbilityMethod; label: string }[] = [
 ]
 
 
-const options = ref<ClassOptions[]>([])
+const options = computed(() => props.classes)
 const speciesList = ref<SpeciesOptions[]>([])
 const backgroundList = ref<BackgroundOptions[]>([])
 const featList = ref<OriginFeatOptions[]>([])
@@ -65,15 +67,12 @@ const id = useId()
 
 onMounted(async () => {
   const api = dndApi(props.campaignId)
-  const [classes, species, backgrounds, feats] = await Promise.allSettled([
-    api.classes(),
+  const [species, backgrounds, feats] = await Promise.allSettled([
     api.species(),
     api.backgrounds(),
     api.originFeats(),
   ])
   const errors: string[] = []
-  if (classes.status === 'fulfilled') options.value = classes.value
-  else errors.push(`Classes illisibles : ${reasonOf(classes.reason)}`)
   if (species.status === 'fulfilled') speciesList.value = species.value
   else errors.push(`Espèces illisibles : ${reasonOf(species.reason)}`)
   if (backgrounds.status === 'fulfilled') backgroundList.value = backgrounds.value

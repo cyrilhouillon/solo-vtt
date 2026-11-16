@@ -61,7 +61,8 @@ class BackgroundChoiceTest {
         assertEquals(OriginFeat.SAVAGE_ATTACKER, Background.SOLDIER.feat());
         assertTrue(Background.SOLDIER.choosesGamingSet());
         assertEquals("50 po", Background.SAGE.equipmentText(BackgroundEquipment.B));
-        assertTrue(Background.CRIMINAL.equipmentText(BackgroundEquipment.A).endsWith("tenue de voyage, 16 po"));
+        assertEquals("Dague ×2, Outils de voleur, Bourse ×2, Pied-de-biche, Tenue de voyage, 16 po",
+                Background.CRIMINAL.equipmentText(BackgroundEquipment.A));
     }
 
     @Test
@@ -75,8 +76,8 @@ class BackgroundChoiceTest {
         assertEquals(Proficiency.PROFICIENT, fiche.proficiency(Skill.ATHLETICS));
         assertEquals(Proficiency.PROFICIENT, fiche.proficiency(Skill.INTIMIDATION));
         assertTrue(fiche.proficiencies().endsWith("\nOutils : boîte de jeux (dés)"), fiche.proficiencies());
-        assertTrue(fiche.equipment().endsWith("\nArc court, 20 flèches, carquois, lance, boîte de jeux (même type), "
-                + "trousse de soins, tenue de voyage, 14 po"), fiche.equipment());
+        assertTrue(fiche.inventory().text().endsWith("Arc court, Flèches ×20, Carquois, Lance, Trousse de soins, "
+                + "Tenue de voyage, Boîte de jeux (dés), 18 po"), fiche.inventory().text());
         assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Arc court", "Lance", "Attaque à mains nues"), attaques(fiche));
         assertEquals(5, fiche.attacks().get(0).bonus(), "maîtrise 2 + For 3");
         assertTrue(fiche.feats().startsWith("Sauvagerie martiale — "), fiche.feats());
@@ -104,7 +105,7 @@ class BackgroundChoiceTest {
 
         assertEquals("Initié à la magie (Clerc) — incantation Sagesse ; 2 sorts mineurs et 1 sort du 1er niveau (à choisir)",
                 fiche.feats());
-        assertTrue(fiche.equipment().endsWith("\n50 po"), fiche.equipment());
+        assertEquals(54, fiche.inventory().gold(), "4 + 50");
         assertEquals(4, fiche.attacks().size(), "les armes de la classe et les mains nues");
         assertEquals(12, fiche.abilities().get(Ability.WISDOM));
     }
@@ -142,10 +143,10 @@ class BackgroundChoiceTest {
         Build sage = guerrier(ACROBATIES_PERCEPTION).withBackground(new BackgroundChoice(Background.SAGE,
                 augmentations(Ability.CONSTITUTION, 2, Ability.INTELLIGENCE, 1), BackgroundEquipment.A, null, Ability.INTELLIGENCE));
         CharacterSheet fiche = construite(soldat);
-        CharacterSheet retouchee = new CharacterSheet(fiche.className(), fiche.level(), fiche.species(), fiche.size(),
-                fiche.background(), fiche.abilities(), fiche.proficiencyBonus(), fiche.savingThrows(), fiche.skills(),
-                19, fiche.hitPointMax(), fiche.hitPoints(), fiche.hitDice(), fiche.speed(), fiche.initiative(), fiche.attacks(),
-                fiche.features(), fiche.speciesTraits(), fiche.feats(), fiche.equipment(), fiche.proficiencies(),
+        CharacterSheet retouchee = new CharacterSheet(fiche.characterClass(), fiche.fightingStyle(), fiche.level(), fiche.species(),
+                fiche.size(), fiche.background(), fiche.abilities(), fiche.proficiencyBonus(), fiche.savingThrows(), fiche.skills(),
+                2, fiche.hitPointMax(), fiche.hitPoints(), fiche.hitDice(), fiche.speed(), fiche.initiative(), fiche.otherAttacks(),
+                fiche.features(), fiche.speciesTraits(), fiche.feats(), fiche.inventory(), fiche.proficiencies(),
                 fiche.languages(), fiche.spellSlots());
         SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
                 new SheetEvent.SheetBuilt(soldat, fiche), new SheetEvent.SheetEdited(retouchee)));
@@ -162,13 +163,13 @@ class BackgroundChoiceTest {
         assertEquals(Proficiency.PROFICIENT, recalculee.proficiency(Skill.HISTORY));
         assertEquals(List.of("Épée à deux mains", "Fléau d’armes", "Javeline", "Bâton de combat", "Attaque à mains nues"), attaques(recalculee));
         assertTrue(recalculee.feats().startsWith("Initié à la magie (Magicien) — incantation Intelligence"), recalculee.feats());
-        assertEquals(19, recalculee.armorClass(), "CA dérivée 17 → 17 : la retouche reste");
+        assertEquals(19, recalculee.armorClass(), "cotte de mailles 16 + Défense 1 + ajustement 2 gardé");
     }
 
     @Test
     void unHistoriqueSaisiALaMain_resteSansHistoriqueDansLaConstruction() {
-        CharacterSheet saisie = new CharacterSheet("", 1, "", "", "Marin", CharacterSheet.blank().abilities(), 2, Set.of(), Map.of(),
-                10, 0, 0, "", 9, 0, List.of(), "", "", "Chanceux", "", "", "", List.of());
+        CharacterSheet saisie = new CharacterSheet(null, null, 1, "", "", "Marin", CharacterSheet.blank().abilities(), 2, Set.of(),
+                Map.of(), 0, 0, 0, "", 9, 0, List.of(), "", "", "Chanceux", Inventory.EMPTY, "", "", List.of());
         SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(), new SheetEvent.SheetEdited(saisie)));
 
         CharacterSheet construite = etat.rebuild(guerrier(ACROBATIES_PERCEPTION));

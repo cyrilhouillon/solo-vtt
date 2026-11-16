@@ -32,7 +32,8 @@ class JsonFileGameStoreTest {
             new SavedCommand.Place("gobelin", 12, 1.5, List.of()),
             new SavedCommand.Place("page-aria", "Aria", new CreatureProfile(18, 12, 5, 9, 2,
                     List.of(new Weapon("Javeline", 1, 6, DamageType.PIERCING, 5, 3, false).thrown(9, 36),
-                            Weapon.ranged("Arc court", 1, 6, DamageType.PIERCING, 4, 2, 24, 96)),
+                            Weapon.ranged("Arc court", 1, 6, DamageType.PIERCING, 4, 2, 24, 96),
+                            new Weapon("Javeline", 1, 8, DamageType.FIRE, 6, 0, false, 1.5, null, "autre:Javeline")),
                     Set.of("dueling"), Set.of("shield"), List.of(2)), 3, 4.5, List.of()),
             new SavedCommand.ShowGrid(false, List.of()),
             new SavedCommand.AlignGrid(33, 22, 0.25, 0.5, List.of()),
@@ -99,5 +100,22 @@ class JsonFileGameStoreTest {
 
         assertEquals(Optional.of(new SavedGame(List.of(new SavedCommand.Create(30, 20, DistanceUnit.METRE, null, null, List.of())))),
                 new JsonFileGameStore(file).load());
+    }
+
+    @Test
+    void uneArmeGardeeAvantSonId_sIdentifieParSonNom() throws IOException {
+        Path file = dir.resolve("partie.json");
+        Files.writeString(file, """
+                { "commands": [ { "type": "place", "catalogId": "page-aria", "name": "Aria", "x": 3, "y": 4.5, "rolls": [],
+                  "profile": { "armorClass": 18, "hitPointMax": 12, "hitPoints": 5, "speed": 9, "initiative": 2,
+                    "weapons": [ { "name": "Dague", "diceCount": 1, "dieSides": 4, "damageType": "PIERCING", "attackBonus": 5,
+                      "damageBonus": 3, "oneHandedMelee": false, "reach": 1.5, "range": null } ],
+                    "features": [], "spellsKnown": [], "spellSlots": [] } } ] }
+                """);
+
+        var place = (SavedCommand.Place) new JsonFileGameStore(file).load().orElseThrow().commands().getFirst();
+        var dague = place.profile().weapons().getFirst();
+        assertEquals(null, dague.id());
+        assertEquals("Dague", dague.key());
     }
 }

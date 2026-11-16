@@ -1,6 +1,6 @@
 ---
 type: story
-status: ready
+status: done
 parent: aidd_docs/backlog/epics/tenir-ses-personnages-dnd-2024-dans-le-carnet.md
 depends_on:
   - aidd_docs/backlog/stories/creer-en-guide-un-barbare-un-moine-ou-un-roublard.md
@@ -20,4 +20,4 @@ order: 8
 - Le joueur ajoute ou retire un objet, change une quantité ou ses po, à la main.
 - Il équipe une armure, un bouclier et les armes qu'il tient : la CA et les attaques se recalculent par les règles de la classe (Défense sans armure, Arts martiaux, Style de combat, Finesse…).
 - Un Moine qui porte une armure ou tient un bouclier perd Arts martiaux (SRD 5.2.1, « Martial Arts ») : ses armes de Moine et son attaque à mains nues reviennent au calcul ordinaire (Force, ou la meilleure en Finesse ; 1 + For à mains nues, sans dé). Aujourd'hui `GuidedValues.attack` et `unarmedStrike` l'appliquent sans regarder ce qui est porté, aucun équipement de départ du Moine n'ayant d'armure : ils devront recevoir l'armure et le bouclier portés, comme `armorClass`.
-- Une fiche d'avant, dont l'Équipement n'est qu'un texte, se relit.
+- Une fiche d'avant, dont l'Équipement n'est qu'un texte (ou qui garde sa CA, ses attaques ou sa classe en texte), ne se relit pas : 409, à recréer (décision du plan, pas de code de reprise).
