@@ -76,11 +76,12 @@ onMounted(async () => {
 })
 
 onMounted(async () => {
-  try {
-    ;[classes.value, equipment.value] = await Promise.all([api.classes(), api.equipment()])
-  } catch (e) {
-    emit('error', `Classes et équipement illisibles : ${reason(e)}`)
-  }
+  // Chacune pour soi : un équipement illisible laisse les classes à la création guidée.
+  const [read, items] = await Promise.allSettled([api.classes(), api.equipment()])
+  if (read.status === 'fulfilled') classes.value = read.value
+  else emit('error', `Classes illisibles : ${reason(read.reason)}`)
+  if (items.status === 'fulfilled') equipment.value = items.value
+  else emit('error', `Équipement illisible : ${reason(items.reason)}`)
 })
 
 /** CA et attaques d'une réponse ; ses autres attaques viennent en fin de ses attaques. */
@@ -243,7 +244,6 @@ function setClass(id: string) {
   values.value.characterClass = id || null
   if (!classes.value.find((c) => c.id === id)?.fightingStyles.length) values.value.fightingStyle = null
 }
-
 
 /** Un geste d'inventaire part aussitôt : la CA et les attaques en dépendent. */
 function onInventory(next: Inventory) {
