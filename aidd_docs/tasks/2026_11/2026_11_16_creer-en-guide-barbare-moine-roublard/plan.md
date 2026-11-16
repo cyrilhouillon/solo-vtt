@@ -1,6 +1,6 @@
 ---
 objective: "En création guidée, le joueur choisit Barbare, Moine ou Roublard de niveau 1 : la fiche prend PV, sauvegardes, compétences (et l'Expertise du Roublard), maîtrises, outils (l'outil du Moine choisi dans la table des outils du SRD), équipement A ou tout en pièces d'or, CA (Défense sans armure si meilleure), attaques (Arts martiaux, Finesse, mains nues pour toute classe) et capacités de niveau 1 selon le SRD 5.2.1, et chaque capacité que le moteur ne joue pas a sa story."
-status: in-progress
+status: implemented
 ---
 
 # Plan: créer en guidé un Barbare, un Moine ou un Roublard
