@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Magicien, sorts et emplacements dans `dnd-engine`
