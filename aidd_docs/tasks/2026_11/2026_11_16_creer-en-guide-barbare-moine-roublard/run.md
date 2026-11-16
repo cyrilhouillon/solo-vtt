@@ -1,0 +1,10 @@
+# Run
+
+## Phase 1 · Barbare, Moine, Roublard et outils dans `dnd-engine`
+
+- Date: 2026-11-16
+- Validated on: 319177f
+
+- [pass] Task 1 — Chaque classe a le dé de vie, les sauvegardes, les compétences, les valeurs suggérées, les équipements et les maîtrises de sa note SRD ; `Tool` a les outils des notes `Équipement/Outils` ; les historiques gardent leur outil — `mvn test -pl vtt-engine,dnd-engine` : `Tests run: 153, Failures: 0` ; `GuidedValuesTest` (Barbare d12, For/Con ; Moine d8, For/Dex ; Roublard d8, Dex/Int ; équipements A, B, C) ; `BackgroundChoiceTest` (`Background.CRIMINAL.tool() == THIEVES_TOOLS`, « Outils : outils de voleur ») ; `Tool` : 17 artisan, 10 instruments, 6 autres, d'après `Compendio SRD/Français/Équipement`.
+- [pass] Task 2 — Chaque refus du Test Scope a sa raison ; les constructions suggérées sont valides — `BuildTest` : `lesConstructionsSuggerees_sontValides`, Style (« Barbare : aucun Style de combat au niveau 1 », « Choisir un Style de combat »), Bottes (« Barbare : pas de Botte d'arme pour Arc long », « Roublard : … Hache à deux mains », Moine 0), Expertise (« Guerrier : aucune Expertise… », « 2 Expertises au plus », « Athlétisme n’est pas maîtrisée », historique acceptée), outil (« Roublard : aucun outil à choisir », « Moine : outils de voleur hors des outils au choix ») ; tous verts.
+- [pass] Task 3 — Barbare, Moine, Roublard, options tout en po, Guerrier → Moine — `GuidedValuesTest` verts : Barbare PV 14, CA 13 (10 + Dex 1 + Con 2 ; le plan écrivait 15 par erreur de calcul), Dex 8 → CA 11 ; Moine CA 14, Lance et Dague 1d6 + 2, mains nues +4 1d6 + 2, For 15/Dex 13 → For retenue, « Outils : luth » et luth dans l'équipement, « à choisir » sans outil ; Roublard CA 13, Discrétion et Escamotage en expertise, outils de voleur une fois avec Criminel ; Roublard B « 100 po » CA 12, Guerrier C « 155 po » CA 12 ; Guerrier mains nues +4, 3 contondants ; Guerrier → Moine : Style retiré, CA 14, PV 9, sauvegardes For/Dex, Langues gardées. Libellés d'outils en minuscules (« luth », « outils de voleur »), comme l'outil d'historique d'avant. Suite complète `mvn test` : `BUILD SUCCESS` (vtt-server 292, dnd-server 39).

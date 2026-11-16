@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 ---
 
 # Instruction: Barbare, Moine, Roublard et outils dans `dnd-engine`
