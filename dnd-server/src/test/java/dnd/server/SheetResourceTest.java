@@ -19,6 +19,7 @@ import dnd.engine.sheet.SpeciesChoice;
 import dnd.engine.sheet.SpeciesOption;
 import dnd.engine.sheet.SrdWeapon;
 import dnd.engine.sheet.StartingEquipment;
+import dnd.engine.sheet.Tool;
 import dnd.engine.state.DamageType;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.NotFoundException;
@@ -431,19 +432,19 @@ class SheetResourceTest {
                 guerrier(Set.of(Skill.ATHLETICS, Skill.PERCEPTION, Skill.HISTORY), StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE)));
         assertEquals("Guerrier : 2 compétences au plus", refus.getMessage());
         var sansDes = assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), AbilityMethod.ROLLED, c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null, null)));
+                c.characterClass(), AbilityMethod.ROLLED, c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null, null, null, null)));
         assertEquals("Dés : lancer d'abord les six jets de caractéristique", sansDes.getMessage());
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), null, null, null)));
+                c.characterClass(), c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), null, null, null, null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), c.method(), null, c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null, null)));
+                c.characterClass(), c.method(), null, c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null, null, null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                c.characterClass(), c.method(), c.scores(), null, c.fightingStyle(), c.equipment(), c.masteries(), null, null)));
+                c.characterClass(), c.method(), c.scores(), null, c.fightingStyle(), c.equipment(), c.masteries(), null, null, null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
-                null, c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null, null)));
+                null, c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(), c.masteries(), null, null, null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, new DndDtos.BuildDto(
                 c.characterClass(), c.method(), c.scores(), c.skills(), c.fightingStyle(), c.equipment(),
-                List.of(SrdWeapon.GREATSWORD, SrdWeapon.GREATSWORD, SrdWeapon.FLAIL), null, null)));
+                List.of(SrdWeapon.GREATSWORD, SrdWeapon.GREATSWORD, SrdWeapon.FLAIL), null, null, null, null)));
         assertThrows(IllegalArgumentException.class, () -> dnd().build(STRAHD, aria, null));
         assertEquals(avant, donnees.fichiers.get(STRAHD + "/dnd"));
         assertNull(dnd().read(STRAHD, aria).build());
@@ -680,6 +681,8 @@ class SheetResourceTest {
         assertNull(relue.build().species());
         assertNull(relue.build().background(), "construction d'avant l'historique");
         assertEquals("", relue.values().feats(), "valeurs d'avant les dons");
+        assertEquals(List.of(), relue.build().expertise(), "construction d'avant l'Expertise");
+        assertNull(relue.build().tool(), "construction d'avant les outils de classe");
 
         DndDtos.SheetDto orc = dnd().build(STRAHD, aria, DndDtos.BuildDto.of(
                 Build.fighter().withSpecies(SpeciesChoice.of(Species.ORC))));
@@ -788,5 +791,112 @@ class SheetResourceTest {
             assertEquals(409, refus.getResponse().getStatus());
             assertEquals(tronquee, donnees.fichiers.get(STRAHD + "/dnd"));
         }
+    }
+
+    /** La construction suggérée d'une classe, avec ces compétences, ces Expertises et cet outil. */
+    private static Build suggeree(CharacterClass classe, Set<Skill> competences, Set<Skill> expertise, Tool outil) {
+        Build base = Build.suggested(classe);
+        return new Build(classe, base.method(), base.scores(), competences, base.fightingStyle(), base.equipment(),
+                base.masteries(), null, null, expertise, outil);
+    }
+
+    @Test
+    void lesOptionsDuBarbareDuMoineEtDuRoublard_disentLeursChoix() {
+        Map<String, DndDtos.ClassOptionsDto> classes = new java.util.HashMap<>();
+        dnd().classes(STRAHD).forEach(c -> classes.put(c.id(), c));
+
+        DndDtos.ClassOptionsDto barbare = classes.get("BARBARIAN");
+        assertEquals(List.of(), barbare.fightingStyles());
+        assertEquals(2, barbare.masteryCount());
+        assertEquals(28, barbare.weapons().size(), "armes de corps à corps courantes et de guerre");
+        assertTrue(barbare.weapons().stream().noneMatch(w -> w.id().equals("LONGBOW")));
+        assertEquals(List.of("BARBARIAN_A", "BARBARIAN_B"), barbare.equipments().stream().map(DndDtos.DescribedChoiceDto::id).toList());
+        assertEquals("75 po", barbare.equipments().get(1).text());
+        assertEquals(0, barbare.expertiseCount());
+        assertEquals(List.of(), barbare.tools());
+        assertEquals(DndDtos.BuildDto.of(Build.suggested(CharacterClass.BARBARIAN)), barbare.defaultBuild());
+
+        DndDtos.ClassOptionsDto moine = classes.get("MONK");
+        assertEquals(List.of(), moine.fightingStyles());
+        assertEquals(0, moine.masteryCount());
+        assertEquals(List.of(), moine.weapons());
+        assertEquals(27, moine.tools().size(), "17 outils d'artisan et 10 instruments");
+        assertTrue(moine.tools().contains(new DndDtos.ToolChoiceDto("LUTE", "luth", "Instruments de musique")));
+        assertNull(moine.defaultBuild().tool());
+
+        DndDtos.ClassOptionsDto roublard = classes.get("ROGUE");
+        assertEquals(2, roublard.expertiseCount());
+        assertEquals(4, roublard.skillCount());
+        assertEquals(19, roublard.weapons().size(), "armes courantes, et de guerre Finesse ou Légère");
+        assertTrue(roublard.weapons().stream().anyMatch(w -> w.id().equals("RAPIER")));
+        assertTrue(roublard.weapons().stream().noneMatch(w -> w.id().equals("GREATAXE")));
+        assertEquals("100 po", roublard.equipments().get(1).text());
+    }
+
+    @Test
+    void unRoublardAvecExpertise_seConstruit_etSeRelitALIdentique() {
+        String kael = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Kael")).pageId();
+        Build roublard = suggeree(CharacterClass.ROGUE,
+                Set.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND, Skill.PERCEPTION, Skill.DECEPTION),
+                Set.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND), null);
+
+        DndDtos.SheetDto construit = dnd().build(STRAHD, kael, DndDtos.BuildDto.of(roublard));
+
+        assertEquals(List.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND), construit.build().expertise());
+        assertEquals(Proficiency.EXPERTISE, construit.values().skills().get(Skill.STEALTH));
+        assertEquals(6, construit.derived().skills().get(Skill.STEALTH), "Dex 2 + 2 × 2");
+        assertEquals(13, construit.values().armorClass());
+        assertTrue(construit.values().proficiencies().endsWith("\nOutils : outils de voleur"));
+        assertEquals(construit, dnd().read(STRAHD, kael));
+    }
+
+    @Test
+    void unMoineSansStyle_avecSonLuth_seConstruit_etSeRelit() {
+        String kael = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Kael")).pageId();
+        Build moine = suggeree(CharacterClass.MONK, Set.of(Skill.ACROBATICS, Skill.STEALTH), Set.of(), Tool.LUTE);
+
+        DndDtos.SheetDto construit = dnd().build(STRAHD, kael, DndDtos.BuildDto.of(moine));
+
+        assertNull(construit.build().fightingStyle());
+        assertEquals(Tool.LUTE, construit.build().tool());
+        assertEquals(14, construit.values().armorClass(), "10 + Dex 2 + Sag 2");
+        assertEquals(List.of("Lance", "Dague", "Attaque à mains nues"),
+                construit.values().attacks().stream().map(DndDtos.AttackDto::name).toList());
+        assertTrue(construit.values().proficiencies().endsWith("\nOutils : luth"));
+        assertEquals(construit, dnd().read(STRAHD, kael));
+    }
+
+    @Test
+    void unChoixImpossiblePourLaClasse_estRefuseAvecSaRaison() {
+        String kael = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Kael")).pageId();
+        Build barbare = Build.suggested(CharacterClass.BARBARIAN);
+        Build barbareStyle = new Build(barbare.characterClass(), barbare.method(), barbare.scores(), Set.of(),
+                FightingStyle.DEFENSE, barbare.equipment(), barbare.masteries(), null, null, Set.of(), null);
+        Set<Skill> quatre = Set.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND, Skill.PERCEPTION, Skill.DECEPTION);
+
+        assertEquals("Barbare : aucun Style de combat au niveau 1", assertThrows(IllegalArgumentException.class,
+                () -> dnd().build(STRAHD, kael, DndDtos.BuildDto.of(barbareStyle))).getMessage());
+        assertEquals("Roublard : 2 Expertises au plus", assertThrows(IllegalArgumentException.class,
+                () -> dnd().build(STRAHD, kael, DndDtos.BuildDto.of(suggeree(CharacterClass.ROGUE, quatre,
+                        Set.of(Skill.STEALTH, Skill.SLEIGHT_OF_HAND, Skill.PERCEPTION), null)))).getMessage());
+        assertEquals("Roublard : aucun outil à choisir", assertThrows(IllegalArgumentException.class,
+                () -> dnd().build(STRAHD, kael, DndDtos.BuildDto.of(suggeree(CharacterClass.ROGUE, quatre, Set.of(),
+                        Tool.LUTE)))).getMessage());
+        assertNull(dnd().read(STRAHD, kael).build());
+    }
+
+    @Test
+    void uneConstructionDeGuerrierSansStyle_estRefuseeEn409() {
+        String aria = dnd().create(STRAHD, new DndDtos.NewSheetRequest("Aria")).pageId();
+        dnd().build(STRAHD, aria, DndDtos.BuildDto.of(Build.fighter()));
+        String valide = donnees.fichiers.get(STRAHD + "/dnd");
+        String style = "\"fightingStyle\":\"DEFENSE\"";
+        assertTrue(valide.contains(style), valide);
+        String tronquee = valide.replace(style, "\"fightingStyle\":null");
+        donnees.fichiers.put(STRAHD + "/dnd", tronquee);
+
+        var refus = assertThrows(ClientErrorException.class, () -> dnd().read(STRAHD, aria));
+        assertEquals(409, refus.getResponse().getStatus());
+        assertEquals(tronquee, donnees.fichiers.get(STRAHD + "/dnd"));
     }
 }
