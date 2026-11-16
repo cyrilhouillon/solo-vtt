@@ -82,3 +82,4 @@ Chaque capacité, trait, don d'origine et sort qu'affiche une fiche de niveau 1,
 | Désavantage en Discrétion des armures | armures du SRD | non (Discrétion non jouée) | [subir les pénalités d'armure](../stories/subir-les-penalites-d-armure.md) |
 | Maîtrise d'arme (pas de bonus de maîtrise sans elle) | règle, toute classe | portée par la fiche (attaque calculée) | — |
 | Propriétés Polyvalente et Deux mains, mains libres | armes du SRD | non (« tenue » sans compter les mains) | [manier une arme à une ou deux mains](../stories/manier-une-arme-a-une-ou-deux-mains.md) |
+| Propriété Légère : attaque de la seconde main en action Bonus | armes du SRD | non (deux armes identiques tenues : une seule attaque) | [attaquer avec une seconde arme Légère](../stories/attaquer-avec-une-seconde-arme-legere.md) |
