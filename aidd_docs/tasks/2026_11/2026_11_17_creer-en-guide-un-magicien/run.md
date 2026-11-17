@@ -1,0 +1,43 @@
+# Run
+
+## Phase 1 · Magicien, sorts et emplacements dans `dnd-engine`
+
+- Date: 2026-11-17
+- Validated on: 4254e37
+
+- [pass] Task 1 — `Spell` a les 45 sorts de la liste du Magicien, Bouclier d'id `shield` ; le Magicien a le dé de vie, les sauvegardes, les compétences, les valeurs suggérées, les équipements de sa note SRD — `mvn test -pl vtt-engine,dnd-engine` : `Tests run: 187, Failures: 0` ; `MagicienTest` (13 tests) : 15 sorts mineurs et 30 du 1er niveau, ids distincts, `Spell.SHIELD.id() == ShieldReaction.SPELL` ; valeurs 8/12/13/15/14/10, PV 7 (d6 + 1), sauvegardes Int et Sag, équipement A (Dague, Bâton de combat, 5 po) et B (55 po), d'après `Compendio SRD/Français/Personnages/Classes/Magicien.md`.
+- [pass] Task 2 — Chaque refus du Test Scope a sa raison ; la construction suggérée est valide — `MagicienTest.desSortsImpossibles_sontRefusesAvecLaRaison` (4 sorts mineurs, 7 au grimoire, 5 préparés, préparé hors grimoire, Bouclier en sort mineur, Lumière au grimoire, doublon, sort inconnu, sorts d'un Guerrier) et `leMagicienSuggere_estValide_avecLesSortsRecommandes`.
+- [pass] Task 3 — Magicien suggéré : PV 7, DD 12, attaque +4, 2 emplacements ; profil avec Bouclier préparé : `knowsSpell("shield")` et emplacements restants ; un emplacement dépensé ne dépasse jamais le maximum ; Magicien → Guerrier retire les sorts et garde une retouche indépendante — `unMagicien_remplitLaFiche`, `unMagicienQuiPrepareBouclier_leConnaitEnCombat_avecSesEmplacementsRestants` (2 puis 1 emplacement), `unEmplacementDepense_seCompteDansLHistoire_jamaisAuDelaDuMaximum` (1, 2, 2 ; niveau 3 ignoré), `passerDeMagicienAGuerrier_retireLesSorts_etGardeUneRetoucheIndependante`, `changerUnSortPrepare_neReecritQueLesPrepares_etGardeLesEmplacementsDepenses` ; `mvn -q test` à la racine : exit 0 ; `npm run build` : `built`.
+
+## Phase 2 · Sorts au serveur et emplacements suivis par la fiche
+
+- Date: 2026-11-17
+- Validated on: d5b53ca
+
+- [pass] Task 1 — Magicien construit : DD 12, attaque +4, 2 emplacements ; `GET spells` rend les 45 sorts ; une fiche d'avant se relit sans sort ; refus en 400 — `mvn -q install` à la racine : exit 0 ; `SheetResourceTest` : `unMagicienConstruit_aSesSorts_sonDD_sonAttaqueEtSesEmplacements` (Int, 3 sorts mineurs, 6 au grimoire, 4 préparés, DD 12, +4, emplacement 1 : 2/0, construction relue), `lesOptionsDuMagicien_disentSonIncantation_etLesAutresClassesN_enOntPas` (3 / 6 / 4, emplacements [2], 15 et 30 sorts ; autres classes `spellcasting` null), `lesSorts_sontServisDansLOrdreDuSrd` (45, Aspersion acide d'abord ; 404 campagne inconnue), `uneFicheLibre_gardeSesSorts_etSaisitBouclier` (Sag, Trait de feu, Bouclier relus ; DD 10), `unPrepareHorsDuGrimoire_estRefuse_sansRienEcrire` (IllegalArgumentException → 400 par l'`ErrorMapper`, document inchangé), `unDocumentDAvantLEspece_seRelit_etPrendUneEspece` (sans caractéristique ni sorts, `spellSaveDc` null, construction sans préparés) ; `SheetCharactersTest.unEmplacementSansNiveau_rendLaFicheIllisible` (409).
+- [pass] Task 2 — Bouclier lancé en combat : la fiche a 1 emplacement dépensé ; rejeu et reprise : aucun envoi ; PV et emplacements d'une même action écrits ensemble — `FicheSuitLeCombatTest.unBouclierLance_envoieLEmplacementDepense_etLaRepriseGardeBouclierEtLEmplacementRestant` (Gobelin 10 au d20, « Lancer Bouclier » : aucun dégât, un envoi `SpellSlotExpended(magicienne-1, 1)` ; reprise : aucun envoi, Magicienne connaît `shield`, 1 emplacement) ; tests existants du rejeu et de `CombatReplay` : aucun envoi ; `SheetCharactersTest.unBouclierLance_depenseUnEmplacementSurLaFiche_avecLesDegatsDeLaMemeAction` (profil : `shield`, 2 emplacements ; après : 1/2 dépensé, PV − 2, `{"type":"expended","level":1},{"type":"lost","amount":2}` dans le même document ; copie suivante : 1 emplacement) ; `JsonFileGameStoreTest.unPersonnagePose_gardeSesSortsEtSesEmplacements` (profil relu avec `shield`, `light` et [1]).
+
+## Phase 3 · Sorts sur la fiche et en création guidée
+
+- Date: 2026-11-17
+- Validated on: 8b29583
+
+- [pass] Task 1 — `npm run build` passe ; les champs de sort font l'aller-retour au rechargement — `npm run build` : `built` ; navigateur Chrome sur 5174 (proxy vers 8081, campagnes dans le scratchpad), campagne neuve « Test Magicien » avec D&D, fiche « Elminster » : après rechargement, sorts mineurs, grimoire, préparés et Intelligence relus tels qu'enregistrés.
+- [pass] Task 2 — Fiche Magicien : Intelligence, DD 12, attaque +4 ; une retouche libre est gardée au rechargement ; sans caractéristique, DD et attaque « — » — fiche vide : section Sorts « Incantation — », « DD — », « Attaque — » ; Magicien guidé : « Intelligence », « DD 12 », « Attaque +4 », emplacements niveau 1 : 2 / 0, (C, R) affichés après Détection de la magie ; section Sorts de la fiche : Trait de feu ajouté, Lumière retirée → rechargé : « Main du mage, Rayon de givre, Trait de feu », création guidée inchangée (Lumière, Main du mage, Rayon de givre cochés).
+- [pass] Task 3 — Magicien guidé : sorts recommandés cochés ; Bouclier préparé passe à la fiche ; un préparé décoché du grimoire quitte les préparés ; Magicien → Guerrier retire la partie et les sorts ; Bouclier lancé en combat laisse 1 emplacement dépensé sur la fiche — Classe Magicien : « Sorts mineurs (3 / 3) » Lumière, Main du mage, Rayon de givre ; « Grimoire (6 / 6) » les six recommandés ; « Sorts préparés (4 / 4) » les quatre premiers ; Sommeil décoché, Bouclier coché au grimoire, Feuille morte décochée et Bouclier coché aux préparés → fiche : préparés Armure du mage, Bouclier, Détection de la magie, Projectile magique ; Projectile magique décoché du grimoire → « Sorts préparés (3 / 4) », sans lui ; cases éteintes au nombre atteint (4e sort mineur, 7e sort de grimoire, 5e préparé : `disabled`) ; combat par l'API de la session 8081 (`POST …/scene`, pose du Gobelin et d'Elminster au contact, `POST …/attacks`) : au 2e essai, décision « Lancer Bouclier » / « Ne rien faire », réponse « Lancer Bouclier » → « Elminster dépense un emplacement de niveau 1 (reste 1) », « 15 contre CA 16 → RATÉ », sans avertissement ; fiche rechargée : emplacements niveau 1 « 2 / 1 » ; Classe → Guerrier : aucune partie Sorts, fiche sans sorts, Incantation vide, DD et attaque « — », emplacements tous 0 ; arrêt de 8081 puis 5174, ports libérés, 8080 et 5173 jamais touchés.
+
+## Phase 4 · Stories des sorts non joués et mémoire
+
+- Date: 2026-11-17
+- Validated on: b77f43a
+
+- [pass] Task 1 — Chaque sort de `Spell` et chaque règle du Magicien est dans la liste ; chaque ligne non jouée renvoie à une story existante du backlog — script de contrôle : les 45 libellés de `Spell.java` apparaissent dans `lister-les-capacites-de-niveau-1-que-le-moteur-ne-joue-pas.md` (manquants : `[]`) ; 15 lignes ajoutées (sorts, emplacements, préparés au repos long, Savoir rituel, Restauration magique, Bouclier et sa durée, sorts d'attaque, de sauvegarde, Projectile magique, effets à durée, Concentration, utilitaires, composantes) ; stories créées `lancer-un-sort-d-attaque` (31), `lancer-un-sort-a-jet-de-sauvegarde` (32), `lancer-projectile-magique` (33), `tenir-les-effets-a-duree-et-la-concentration` (34), chacune avec son epic, `depends_on` le Magicien et le rappel de la liste ; `se-reposer-court-et-long` complétée (Restauration magique, sorts préparés) ; story du Magicien `done`.
+- [pass] Task 2 — La mémoire nomme `Spell`, les champs de sort, `GET …/dnd/spells` et le suivi des emplacements ; le piège « aucune créature ne connaît Bouclier » est corrigé — `architecture.md` : paragraphe Magicien (`Spellcasting`, `Spell`, `Build`, champs de fiche, DD et attaque, `profile`, `GET …/dnd/spells`, `SpellsPanel.vue`), suivi `SpellSlotExpended` / `expended`, création guidée et saisie libre avec le Magicien, piège Bouclier réécrit ; `codebase-map.md` : `Spell`, `CharacterClass` (cinq classes), `SpellsPanel.vue` ; `project-brief.md` : Magicien guidé, emplacements suivis ; `testing.md` inchangé (`TestCharacters` n'a pas changé).
+
+## Final
+
+- Date: 2026-11-17
+- Validated on: 8b29583
+
+- [pass] `mvn -q verify` à la racine — exit 0 ; rapports surefire : 684 tests, 0 échec, 0 erreur
+- [pass] `npm run build` dans `vtt-web/` — `✓ built`

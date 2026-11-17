@@ -21,7 +21,7 @@ class GuidedValuesTest {
     private static Build guerrier(StartingEquipment equipement, FightingStyle style) {
         Build base = Build.fighter();
         return new Build(base.characterClass(), base.method(), base.scores(), ATHLETISME_PERCEPTION, style,
-                equipement, base.masteries(), null, null, Set.of(), null);
+                equipement, base.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
     }
 
     private static CharacterSheet construite(Build build) {
@@ -33,7 +33,7 @@ class GuidedValuesTest {
         return new CharacterSheet(f.characterClass(), f.fightingStyle(), f.level(), f.species(), f.size(), f.background(), f.abilities(),
                 f.proficiencyBonus(), f.savingThrows(), skills, armorBonus, hitPointMax, f.hitPoints(), f.hitDice(), f.speed(),
                 f.initiative(), f.otherAttacks(), f.features(), f.speciesTraits(), f.feats(), f.inventory(), f.proficiencies(),
-                f.languages(), f.spellSlots());
+                f.languages(), f.spellSlots(), null, List.of(), List.of(), List.of());
     }
 
     @Test
@@ -100,14 +100,14 @@ class GuidedValuesTest {
     void unChoixSansRapportAvecLEquipement_gardeLInventaireRetouche() {
         Build avant = guerrier(StartingEquipment.FIGHTER_A, FightingStyle.DEFENSE);
         Build apres = new Build(avant.characterClass(), avant.method(), avant.scores(), Set.of(Skill.ATHLETICS, Skill.HISTORY),
-                avant.fightingStyle(), avant.equipment(), avant.masteries(), null, null, Set.of(), null);
+                avant.fightingStyle(), avant.equipment(), avant.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
         CharacterSheet fiche = construite(avant);
         Inventory bouclier = fiche.inventory().plus(new Inventory(List.of(Item.armor(SrdArmor.SHIELD)), 0));
         fiche = new CharacterSheet(fiche.characterClass(), fiche.fightingStyle(), fiche.level(), fiche.species(), fiche.size(),
                 fiche.background(), fiche.abilities(), fiche.proficiencyBonus(), fiche.savingThrows(), fiche.skills(),
                 fiche.armorBonus(), fiche.hitPointMax(), fiche.hitPoints(), fiche.hitDice(), fiche.speed(), fiche.initiative(),
                 fiche.otherAttacks(), fiche.features(), fiche.speciesTraits(), fiche.feats(), bouclier, fiche.proficiencies(),
-                fiche.languages(), fiche.spellSlots());
+                fiche.languages(), fiche.spellSlots(), null, List.of(), List.of(), List.of());
 
         CharacterSheet recalculee = GuidedValues.of(apres).rebuild(fiche, GuidedValues.of(avant));
 
@@ -122,7 +122,7 @@ class GuidedValuesTest {
         echangees.put(Ability.CONSTITUTION, 8);
         echangees.put(Ability.INTELLIGENCE, 13);
         Build apres = new Build(avant.characterClass(), avant.method(), echangees, avant.skills(),
-                avant.fightingStyle(), avant.equipment(), avant.masteries(), null, null, Set.of(), null);
+                avant.fightingStyle(), avant.equipment(), avant.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
         CharacterSheet fiche = construite(avant);
         Map<Skill, Proficiency> expertise = new HashMap<>(fiche.skills());
         expertise.put(Skill.PERCEPTION, Proficiency.EXPERTISE);
@@ -145,7 +145,7 @@ class GuidedValuesTest {
         return new CharacterSheet(f.characterClass(), f.fightingStyle(), f.level(), espece, f.size(), f.background(), f.abilities(),
                 f.proficiencyBonus(), f.savingThrows(), f.skills(), f.armorBonus(), f.hitPointMax(), f.hitPoints(), f.hitDice(), speed,
                 f.initiative(), f.otherAttacks(), f.features(), f.speciesTraits(), f.feats(), f.inventory(), f.proficiencies(),
-                f.languages(), f.spellSlots());
+                f.languages(), f.spellSlots(), null, List.of(), List.of(), List.of());
     }
 
     @Test
@@ -231,7 +231,7 @@ class GuidedValuesTest {
     private static Build classe(CharacterClass classe, Set<Skill> competences, Set<Skill> expertise, Tool outil) {
         Build base = Build.suggested(classe);
         return new Build(classe, base.method(), base.scores(), competences, base.fightingStyle(), base.equipment(),
-                base.masteries(), null, null, expertise, outil);
+                base.masteries(), null, null, expertise, outil, List.of(), List.of(), List.of());
     }
 
     private static Map<Ability, Integer> valeurs(int str, int dex, int con, int intel, int wis, int cha) {
@@ -247,14 +247,14 @@ class GuidedValuesTest {
 
     private static Build achatDePoints(Build build, Map<Ability, Integer> valeurs) {
         return new Build(build.characterClass(), AbilityMethod.POINT_BUY, valeurs, build.skills(), build.fightingStyle(),
-                build.equipment(), build.masteries(), build.species(), build.background(), build.expertise(), build.tool());
+                build.equipment(), build.masteries(), build.species(), build.background(), build.expertise(), build.tool(), List.of(), List.of(), List.of());
     }
 
     private static Build equipe(Build build, StartingEquipment equipement) {
         return new Build(build.characterClass(), build.method(), build.scores(), build.skills(), build.fightingStyle(),
                 equipement, equipement.weapons().stream().filter(build.characterClass()::masters)
                         .limit(build.characterClass().masteryCount()).toList(),
-                build.species(), build.background(), build.expertise(), build.tool());
+                build.species(), build.background(), build.expertise(), build.tool(), List.of(), List.of(), List.of());
     }
 
     @Test
@@ -376,7 +376,7 @@ class GuidedValuesTest {
                 fiche.size(), fiche.background(), fiche.abilities(), fiche.proficiencyBonus(), fiche.savingThrows(), fiche.skills(),
                 fiche.armorBonus(), fiche.hitPointMax(), fiche.hitPoints(), fiche.hitDice(), fiche.speed(), fiche.initiative(),
                 fiche.otherAttacks(), fiche.features(), fiche.speciesTraits(), fiche.feats(), fiche.inventory(),
-                fiche.proficiencies(), "Commun, Elfique", fiche.spellSlots());
+                fiche.proficiencies(), "Commun, Elfique", fiche.spellSlots(), null, List.of(), List.of(), List.of());
         Build moine = classe(CharacterClass.MONK, Set.of(Skill.ACROBATICS, Skill.STEALTH), Set.of(), null);
 
         CharacterSheet apres = new SheetState(retouchee, avant, avant.abilities(), null).rebuild(moine);

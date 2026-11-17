@@ -30,19 +30,19 @@ class BuildTest {
     private static Build avec(AbilityMethod method, Map<Ability, Integer> scores) {
         Build guerrier = Build.fighter();
         return new Build(guerrier.characterClass(), method, scores, guerrier.skills(), guerrier.fightingStyle(),
-                guerrier.equipment(), guerrier.masteries(), null, null, Set.of(), null);
+                guerrier.equipment(), guerrier.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
     }
 
     private static Build avecCompetences(Skill... skills) {
         Build guerrier = Build.fighter();
         return new Build(guerrier.characterClass(), guerrier.method(), guerrier.scores(), Set.of(skills),
-                guerrier.fightingStyle(), guerrier.equipment(), guerrier.masteries(), null, null, Set.of(), null);
+                guerrier.fightingStyle(), guerrier.equipment(), guerrier.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
     }
 
     private static Build avecBottes(SrdWeapon... armes) {
         Build guerrier = Build.fighter();
         return new Build(guerrier.characterClass(), guerrier.method(), guerrier.scores(), guerrier.skills(),
-                guerrier.fightingStyle(), guerrier.equipment(), List.of(armes), null, null, Set.of(), null);
+                guerrier.fightingStyle(), guerrier.equipment(), List.of(armes), null, null, Set.of(), null, List.of(), List.of(), List.of());
     }
 
     private static String raison(Build build, List<AbilityRoll> jets) {
@@ -142,7 +142,7 @@ class BuildTest {
                             Set<Skill> expertise, Tool outil) {
         Build base = Build.suggested(classe);
         return new Build(classe, base.method(), base.scores(), competences, style, base.equipment(), bottes, null, null,
-                expertise, outil);
+                expertise, outil, List.of(), List.of(), List.of());
     }
 
     private static Build suggeree(CharacterClass classe) {
@@ -226,7 +226,7 @@ class BuildTest {
     void desChoixAbsents_seValidentSansNullPointerException() {
         Build base = Build.suggested(CharacterClass.MONK);
         Build sansListes = new Build(base.characterClass(), base.method(), base.scores(), null, null, base.equipment(), null,
-                null, null, null, null);
+                null, null, null, null, List.of(), List.of(), List.of());
 
         assertDoesNotThrow(() -> sansListes.validate(List.of()));
     }

@@ -10,7 +10,7 @@ import static dnd.engine.sheet.Item.weapon;
 /**
  * Les équipements de départ d'une classe (SRD 5.2.1), en objets : armure portée et armes tenues ; l'option tout en
  * pièces d'or n'a aucun objet. L'équipement A du Moine contient l'outil d'artisan ou l'instrument qu'il a choisi pour sa
- * maîtrise, après ses armes.
+ * maîtrise, après ses armes. Le bâton de combat du Magicien est aussi son focaliseur arcanique.
  */
 public enum StartingEquipment {
     FIGHTER_A("Équipement A", CharacterClass.FIGHTER, false, 4, armor(SrdArmor.CHAIN_MAIL),
@@ -29,7 +29,11 @@ public enum StartingEquipment {
     ROGUE_A("Équipement A", CharacterClass.ROGUE, false, 8, armor(SrdArmor.LEATHER),
             weapon(SrdWeapon.DAGGER, 2), weapon(SrdWeapon.SHORTSWORD, 1), weapon(SrdWeapon.SHORTBOW, 1),
             named("Flèches", 20), named("Carquois", 1), named("Outils de voleur", 1), named("Paquetage de cambrioleur", 1)),
-    ROGUE_B("Équipement B", CharacterClass.ROGUE, false, 100);
+    ROGUE_B("Équipement B", CharacterClass.ROGUE, false, 100),
+    WIZARD_A("Équipement A", CharacterClass.WIZARD, false, 5,
+            weapon(SrdWeapon.DAGGER, 2), weapon(SrdWeapon.QUARTERSTAFF, 1),
+            named("Robe", 1), named("Grimoire", 1), named("Paquetage d’érudit", 1)),
+    WIZARD_B("Équipement B", CharacterClass.WIZARD, false, 55);
 
     /** L'outil du Moine sur la fiche tant qu'il n'est pas choisi, dans l'inventaire comme dans les Maîtrises. */
     static final String TOOL_TO_CHOOSE = "outil d’artisan ou instrument de musique (à choisir)";

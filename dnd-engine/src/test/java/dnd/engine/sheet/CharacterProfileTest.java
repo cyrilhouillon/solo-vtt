@@ -25,7 +25,7 @@ class CharacterProfileTest {
         Map<Ability, Integer> valeurs = new EnumMap<>(Ability.class);
         for (Ability ability : Ability.values()) valeurs.put(ability, 10);
         return new CharacterSheet(CharacterClass.FIGHTER, null, 1, "", "", "", valeurs, 2, Set.of(), Map.of(),
-                8, pvMax, pv, "1d10", 9, 2, attaques, "", "", "", Inventory.EMPTY, "", "", List.of());
+                8, pvMax, pv, "1d10", 9, 2, attaques, "", "", "", Inventory.EMPTY, "", "", List.of(), null, List.of(), List.of(), List.of());
     }
 
     @Test

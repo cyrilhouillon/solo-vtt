@@ -8,6 +8,7 @@ import type {
   Sheet,
   SheetValues,
   SpeciesOptions,
+  Spell,
 } from './sheet'
 
 /** Les fiches des personnages joueurs d'une campagne. */
@@ -32,6 +33,8 @@ export function dndApi(campaignId: string) {
     equipment: () => request<EquipmentOptions>(`${base}/equipment`),
     /** Les dons d'origines (Polyvalent) et leurs sous-choix. */
     originFeats: () => request<OriginFeatOptions[]>(`${base}/origin-feats`),
+    /** Les sorts que la fiche connaît, sorts mineurs puis du 1er niveau. */
+    spells: () => request<Spell[]>(`${base}/spells`),
     /** Applique une construction guidée ; la réponse porte les valeurs qui en dérivent. */
     build: (pageId: string, build: Build) =>
       request<Sheet>(`${base}/sheets/${encodeURIComponent(pageId)}/build`, { method: 'PUT', body: JSON.stringify(build) }),

@@ -40,7 +40,7 @@ class CombatStatsTest {
         return new CharacterSheet(f.characterClass(), f.fightingStyle(), f.level(), f.species(), f.size(), f.background(), valeurs,
                 f.proficiencyBonus(), f.savingThrows(), f.skills(), ajustement, f.hitPointMax(), f.hitPoints(), f.hitDice(), f.speed(),
                 f.initiative(), autres, f.features(), f.speciesTraits(), f.feats(), inventaire, f.proficiencies(), f.languages(),
-                f.spellSlots());
+                f.spellSlots(), null, List.of(), List.of(), List.of());
     }
 
     private static List<String> noms(CharacterSheet fiche) {
@@ -140,7 +140,7 @@ class CombatStatsTest {
     void uneConstructionQuiChangeDOption_remplaceLInventaire() {
         Build a = Build.suggested(CharacterClass.ROGUE);
         Build b = new Build(a.characterClass(), a.method(), a.scores(), a.skills(), null, StartingEquipment.ROGUE_B,
-                a.masteries(), null, null, Set.of(), null);
+                a.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
         CharacterSheet fiche = ajoute(construite(CharacterClass.ROGUE), Item.named("Corde", 1));
         SheetState etat = new SheetState(fiche, a, a.abilities(), null);
 

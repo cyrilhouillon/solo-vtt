@@ -10,7 +10,9 @@ public final class SheetHistory {
 
     /**
      * La fiche après ces événements. Une saisie remplace les valeurs et garde construction et jets ; une construction
-     * remplace construction et valeurs ; des PV perdus baissent les PV actuels, jamais sous 0.
+     * remplace construction et valeurs ; des PV perdus baissent les PV actuels, jamais sous 0 ;
+     * un emplacement dépensé s'ajoute aux dépensés de son niveau, jamais au-delà du maximum, et sans emplacement de ce
+     * niveau ne change rien.
      *
      * @throws IllegalArgumentException si l'histoire ne commence pas par {@link SheetEvent.SheetCreated}, en contient un
      *     second, ou lance deux fois les dés de caractéristique
@@ -30,6 +32,9 @@ public final class SheetHistory {
                 case SheetEvent.SheetBuilt built -> new SheetState(built.values(), built.build(), built.values().abilities(), state.rolls());
                 case SheetEvent.HitPointsLost lost -> new SheetState(
                         state.values().withHitPoints(Math.max(0, state.values().hitPoints() - lost.amount())),
+                        state.build(), state.builtAbilities(), state.rolls());
+                case SheetEvent.SpellSlotExpended expended -> new SheetState(
+                        state.values().withSpellSlotExpended(expended.level()),
                         state.build(), state.builtAbilities(), state.rolls());
                 case SheetEvent.AbilitiesRolled rolled -> {
                     if (state.rolls() != null) {

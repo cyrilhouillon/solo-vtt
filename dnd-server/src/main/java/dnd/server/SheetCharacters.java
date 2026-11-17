@@ -82,7 +82,8 @@ public class SheetCharacters implements PlayerCharacters {
     }
 
     /**
-     * Les dégâts que la copie posée a subis baissent les PV actuels de sa fiche.
+     * Ce que la copie posée a subi suit sur sa fiche, dans l'ordre : des dégâts baissent ses PV actuels, un emplacement de
+     * sort dépensé (Bouclier) s'ajoute à ses emplacements dépensés.
      *
      * @return {@code false} si {@code id} n'est pas une fiche vivante de la campagne
      * @throws ClientErrorException (409) si les fiches ne se relisent pas ; rien n'est écrit
@@ -90,11 +91,16 @@ public class SheetCharacters implements PlayerCharacters {
     @Override
     public boolean sustained(String campaignId, String id, List<GameEvent> events) {
         if (!pages.isEntry(campaignId, moduleId(), id)) return false;
-        List<Integer> amounts = events.stream()
-                .filter(GameEvent.DamageDealt.class::isInstance)
-                .map(event -> ((GameEvent.DamageDealt) event).amount())
+        List<SheetEvent> followed = events.stream()
+                .<SheetEvent>mapMulti((event, sink) -> {
+                    if (event instanceof GameEvent.DamageDealt damage && damage.amount() > 0) {
+                        sink.accept(new SheetEvent.HitPointsLost(damage.amount()));
+                    } else if (event instanceof GameEvent.SpellSlotExpended expended) {
+                        sink.accept(new SheetEvent.SpellSlotExpended(expended.level()));
+                    }
+                })
                 .toList();
-        if (!amounts.isEmpty()) sheets.sustained(campaignId, id, amounts);
+        if (!followed.isEmpty()) sheets.sustained(campaignId, id, followed);
         return true;
     }
 }

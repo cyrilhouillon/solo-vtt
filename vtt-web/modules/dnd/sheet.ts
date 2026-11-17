@@ -173,6 +173,12 @@ export interface SheetValues {
   proficiencies: string
   languages: string
   spellSlots: SpellSlots[]
+  /** La caractéristique d'incantation, `null` sans : ni DD ni attaque de sort. */
+  spellcastingAbility: Ability | null
+  /** Les sorts par leur id : sorts mineurs, grimoire (Magicien) et sorts préparés. */
+  cantrips: string[]
+  spellbook: string[]
+  preparedSpells: string[]
 }
 
 /** Les méthodes de valeurs de caractéristique : valeurs standard, achat de points, dés. */
@@ -196,6 +202,10 @@ export interface Build {
   expertise: Skill[]
   /** L'outil choisi pour la maîtrise de la classe, `null` sans choix ou à choisir. */
   tool: string | null
+  /** Les sorts mineurs, le grimoire et les sorts préparés, par id, dans l'ordre choisi ; vides hors lanceur de sorts. */
+  cantrips: string[]
+  spellbook: string[]
+  prepared: string[]
 }
 
 /** L'espèce d'une construction et ses sous-choix, par leurs ids ; `null` : à choisir. */
@@ -311,6 +321,27 @@ export interface ClassOptions {
   expertiseCount: number
   /** Les outils au choix pour la maîtrise de la classe, vides sans choix. */
   tools: ToolChoice[]
+  /** L'incantation de niveau 1, `null` pour une classe qui ne lance pas de sorts. */
+  spellcasting: Spellcasting | null
+}
+
+/** Un sort : id, libellé, niveau (0 : sort mineur), école, Concentration et rituel. */
+export interface Spell extends Choice {
+  level: number
+  school: string
+  concentration: boolean
+  ritual: boolean
+}
+
+/** L'incantation d'une classe : combien de sorts mineurs, de sorts de grimoire (0 sans) et de préparés, et ses sorts au choix. */
+export interface Spellcasting {
+  ability: Ability
+  cantripCount: number
+  spellbookCount: number
+  preparedCount: number
+  slots: number[]
+  cantrips: Spell[]
+  spells: Spell[]
 }
 
 /** Ce que le serveur calcule et que le client ne refait pas : CA et attaques, `null` sans classe. */
@@ -318,6 +349,9 @@ export interface Derived {
   armorClass: number | null
   /** Les attaques calculées, puis les autres attaques. */
   attacks: SheetAttack[] | null
+  /** DD et modificateur d'attaque des sorts, `null` sans caractéristique d'incantation. */
+  spellSaveDc: number | null
+  spellAttackBonus: number | null
 }
 
 /**

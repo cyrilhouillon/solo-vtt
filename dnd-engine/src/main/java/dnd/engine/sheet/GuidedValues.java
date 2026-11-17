@@ -12,8 +12,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Ce qu'une construction guidée écrit sur la fiche, champ par champ (SRD 5.2.1, niveau 1). Langues et emplacements de
- * sort n'en dérivent pas : ils restent au joueur. CA et attaques non plus : la fiche les calcule ({@link CombatStats}) de
+ * Ce qu'une construction guidée écrit sur la fiche, champ par champ (SRD 5.2.1, niveau 1). Les langues n'en dérivent
+ * pas : elles restent au joueur. Caractéristique d'incantation, sorts et emplacements suivent la classe : vides pour une
+ * classe qui ne lance pas de sorts ; les emplacements dérivés n'ont rien de dépensé, et tant qu'ils ne changent pas, ceux
+ * de la fiche restent, dépensés compris. CA et attaques non plus : la fiche les calcule ({@link CombatStats}) de
  * la classe, du Style et de l'inventaire que la construction écrit. Espèce, taille, vitesse et traits d'espèce valent
  * {@code null} tant que la construction n'a pas d'espèce, historique tant qu'elle n'a pas d'historique, dons tant qu'elle
  * n'a ni historique ni Polyvalent : la fiche garde alors ce que le joueur y a saisi.
@@ -27,11 +29,14 @@ public record GuidedValues(CharacterClass characterClass, FightingStyle fighting
                            int hitPointMax, int hitPoints, String hitDice, int initiative,
                            String features, Inventory inventory, String proficiencies,
                            String species, String size, Double speed, String speciesTraits,
-                           String background, String feats) {
+                           String background, String feats,
+                           Ability spellcastingAbility, List<Spell> cantrips, List<Spell> spellbook,
+                           List<Spell> preparedSpells, List<SpellSlots> spellSlots) {
 
     /** Aucune construction précédente : {@link #rebuild} réécrit tous les champs dérivés. */
     public static final GuidedValues NONE = new GuidedValues(null, null, 0, 0, Map.of(), Set.of(), Map.of(),
-            0, 0, "", 0, "", Inventory.EMPTY, "", null, null, null, null, null, null);
+            0, 0, "", 0, "", Inventory.EMPTY, "", null, null, null, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of());
 
     private static final int LEVEL = 1;
     private static final int PROFICIENCY_BONUS = 2;
@@ -40,6 +45,10 @@ public record GuidedValues(CharacterClass characterClass, FightingStyle fighting
         abilities = Map.copyOf(abilities);
         savingThrows = Set.copyOf(savingThrows);
         skills = Map.copyOf(skills);
+        cantrips = List.copyOf(cantrips);
+        spellbook = List.copyOf(spellbook);
+        preparedSpells = List.copyOf(preparedSpells);
+        spellSlots = List.copyOf(spellSlots);
     }
 
     /** Les valeurs qu'une construction donne à une fiche qui porte ses valeurs de caractéristique, augmentations comprises. */
@@ -80,6 +89,12 @@ public record GuidedValues(CharacterClass characterClass, FightingStyle fighting
         if (!characterClass.toolChoices().isEmpty()) tools.add(build.tool() == null ? StartingEquipment.TOOL_TO_CHOOSE : build.tool().label());
         if (background != null && !tools.contains(background.toolText())) tools.add(background.toolText());
 
+        CharacterClass.Spellcasting casting = characterClass.spellcasting();
+        List<SpellSlots> slots = new ArrayList<>();
+        if (casting != null) {
+            for (int level = 1; level <= casting.slots().size(); level++) slots.add(new SpellSlots(level, casting.slots().get(level - 1), 0));
+        }
+
         return new GuidedValues(characterClass, build.fightingStyle(), LEVEL, PROFICIENCY_BONUS, build.abilities(),
                 EnumSet.copyOf(characterClass.savingThrows()), skills,
                 hitPoints, hitPoints,
@@ -92,7 +107,8 @@ public record GuidedValues(CharacterClass characterClass, FightingStyle fighting
                 species == null ? null : species.speed(),
                 species == null ? null : species.traitsText(),
                 background == null ? null : background.background().label(),
-                feats.isEmpty() ? null : feats.stream().map(OriginFeatChoice::text).collect(Collectors.joining("\n")));
+                feats.isEmpty() ? null : feats.stream().map(OriginFeatChoice::text).collect(Collectors.joining("\n")),
+                casting == null ? null : casting.ability(), build.cantrips(), build.spellbook(), build.prepared(), slots);
     }
 
     /**
@@ -146,7 +162,12 @@ public record GuidedValues(CharacterClass characterClass, FightingStyle fighting
                 pickWithdrawn(previous, GuidedValues::feats, sheet.feats()),
                 pick(previous, GuidedValues::inventory, sheet.inventory()),
                 pick(previous, GuidedValues::proficiencies, sheet.proficiencies()),
-                sheet.languages(), sheet.spellSlots());
+                sheet.languages(),
+                changed(previous, GuidedValues::spellSlots) ? spellSlots : sheet.spellSlots(),
+                changed(previous, GuidedValues::spellcastingAbility) ? spellcastingAbility : sheet.spellcastingAbility(),
+                changed(previous, GuidedValues::cantrips) ? cantrips : sheet.cantrips(),
+                changed(previous, GuidedValues::spellbook) ? spellbook : sheet.spellbook(),
+                changed(previous, GuidedValues::preparedSpells) ? preparedSpells : sheet.preparedSpells());
     }
 
     /**
@@ -200,6 +221,16 @@ public record GuidedValues(CharacterClass characterClass, FightingStyle fighting
                         + "Dex au lieu de For, 1d6 à la place des dégâts, attaque à mains nues par une action Bonus");
                 lines.add("Défense sans armure : sans armure ni bouclier, CA 10 + Dex + Sag");
             }
+            case WIZARD -> {
+                CharacterClass.Spellcasting casting = characterClass.spellcasting();
+                lines.add("Sorts (" + casting.ability().label() + ") : sorts mineurs " + spellsText(build.cantrips(), casting.cantrips())
+                        + " ; grimoire " + spellsText(build.spellbook(), casting.spellbook())
+                        + " ; préparés " + spellsText(build.prepared(), casting.prepared())
+                        + " ; changer de sorts préparés au repos long");
+                lines.add("Savoir rituel : lancer comme rituel un sort rituel du grimoire, sans le préparer");
+                lines.add("Restauration magique : au repos court, récupérer des emplacements dépensés (niveaux au total : "
+                        + "la moitié du niveau de Magicien, arrondie au supérieur), une fois par repos long");
+            }
             case ROGUE -> {
                 lines.add("Expertise : " + expertiseText(build));
                 lines.add("Attaque sournoise (1d6) : une fois par tour, avec une arme Finesse ou à distance, si l’attaque "
@@ -208,6 +239,14 @@ public record GuidedValues(CharacterClass characterClass, FightingStyle fighting
             }
         }
         return String.join("\n", lines);
+    }
+
+    /** Des sorts choisis, dans l'ordre, puis combien restent à choisir. */
+    private static String spellsText(List<Spell> spells, int count) {
+        String list = spells.stream().map(Spell::label).collect(Collectors.joining(", "));
+        int missing = count - spells.size();
+        if (missing > 0) list += (list.isEmpty() ? "" : ", ") + missing + " à choisir";
+        return list;
     }
 
     /** Les Expertises choisies, dans l'ordre des compétences, puis combien restent à choisir. */

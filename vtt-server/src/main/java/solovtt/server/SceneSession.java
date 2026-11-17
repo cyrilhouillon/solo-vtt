@@ -171,7 +171,7 @@ public class SceneSession {
         }
     }
 
-    /** Les coups reçus par un personnage joueur pendant un appel : son nom sur la carte, et les événements. */
+    /** Ce que subit un personnage joueur pendant un appel (dégâts, emplacements dépensés) : son nom sur la carte, et les événements. */
     private record Sustained(String name, List<GameEvent> events) {}
 
     private static final System.Logger LOG = System.getLogger(SceneSession.class.getName());
@@ -287,11 +287,16 @@ public class SceneSession {
                         event instanceof GameEvent.DamageDealt d ? new Damage(d.amount(), d.type().label()) : null,
                         dice(event))));
         engine.subscribe(event -> {
-            if (!(event instanceof GameEvent.DamageDealt damage)) return;
-            CatalogEntry entry = entries.get(damage.targetId());
+            String creatureId = switch (event) {
+                case GameEvent.DamageDealt damage -> damage.targetId();
+                case GameEvent.SpellSlotExpended expended -> expended.creatureId();
+                default -> null;
+            };
+            if (creatureId == null) return;
+            CatalogEntry entry = entries.get(creatureId);
             if (entry == null || entry.profile() == null) return;
-            sustained.computeIfAbsent(entry.id(), id -> new Sustained(state.get(damage.targetId()).name(), new ArrayList<>()))
-                    .events().add(damage);
+            sustained.computeIfAbsent(entry.id(), id -> new Sustained(state.get(creatureId).name(), new ArrayList<>()))
+                    .events().add(event);
         });
         sustained.clear();
         journal.clear();

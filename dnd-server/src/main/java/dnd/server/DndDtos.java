@@ -24,6 +24,7 @@ import dnd.engine.sheet.Species;
 import dnd.engine.sheet.SpeciesChoice;
 import dnd.engine.sheet.SpeciesOption;
 import dnd.engine.sheet.SpellList;
+import dnd.engine.sheet.Spell;
 import dnd.engine.sheet.SpellSlots;
 import dnd.engine.sheet.SrdArmor;
 import dnd.engine.sheet.SrdWeapon;
@@ -103,7 +104,8 @@ public final class DndDtos {
     /**
      * Les valeurs saisies d'une fiche ; {@code characterClass} et {@code fightingStyle} par leur id ({@code null} : pas
      * encore choisi, ou sans Style) ; {@code skills} ne liste que les compétences maîtrisées, {@code speed} est en mètres ;
-     * {@code armorBonus} l'ajustement de CA, {@code otherAttacks} les attaques saisies après celles que la fiche calcule.
+     * {@code armorBonus} l'ajustement de CA, {@code otherAttacks} les attaques saisies après celles que la fiche calcule ;
+     * {@code spellcastingAbility} ({@code null} sans incantation) et les sorts par leur id, absents d'une fiche d'avant.
      */
     public record SheetValuesDto(CharacterClass characterClass, FightingStyle fightingStyle, int level, String species,
                                  String size, String background,
@@ -112,7 +114,9 @@ public final class DndDtos {
                                  int armorBonus, int hitPointMax, int hitPoints, String hitDice, double speed, int initiative,
                                  List<AttackDto> otherAttacks,
                                  String features, String speciesTraits, String feats, InventoryDto inventory,
-                                 String proficiencies, String languages, List<SpellSlotsDto> spellSlots) {
+                                 String proficiencies, String languages, List<SpellSlotsDto> spellSlots,
+                                 Ability spellcastingAbility, List<Spell> cantrips, List<Spell> spellbook,
+                                 List<Spell> preparedSpells) {
 
         static SheetValuesDto of(CharacterSheet sheet) {
             return new SheetValuesDto(sheet.characterClass(), sheet.fightingStyle(), sheet.level(), sheet.species(), sheet.size(),
@@ -121,7 +125,8 @@ public final class DndDtos {
                     sheet.initiative(), sheet.otherAttacks().stream().map(AttackDto::of).toList(),
                     sheet.features(), sheet.speciesTraits(), sheet.feats(), InventoryDto.of(sheet.inventory()),
                     sheet.proficiencies(), sheet.languages(),
-                    sheet.spellSlots().stream().map(s -> new SpellSlotsDto(s.level(), s.max(), s.expended())).toList());
+                    sheet.spellSlots().stream().map(s -> new SpellSlotsDto(s.level(), s.max(), s.expended())).toList(),
+                    sheet.spellcastingAbility(), sheet.cantrips(), sheet.spellbook(), sheet.preparedSpells());
         }
 
         /**
@@ -138,7 +143,8 @@ public final class DndDtos {
                     features, speciesTraits, feats, inventory == null ? Inventory.EMPTY : inventory.toInventory(),
                     proficiencies, languages,
                     spellSlots == null ? List.of() : spellSlots.stream()
-                            .map(s -> new SpellSlots(s.level(), s.max(), s.expended())).toList());
+                            .map(s -> new SpellSlots(s.level(), s.max(), s.expended())).toList(),
+                    spellcastingAbility, cantrips, spellbook, preparedSpells);
         }
 
         private static Map<Skill, Proficiency> withoutNone(Map<Skill, Proficiency> skills) {
@@ -152,10 +158,12 @@ public final class DndDtos {
 
     /**
      * Ce que les formules du SRD tirent des valeurs saisies ; {@code armorClass} et {@code attacks} (calculées, puis les
-     * autres attaques) valent {@code null} sans classe.
+     * autres attaques) valent {@code null} sans classe ; {@code spellSaveDc} et {@code spellAttackBonus} sans
+     * caractéristique d'incantation.
      */
     public record DerivedDto(Map<Ability, Integer> modifiers, Map<Ability, Integer> savingThrows,
-                             Map<Skill, Integer> skills, int passivePerception, Integer armorClass, List<AttackDto> attacks) {
+                             Map<Skill, Integer> skills, int passivePerception, Integer armorClass, List<AttackDto> attacks,
+                             Integer spellSaveDc, Integer spellAttackBonus) {
 
         static DerivedDto of(CharacterSheet sheet) {
             Map<Ability, Integer> modifiers = new EnumMap<>(Ability.class);
@@ -168,7 +176,8 @@ public final class DndDtos {
             for (Skill skill : Skill.values()) skills.put(skill, sheet.skill(skill));
             List<SheetAttack> attacks = sheet.attacks();
             return new DerivedDto(modifiers, saves, skills, sheet.passivePerception(), sheet.armorClass(),
-                    attacks == null ? null : attacks.stream().map(AttackDto::of).toList());
+                    attacks == null ? null : attacks.stream().map(AttackDto::of).toList(),
+                    sheet.spellSaveDc(), sheet.spellAttackBonus());
         }
     }
 
@@ -228,19 +237,22 @@ public final class DndDtos {
      * {@code masteries} par id d'arme ; {@code species} {@code null} tant qu'aucune espèce n'est choisie (et dans une
      * construction d'avant) ; {@code background} de même pour l'historique ; {@code fightingStyle} {@code null} pour une
      * classe sans Style ; {@code expertise} dans l'ordre des compétences ({@code null} dans une construction d'avant : aucune) ;
-     * {@code tool} l'outil choisi pour la maîtrise de la classe, {@code null} sans choix ou à choisir.
+     * {@code tool} l'outil choisi pour la maîtrise de la classe, {@code null} sans choix ou à choisir ; sorts mineurs,
+     * grimoire et sorts préparés dans l'ordre choisi ({@code null} dans une construction d'avant : aucun).
      */
     public record BuildDto(CharacterClass characterClass, AbilityMethod method, Map<Ability, Integer> scores,
                            List<Skill> skills, FightingStyle fightingStyle, StartingEquipment equipment,
                            List<SrdWeapon> masteries, SpeciesChoiceDto species, BackgroundChoiceDto background,
-                           List<Skill> expertise, Tool tool) {
+                           List<Skill> expertise, Tool tool, List<Spell> cantrips, List<Spell> spellbook,
+                           List<Spell> prepared) {
 
         static BuildDto of(Build build) {
             return new BuildDto(build.characterClass(), build.method(),
                     build.scores().isEmpty() ? Map.of() : new EnumMap<>(build.scores()),
                     build.skills().stream().sorted().toList(), build.fightingStyle(), build.equipment(), build.masteries(),
                     SpeciesChoiceDto.of(build.species()), BackgroundChoiceDto.of(build.background()),
-                    build.expertise().stream().sorted().toList(), build.tool());
+                    build.expertise().stream().sorted().toList(), build.tool(), build.cantrips(), build.spellbook(),
+                    build.prepared());
         }
 
         /**
@@ -257,7 +269,7 @@ public final class DndDtos {
             if (expertise != null && expertise.contains(null)) throw new IllegalArgumentException("Expertise inconnue");
             return new Build(characterClass, method, scores, new HashSet<>(skills), fightingStyle, equipment, masteries,
                     species == null ? null : species.toChoice(), background == null ? null : background.toChoice(),
-                    expertise == null ? Set.of() : new HashSet<>(expertise), tool);
+                    expertise == null ? Set.of() : new HashSet<>(expertise), tool, cantrips, spellbook, prepared);
         }
     }
 
@@ -383,20 +395,45 @@ public final class DndDtos {
     /** Une arme qu'une Botte d'arme peut viser, et sa botte. */
     public record WeaponChoiceDto(String id, String label, String mastery) {}
 
+    /** Un sort : son id, son libellé, son niveau (0 : sort mineur), son école, Concentration et rituel. */
+    public record SpellDto(String id, String label, int level, String school, boolean concentration, boolean ritual) {
+
+        static SpellDto of(Spell spell) {
+            return new SpellDto(spell.name(), spell.label(), spell.level(), spell.school().label(), spell.concentration(),
+                    spell.ritual());
+        }
+    }
+
+    /**
+     * L'incantation d'une classe en création guidée : sa caractéristique, combien de sorts mineurs, de sorts de grimoire
+     * (0 sans grimoire) et de sorts préparés, ses emplacements par niveau, et les sorts au choix dans sa liste.
+     */
+    public record SpellcastingDto(Ability ability, int cantripCount, int spellbookCount, int preparedCount,
+                                  List<Integer> slots, List<SpellDto> cantrips, List<SpellDto> spells) {
+
+        static SpellcastingDto of(CharacterClass.Spellcasting casting) {
+            return casting == null ? null : new SpellcastingDto(casting.ability(), casting.cantrips(), casting.spellbook(),
+                    casting.prepared(), casting.slots(),
+                    Spell.of(casting.list(), 0).stream().map(SpellDto::of).toList(),
+                    Spell.of(casting.list(), 1).stream().map(SpellDto::of).toList());
+        }
+    }
+
     /** Un outil au choix, avec sa catégorie (outils d'artisan, instruments de musique…) pour les grouper. */
     public record ToolChoiceDto(String id, String label, String category) {}
 
     /**
      * Les options d'une classe pour la création guidée : compétences au choix et combien, Styles de combat, équipements
      * de départ (leurs objets et pièces d'or), armes pour les Bottes et combien, répartition suggérée, valeurs standard et
-     * coûts de l'achat de points (par valeur), nombre d'Expertises et outils au choix. Une classe sans Style de combat n'en
-     * sert aucun, une classe sans Botte aucune arme.
+     * coûts de l'achat de points (par valeur), nombre d'Expertises, outils au choix et incantation ({@code null} pour une
+     * classe qui ne lance pas de sorts). Une classe sans Style de combat n'en sert aucun, une classe sans Botte aucune arme.
      */
     public record ClassOptionsDto(String id, String label, List<ChoiceDto> skillChoices, int skillCount,
                                   List<DescribedChoiceDto> fightingStyles, List<DescribedChoiceDto> equipments,
                                   List<WeaponChoiceDto> weapons, int masteryCount, Map<Ability, Integer> suggestedScores,
                                   List<Integer> standardScores, Map<String, Integer> pointBuyCosts, int pointBuyBudget,
-                                  BuildDto defaultBuild, int expertiseCount, List<ToolChoiceDto> tools) {
+                                  BuildDto defaultBuild, int expertiseCount, List<ToolChoiceDto> tools,
+                                  SpellcastingDto spellcasting) {
 
         static ClassOptionsDto of(CharacterClass characterClass) {
             Map<String, Integer> costs = new LinkedHashMap<>();
@@ -419,7 +456,8 @@ public final class DndDtos {
                     AbilityMethod.STANDARD_SCORES, costs, AbilityMethod.POINT_BUY_BUDGET,
                     BuildDto.of(Build.suggested(characterClass)), characterClass.expertiseCount(),
                     characterClass.toolOptions().stream()
-                            .map(tool -> new ToolChoiceDto(tool.name(), tool.label(), tool.category().label())).toList());
+                            .map(tool -> new ToolChoiceDto(tool.name(), tool.label(), tool.category().label())).toList(),
+                    SpellcastingDto.of(characterClass.spellcasting()));
         }
     }
 }

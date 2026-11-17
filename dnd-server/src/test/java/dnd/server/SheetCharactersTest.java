@@ -2,6 +2,8 @@ package dnd.server;
 
 import dnd.engine.catalog.PlayerCharacters;
 import dnd.engine.sheet.Build;
+import dnd.engine.sheet.CharacterClass;
+import dnd.engine.sheet.Spell;
 import dnd.engine.events.GameEvent;
 import dnd.engine.state.Creature;
 import dnd.engine.state.DamageType;
@@ -156,6 +158,41 @@ class SheetCharactersTest {
         donnees.fichiers.computeIfPresent(STRAHD + "/dnd", (k, json) -> json.replace(",\"amount\":5", ""));
 
         var refus = assertThrows(ClientErrorException.class, () -> dnd.read(STRAHD, aria));
+        assertEquals(409, refus.getResponse().getStatus());
+    }
+
+    private String magicienQuiPrepareBouclier(String nom) {
+        String id = dnd.create(STRAHD, new DndDtos.NewSheetRequest(nom)).pageId();
+        Build base = Build.suggested(CharacterClass.WIZARD);
+        List<Spell> grimoire = List.of(Spell.MAGE_ARMOR, Spell.DETECT_MAGIC, Spell.FEATHER_FALL, Spell.MAGIC_MISSILE,
+                Spell.SHIELD, Spell.THUNDERWAVE);
+        dnd.build(STRAHD, id, DndDtos.BuildDto.of(base.withSpells(base.cantrips(), grimoire, grimoire.subList(2, 6))));
+        return id;
+    }
+
+    @Test
+    void unBouclierLance_depenseUnEmplacementSurLaFiche_avecLesDegatsDeLaMemeAction() {
+        String elminster = magicienQuiPrepareBouclier("Elminster");
+        int pleins = pvActuels(elminster);
+        Creature posee = personnages.take(STRAHD, elminster).orElseThrow().profile().create("c", "Elminster");
+        assertTrue(posee.knowsSpell("shield"));
+        assertEquals(2, posee.spellSlots(1));
+
+        assertTrue(personnages.sustained(STRAHD, elminster, List.of(new GameEvent.SpellSlotExpended("c", 1), coup(2))));
+
+        assertEquals(List.of(new DndDtos.SpellSlotsDto(1, 2, 1)), dnd.read(STRAHD, elminster).values().spellSlots());
+        assertEquals(pleins - 2, pvActuels(elminster));
+        assertTrue(donnees.fichiers.get(STRAHD + "/dnd").contains("{\"type\":\"expended\",\"level\":1},{\"type\":\"lost\",\"amount\":2}"));
+        assertEquals(1, personnages.take(STRAHD, elminster).orElseThrow().profile().create("c", "Elminster").spellSlots(1));
+    }
+
+    @Test
+    void unEmplacementSansNiveau_rendLaFicheIllisible() {
+        String elminster = magicienQuiPrepareBouclier("Elminster");
+        personnages.sustained(STRAHD, elminster, List.of(new GameEvent.SpellSlotExpended("c", 1)));
+        donnees.fichiers.computeIfPresent(STRAHD + "/dnd", (k, json) -> json.replace(",\"level\":1", ""));
+
+        var refus = assertThrows(ClientErrorException.class, () -> dnd.read(STRAHD, elminster));
         assertEquals(409, refus.getResponse().getStatus());
     }
 }

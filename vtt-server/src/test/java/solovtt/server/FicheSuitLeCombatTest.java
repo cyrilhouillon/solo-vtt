@@ -3,6 +3,7 @@ package solovtt.server;
 import dnd.engine.catalog.CatalogEntry;
 import dnd.engine.catalog.PlayerCharacters;
 import dnd.engine.events.GameEvent;
+import dnd.engine.rules.ShieldReaction;
 import org.junit.jupiter.api.Test;
 import solovtt.engine.Dice;
 import solovtt.scene.DistanceUnit;
@@ -190,5 +191,24 @@ class FicheSuitLeCombatTest {
         assertEquals("fiche introuvable ou module inactif", inconnue.getMessage());
         assertThrows(IllegalStateException.class, () -> catalogue.sustained(sansDnd, "aria", List.of()));
         assertEquals(List.of(avecDnd), recus, "un module inactif ne reçoit rien");
+    }
+
+    @Test
+    void unBouclierLance_envoieLEmplacementDepense_etLaRepriseGardeBouclierEtLEmplacementRestant() {
+        var session = combatAuTourDuGobelin(Dice.scripted(20, 15, 2, 10), fiches);
+        var attaque = session.attack("gobelin-1", "melee:Cimeterre", "magicienne-1");
+
+        var reponse = session.answer(attaque.decision().orElseThrow().id(), ShieldReaction.CAST).orElseThrow();
+
+        assertTrue(reponse.entries().stream().noneMatch(e -> e.damage() != null), "Bouclier fait rater le Gobelin");
+        assertEquals(List.of(new Envoi("magicienne", List.of(new GameEvent.SpellSlotExpended("magicienne-1", 1)))), envois);
+        envois.clear();
+
+        var reprise = session(Dice.scripted(), fiches);
+
+        assertTrue(envois.isEmpty(), "la reprise ne réémet pas l'emplacement");
+        var magicienne = reprise.creature("magicienne-1").orElseThrow();
+        assertTrue(magicienne.knowsSpell(ShieldReaction.SPELL));
+        assertEquals(1, magicienne.spellSlots(1));
     }
 }

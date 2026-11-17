@@ -55,7 +55,7 @@ class SheetHistoryTest {
     void uneConstruction_remplaceLesValeursEtLaConstructionPrecedente() {
         Build premiere = Build.fighter();
         Build seconde = new Build(premiere.characterClass(), premiere.method(), premiere.scores(), premiere.skills(),
-                FightingStyle.ARCHERY, StartingEquipment.FIGHTER_B, StartingEquipment.FIGHTER_B.weapons(), null, null, Set.of(), null);
+                FightingStyle.ARCHERY, StartingEquipment.FIGHTER_B, StartingEquipment.FIGHTER_B.weapons(), null, null, Set.of(), null, List.of(), List.of(), List.of());
 
         SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
                 new SheetEvent.SheetBuilt(premiere, construite(premiere)),
@@ -88,14 +88,14 @@ class SheetHistoryTest {
         return new CharacterSheet(f.characterClass(), f.fightingStyle(), f.level(), f.species(), f.size(), f.background(), abilities,
                 f.proficiencyBonus(), f.savingThrows(), f.skills(), f.armorBonus(), f.hitPointMax(), f.hitPoints(), f.hitDice(), f.speed(),
                 f.initiative(), f.otherAttacks(), f.features(), f.speciesTraits(), f.feats(), f.inventory(), f.proficiencies(),
-                f.languages(), f.spellSlots());
+                f.languages(), f.spellSlots(), null, List.of(), List.of(), List.of());
     }
 
     @Test
     void uneDexteriteRetouchee_compteAuChoixSuivant_etSurvitAuChoix() {
         Build premiere = Build.fighter();
         Build archer = new Build(premiere.characterClass(), premiere.method(), premiere.scores(), premiere.skills(),
-                FightingStyle.ARCHERY, StartingEquipment.FIGHTER_B, premiere.masteries(), null, null, Set.of(), null);
+                FightingStyle.ARCHERY, StartingEquipment.FIGHTER_B, premiere.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
         SheetState etat = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
                 new SheetEvent.SheetBuilt(premiere, SheetState.blank().rebuild(premiere))));
         SheetState retouchee = SheetHistory.replay(List.of(new SheetEvent.SheetCreated(),
@@ -115,7 +115,7 @@ class SheetHistoryTest {
                 new SheetEvent.SheetEdited(avecDex(etat.values(), 16)),
                 new SheetEvent.SheetBuilt(archer, archerie)));
         Build defense = new Build(archer.characterClass(), archer.method(), archer.scores(), archer.skills(),
-                FightingStyle.DEFENSE, archer.equipment(), archer.masteries(), null, null, Set.of(), null);
+                FightingStyle.DEFENSE, archer.equipment(), archer.masteries(), null, null, Set.of(), null, List.of(), List.of(), List.of());
         assertEquals(16, apresB.rebuild(defense).armorClass(), "12 + Dex 3 + Défense 1");
     }
 

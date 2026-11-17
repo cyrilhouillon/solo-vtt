@@ -118,4 +118,18 @@ class JsonFileGameStoreTest {
         assertEquals(null, dague.id());
         assertEquals("Dague", dague.key());
     }
+
+    @Test
+    void unPersonnagePose_gardeSesSortsEtSesEmplacements() {
+        var store = new JsonFileGameStore(dir.resolve("partie.json"));
+        var profil = new dnd.engine.state.CreatureProfile(11, 7, 7, 9, 1, List.of(), java.util.Set.of(),
+                java.util.Set.of("shield", "light"), List.of(1));
+        var partie = new SavedGame(List.of(new SavedCommand.Place("page-elminster", "Elminster", profil, 3, 4.5, List.of())));
+
+        store.save(partie);
+
+        var place = (SavedCommand.Place) store.load().orElseThrow().commands().getFirst();
+        assertEquals(java.util.Set.of("shield", "light"), place.profile().spellsKnown());
+        assertEquals(List.of(1), place.profile().spellSlots());
+    }
 }

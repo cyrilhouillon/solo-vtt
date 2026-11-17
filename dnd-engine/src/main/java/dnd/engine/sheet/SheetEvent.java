@@ -45,4 +45,14 @@ public sealed interface SheetEvent {
             if (amount <= 0) throw new IllegalArgumentException("Des PV perdus sont positifs : " + amount);
         }
     }
+
+    /**
+     * Le personnage, posé sur une carte, a dépensé un emplacement de sort de ce niveau : un delta, comme
+     * {@link HitPointsLost}, jamais au-delà du maximum de la fiche.
+     */
+    record SpellSlotExpended(int level) implements SheetEvent {
+        public SpellSlotExpended {
+            if (level < 1 || level > 9) throw new IllegalArgumentException("Niveau d'emplacement de sort entre 1 et 9 : " + level);
+        }
+    }
 }

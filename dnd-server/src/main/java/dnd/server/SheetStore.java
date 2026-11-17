@@ -66,26 +66,28 @@ final class SheetStore {
     /**
      * Un événement tel qu'il est écrit : {@code created} ; {@code edited} avec les valeurs saisies ; {@code built} avec la
      * construction et les valeurs qui en sont sorties ; {@code rolled} avec les six jets, quatre d6 chacun ; {@code lost}
-     * avec les PV perdus sur une carte.
+     * avec les PV perdus sur une carte ; {@code expended} avec le niveau de l'emplacement dépensé sur une carte.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     record EventFile(String type, DndDtos.SheetValuesDto values, DndDtos.BuildDto build, List<List<Integer>> rolls,
-                     Integer amount) {
+                     Integer amount, Integer level) {
         static final String CREATED = "created";
         static final String EDITED = "edited";
         static final String BUILT = "built";
         static final String ROLLED = "rolled";
         static final String LOST = "lost";
+        static final String EXPENDED = "expended";
 
         static EventFile of(SheetEvent event) {
             return switch (event) {
-                case SheetEvent.SheetCreated created -> new EventFile(CREATED, null, null, null, null);
-                case SheetEvent.SheetEdited edited -> new EventFile(EDITED, DndDtos.SheetValuesDto.of(edited.values()), null, null, null);
+                case SheetEvent.SheetCreated created -> new EventFile(CREATED, null, null, null, null, null);
+                case SheetEvent.SheetEdited edited -> new EventFile(EDITED, DndDtos.SheetValuesDto.of(edited.values()), null, null, null, null);
                 case SheetEvent.SheetBuilt built ->
-                        new EventFile(BUILT, DndDtos.SheetValuesDto.of(built.values()), DndDtos.BuildDto.of(built.build()), null, null);
+                        new EventFile(BUILT, DndDtos.SheetValuesDto.of(built.values()), DndDtos.BuildDto.of(built.build()), null, null, null);
                 case SheetEvent.AbilitiesRolled rolled ->
-                        new EventFile(ROLLED, null, null, rolled.rolls().stream().map(AbilityRoll::dice).toList(), null);
-                case SheetEvent.HitPointsLost lost -> new EventFile(LOST, null, null, null, lost.amount());
+                        new EventFile(ROLLED, null, null, rolled.rolls().stream().map(AbilityRoll::dice).toList(), null, null);
+                case SheetEvent.HitPointsLost lost -> new EventFile(LOST, null, null, null, lost.amount(), null);
+                case SheetEvent.SpellSlotExpended expended -> new EventFile(EXPENDED, null, null, null, null, expended.level());
             };
         }
 
@@ -109,6 +111,10 @@ final class SheetStore {
                 case LOST -> {
                     if (amount == null) throw new IllegalStateException("PV perdus sans montant");
                     yield new SheetEvent.HitPointsLost(amount);
+                }
+                case EXPENDED -> {
+                    if (level == null) throw new IllegalStateException("Emplacement dépensé sans niveau");
+                    yield new SheetEvent.SpellSlotExpended(level);
                 }
                 case null, default -> throw new IllegalStateException("Événement de fiche inconnu : " + type);
             };

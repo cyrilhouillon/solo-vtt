@@ -9,6 +9,7 @@ import dnd.engine.sheet.OriginFeat;
 import dnd.engine.sheet.SheetEvent;
 import dnd.engine.sheet.SheetHistory;
 import dnd.engine.sheet.SheetState;
+import dnd.engine.sheet.Spell;
 import dnd.engine.sheet.Species;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.ClientErrorException;
@@ -101,6 +102,18 @@ public class SheetResource {
     public DndDtos.EquipmentOptionsDto equipment(@PathParam("campaignId") String campaignId) {
         known(campaignId);
         return DndDtos.EquipmentOptionsDto.of();
+    }
+
+    /** Les sorts que la fiche connaît, sorts mineurs puis sorts du 1er niveau, dans l'ordre du SRD. */
+    @GET
+    @Path("/spells")
+    @APIResponse(responseCode = "200", description = "Les sorts que la fiche connaît",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = SchemaType.ARRAY, implementation = DndDtos.SpellDto.class)))
+    @APIResponse(responseCode = "404", description = "Campagne inconnue")
+    public List<DndDtos.SpellDto> spells(@PathParam("campaignId") String campaignId) {
+        known(campaignId);
+        return Arrays.stream(Spell.values()).map(DndDtos.SpellDto::of).toList();
     }
 
     /** Les dons d'origines et leurs sous-choix, pour Polyvalent (Humain). */
@@ -224,19 +237,18 @@ public class SheetResource {
     }
 
     /**
-     * La fiche de cette page a perdu ces PV sur une carte : un {@link SheetEvent.HitPointsLost} par montant positif, écrits
-     * ensemble, sous le verrou des saisies. Rien n'est écrit sans montant positif.
+     * La fiche de cette page a suivi sa copie posée sur une carte ({@link SheetEvent.HitPointsLost},
+     * {@link SheetEvent.SpellSlotExpended}) : ces événements écrits ensemble, sous le verrou des saisies. Rien n'est écrit
+     * sans événement.
      *
      * @throws NotFoundException si la page n'est pas une fiche vivante du module
      * @throws ClientErrorException (409) si les fiches ne se relisent pas ; rien n'est écrit
      */
-    synchronized void sustained(String campaignId, String pageId, List<Integer> amounts) {
+    synchronized void sustained(String campaignId, String pageId, List<SheetEvent> events) {
         SheetStore.State state = store.read(campaignId);
         sheet(campaignId, state, pageId);
         SheetStore.State next = state;
-        for (int amount : amounts) {
-            if (amount > 0) next = next.withEvent(pageId, new SheetEvent.HitPointsLost(amount));
-        }
+        for (SheetEvent event : events) next = next.withEvent(pageId, event);
         if (next != state) store.write(campaignId, next);
     }
 
